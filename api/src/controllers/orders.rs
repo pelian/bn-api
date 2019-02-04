@@ -151,7 +151,7 @@ pub fn refund(
         .collect::<Vec<Uuid>>();
 
     // Refund amount is fee inclusive if fee no longer applies to the order
-    let refund_due = order.refund(items, connection)?;
+    let refund_due = order.refund(items, user.id(), connection)?;
 
     // Transfer tickets back to the organization wallets
     let mut tokens_per_asset: HashMap<Uuid, Vec<u64>> = HashMap::new();

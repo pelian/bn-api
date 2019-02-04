@@ -152,7 +152,8 @@ pub fn details(role: Roles, should_succeed: bool) {
     }];
     let refund_amount = order_item.unit_price_in_cents + fee_item.unit_price_in_cents;
     assert_eq!(
-        cart.refund(refund_items, connection).unwrap(),
+        cart.refund(refund_items, auth_user.id(), connection)
+            .unwrap(),
         refund_amount as u32
     );
 

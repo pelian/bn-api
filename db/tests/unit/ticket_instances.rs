@@ -189,7 +189,7 @@ fn release() {
         .remove(0);
     assert_eq!(ticket.status, TicketInstanceStatus::Purchased);
     TicketInstance::authorize_ticket_transfer(user.id, vec![ticket.id], 3600, connection).unwrap();
-    assert!(ticket.release(connection).is_ok());
+    assert!(ticket.release(creator.id, connection).is_ok());
 
     // Reload ticket
     let ticket = TicketInstance::find(ticket.id, connection).unwrap();
@@ -215,6 +215,16 @@ fn release() {
     let ticket = TicketInstance::find(ticket.id, connection).unwrap();
     assert!(ticket.order_item_id.is_some());
     assert_eq!(ticket.status, TicketInstanceStatus::Reserved);
+
+    // Ticket is not nullified as ticket type is not cancelled
+    let domain_events = DomainEvent::find(
+        Tables::TicketInstances,
+        Some(ticket.id),
+        Some(DomainEventTypes::TicketInstanceNullified),
+        connection,
+    )
+    .unwrap();
+    assert_eq!(0, domain_events.len());
 }
 
 #[test]
@@ -247,7 +257,7 @@ fn release_for_cancelled_ticket_type() {
     ticket_type.cancel(connection).unwrap();
 
     TicketInstance::authorize_ticket_transfer(user.id, vec![ticket.id], 3600, connection).unwrap();
-    assert!(ticket.release(connection).is_ok());
+    assert!(ticket.release(creator.id, connection).is_ok());
 
     // Reload ticket
     let ticket = TicketInstance::find(ticket.id, connection).unwrap();
@@ -255,6 +265,16 @@ fn release_for_cancelled_ticket_type() {
     assert!(ticket.transfer_key.is_none());
     assert!(ticket.transfer_expiry_date.is_none());
     assert_eq!(ticket.status, TicketInstanceStatus::Nullified);
+
+    // Ticket was nullified so domain event is created for nullification
+    let domain_events = DomainEvent::find(
+        Tables::TicketInstances,
+        Some(ticket.id),
+        Some(DomainEventTypes::TicketInstanceNullified),
+        connection,
+    )
+    .unwrap();
+    assert_eq!(1, domain_events.len());
 }
 
 #[test]
@@ -505,6 +525,58 @@ fn release_tickets() {
 }
 
 #[test]
+fn mark_as_purchased() {
+    let project = TestProject::new();
+    let admin = project.create_user().finish();
+
+    let connection = project.get_connection();
+
+    let organization = project
+        .create_organization()
+        .with_fee_schedule(&project.create_fee_schedule().finish(admin.id))
+        .finish();
+    let event = project
+        .create_event()
+        .with_organization(&organization)
+        .with_ticket_pricing()
+        .finish();
+    let user = project.create_user().finish();
+    let mut cart = Order::find_or_create_cart(&user, connection).unwrap();
+    let ticket_type = &event.ticket_types(true, None, connection).unwrap()[0];
+    cart.update_quantities(
+        user.id,
+        &[UpdateOrderItem {
+            ticket_type_id: ticket_type.id,
+            quantity: 1,
+            redemption_code: None,
+        }],
+        false,
+        false,
+        connection,
+    )
+    .unwrap();
+    let items = cart.items(&connection).unwrap();
+    let order_item = items
+        .iter()
+        .find(|i| i.ticket_type_id == Some(ticket_type.id))
+        .unwrap();
+
+    TicketInstance::mark_as_purchased(order_item, user.id, connection).unwrap();
+    let ticket = TicketInstance::find_for_user(user.id, connection)
+        .unwrap()
+        .remove(0);
+
+    let domain_events = DomainEvent::find(
+        Tables::TicketInstances,
+        Some(ticket.id),
+        Some(DomainEventTypes::TicketInstancePurchased),
+        connection,
+    )
+    .unwrap();
+    assert_eq!(1, domain_events.len());
+}
+
+#[test]
 fn redeem_ticket() {
     let project = TestProject::new();
     let admin = project.create_user().finish();
@@ -532,12 +604,43 @@ fn redeem_ticket() {
         .unwrap()
         .remove(0);
 
+    // No domain events associated with redeeming for this ticket
+    let domain_events = DomainEvent::find(
+        Tables::TicketInstances,
+        Some(ticket.id),
+        Some(DomainEventTypes::TicketInstanceRedeemed),
+        connection,
+    )
+    .unwrap();
+    assert_eq!(0, domain_events.len());
+
+    // Invalid key, does not redeem or create redeem event
     let result1 =
-        TicketInstance::redeem_ticket(ticket.id, "WrongKey".to_string(), connection).unwrap();
+        TicketInstance::redeem_ticket(ticket.id, "WrongKey".to_string(), admin.id, connection)
+            .unwrap();
     assert_eq!(result1, RedeemResults::TicketInvalid);
+    let domain_events = DomainEvent::find(
+        Tables::TicketInstances,
+        Some(ticket.id),
+        Some(DomainEventTypes::TicketInstanceRedeemed),
+        connection,
+    )
+    .unwrap();
+    assert_eq!(0, domain_events.len());
+
+    // Valid key, redeems and creates redeem event
     let result2 =
-        TicketInstance::redeem_ticket(ticket.id, ticket.redeem_key.unwrap(), connection).unwrap();
+        TicketInstance::redeem_ticket(ticket.id, ticket.redeem_key.unwrap(), admin.id, connection)
+            .unwrap();
     assert_eq!(result2, RedeemResults::TicketRedeemSuccess);
+    let domain_events = DomainEvent::find(
+        Tables::TicketInstances,
+        Some(ticket.id),
+        Some(DomainEventTypes::TicketInstanceRedeemed),
+        connection,
+    )
+    .unwrap();
+    assert_eq!(1, domain_events.len());
 }
 
 #[test]

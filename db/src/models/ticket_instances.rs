@@ -58,7 +58,7 @@ impl TicketInstance {
             .to_db_error(ErrorCode::QueryError, "Unable to load ticket")
     }
 
-    pub fn release(&self, conn: &PgConnection) -> Result<(), DatabaseError> {
+    pub fn release(&self, user_id: Uuid, conn: &PgConnection) -> Result<(), DatabaseError> {
         let query = include_str!("../queries/release_tickets.sql");
         let new_status = if self.ticket_type(conn)?.status == TicketTypeStatus::Cancelled {
             TicketInstanceStatus::Nullified
@@ -77,6 +77,10 @@ impl TicketInstance {
 
         if tickets.len() != 1 {
             return DatabaseError::validation_error("quantity", "Could not release the ticket");
+        }
+
+        if new_status == TicketInstanceStatus::Nullified {
+            tickets[0].create_nullified_domain_event(user_id, conn)?;
         }
 
         Ok(())
@@ -572,6 +576,7 @@ impl TicketInstance {
     pub fn redeem_ticket(
         ticket_id: Uuid,
         redeem_key: String,
+        user_id: Uuid,
         conn: &PgConnection,
     ) -> Result<RedeemResults, DatabaseError> {
         let ticket: TicketInstance = ticket_instances::table
@@ -587,6 +592,16 @@ impl TicketInstance {
                 .set(ticket_instances::status.eq(TicketInstanceStatus::Redeemed))
                 .execute(conn)
                 .to_db_error(ErrorCode::UpdateError, "Could not set ticket to Redeemed")?;
+
+            DomainEvent::create(
+                DomainEventTypes::TicketInstanceRedeemed,
+                "Ticket redeemed".to_string(),
+                Tables::TicketInstances,
+                Some(ticket.id),
+                Some(user_id),
+                None,
+            )
+            .commit(conn)?;
         } else if ticket.status == TicketInstanceStatus::Redeemed {
             return Ok(RedeemResults::TicketAlreadyRedeemed);
         } else {
@@ -851,9 +866,28 @@ impl TicketInstance {
         Ok(tickets)
     }
 
+    fn create_nullified_domain_event(
+        &self,
+        user_id: Uuid,
+        conn: &PgConnection,
+    ) -> Result<(), DatabaseError> {
+        DomainEvent::create(
+            DomainEventTypes::TicketInstanceNullified,
+            "Ticket nullified".to_string(),
+            Tables::TicketInstances,
+            Some(self.id),
+            Some(user_id),
+            None,
+        )
+        .commit(conn)?;
+
+        Ok(())
+    }
+
     pub fn nullify_tickets(
         asset_id: Uuid,
         quantity: u32,
+        user_id: Uuid,
         conn: &PgConnection,
     ) -> Result<Vec<TicketInstance>, DatabaseError> {
         let query = include_str!("../queries/nullify_tickets.sql");
@@ -864,6 +898,9 @@ impl TicketInstance {
             .get_results(conn)
             .to_db_error(ErrorCode::QueryError, "Could not nullify tickets")?;
 
+        for ticket_instance in &updated_ticket_instances {
+            ticket_instance.create_nullified_domain_event(user_id, conn)?;
+        }
         Ok(updated_ticket_instances)
     }
 }

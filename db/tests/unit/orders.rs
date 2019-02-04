@@ -1,3 +1,4 @@
+use bigneon_db::dev::times;
 use bigneon_db::dev::TestProject;
 use bigneon_db::models::*;
 use bigneon_db::schema::orders;
@@ -107,6 +108,65 @@ fn add_tickets() {
 }
 
 #[test]
+fn add_tickets_below_min_fee() {
+    let project = TestProject::new();
+    let creator = project.create_user().finish();
+
+    let connection = project.get_connection();
+    let organization = project
+        .create_organization()
+        .with_fee_schedule(&project.create_fee_schedule().finish(creator.id))
+        .finish();
+    let event = project
+        .create_event()
+        .with_organization(&organization)
+        .finish();
+
+    let ticket_type = event
+        .add_ticket_type(
+            "Free Tix".to_string(),
+            None,
+            10,
+            times::zero(),
+            times::infinity(),
+            event.issuer_wallet(connection).unwrap().id,
+            Some(1),
+            10,
+            0,
+            connection,
+        )
+        .unwrap();
+
+    let user = project.create_user().finish();
+    let mut cart = Order::find_or_create_cart(&user, connection).unwrap();
+
+    cart.update_quantities(
+        user.id,
+        &vec![UpdateOrderItem {
+            ticket_type_id: ticket_type.id,
+            quantity: 10,
+            redemption_code: None,
+        }],
+        false,
+        false,
+        connection,
+    )
+    .unwrap();
+    let items = cart.items(&connection).unwrap();
+    let order_item = items
+        .iter()
+        .find(|i| i.ticket_type_id == Some(ticket_type.id))
+        .unwrap();
+
+    assert_eq!(order_item.unit_price_in_cents, 0);
+    assert_eq!(items.len(), 1);
+
+    let fee_item = order_item.find_fee_item(connection).unwrap();
+
+    assert_eq!(fee_item, None);
+}
+
+#[test]
 fn details() {
     let project = TestProject::new();
     let connection = project.get_connection();
@@ -169,7 +229,7 @@ fn details() {
     }];
     let refund_amount = order_item.unit_price_in_cents + fee_item.unit_price_in_cents;
     assert_eq!(
-        cart.refund(refund_items, connection).unwrap(),
+        cart.refund(refund_items, user.id, connection).unwrap(),
         refund_amount as u32
     );
 
@@ -223,7 +283,7 @@ fn details() {
         order_item_id: order_item.id,
         ticket_instance_id: Some(ticket.id),
     }];
-    assert!(cart.refund(refund_items, connection).is_err());
+    assert!(cart.refund(refund_items, user.id, connection).is_err());
     let order_details = cart.details(vec![organization.id], connection).unwrap();
     assert_eq!(expected_order_details, order_details);
 
@@ -236,7 +296,7 @@ fn details() {
         + fee_item.unit_price_in_cents
         + event_fee_item.unit_price_in_cents;
     assert_eq!(
-        cart.refund(refund_items, connection).unwrap(),
+        cart.refund(refund_items, user.id, connection).unwrap(),
         refund_amount as u32
     );
 
@@ -349,7 +409,7 @@ fn refund() {
         + order_item.unit_price_in_cents
         + fee_item.unit_price_in_cents;
     assert_eq!(
-        cart.refund(refund_items, connection).unwrap(),
+        cart.refund(refund_items, user.id, connection).unwrap(),
         refund_amount as u32
     );
 

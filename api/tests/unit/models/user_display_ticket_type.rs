@@ -1,4 +1,5 @@
 use bigneon_api::models::{DisplayTicketPricing, UserDisplayTicketType};
+use bigneon_db::dev::times;
 use bigneon_db::prelude::*;
 use chrono::prelude::*;
 use chrono::Duration;
@@ -240,4 +241,36 @@ fn from_ticket_type() {
         display_ticket_type.status,
         TicketTypeStatus::NoActivePricing
     );
+
+    // Below min fee = 0
+
+    let event = database.create_event().finish();
+    event
+        .add_ticket_type(
+            "Free tickets".to_string(),
+            None,
+            10,
+            times::zero(),
+            times::infinity(),
+            event.issuer_wallet(conn).unwrap().id,
+            None,
+            10,
+            0,
+            conn,
+        )
+        .unwrap();
+    let ticket_type = event.ticket_types(true, None, conn).unwrap().remove(0);
+
+    println!("{:?}", ticket_type);
+    let display_ticket_type = UserDisplayTicketType::from_ticket_type(
+        &ticket_type,
+        &FeeSchedule::find(event.organization(conn).unwrap().fee_schedule_id, conn).unwrap(),
+        false,
+        None,
+        conn,
+    )
+    .unwrap();
+
+    println!("{:?}", display_ticket_type);
+    assert_eq!(display_ticket_type.ticket_pricing.unwrap().fee_in_cents, 0);
 }

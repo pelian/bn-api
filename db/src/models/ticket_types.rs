@@ -61,7 +61,8 @@ impl TicketType {
             )
     }
 
-    pub fn create(
+    /// Creates a ticket type. `Event::add_ticket_type` should be used in most scenarios
+    pub(crate) fn create(
         event_id: Uuid,
         name: String,
         description: Option<String>,

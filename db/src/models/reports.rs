@@ -8,26 +8,70 @@ use std::collections::HashMap;
 use utils::errors::*;
 use uuid::Uuid;
 
+sql_function!(fn ticket_sales_per_ticket_pricing(start: Nullable<Timestamp>, end: Nullable<Timestamp>, group_by_ticket_type: Nullable<Bool>, group_by_event_id: Nullable<Bool>) -> Vec<TicketSalesRow>);
+sql_function!(fn ticket_count_per_ticket_type(event_id: Nullable<dUuid>, organization_id: Nullable<dUuid>, group_by_event_id: Nullable<Bool>, group_by_organization_id: Nullable<Bool>) -> Vec<TicketCountRow>);
 pub struct Report {}
 
+#[derive(Default, Clone, Debug, Serialize, Deserialize, PartialEq, Queryable, QueryableByName)]
+pub struct TicketSalesRow {
+    #[sql_type = "Nullable<dUuid>"]
+    pub organization_id: Option<Uuid>,
+    #[sql_type = "Nullable<dUuid>"]
+    pub event_id: Option<Uuid>,
+    #[sql_type = "Nullable<dUuid>"]
+    pub ticket_type_id: Option<Uuid>,
+    #[sql_type = "Nullable<dUuid>"]
+    pub ticket_pricing_id: Option<Uuid>,
+    #[sql_type = "Nullable<Text>"]
+    pub ticket_name: Option<String>,
+    #[sql_type = "Nullable<Text>"]
+    pub ticket_status: Option<String>,
+    #[sql_type = "Nullable<Text>"]
+    pub event_name: Option<String>,
+    #[sql_type = "Nullable<Text>"]
+    pub ticket_pricing_name: Option<String>,
+    #[sql_type = "BigInt"]
+    pub box_office_sales_in_cents: i64,
+    #[sql_type = "BigInt"]
+    pub online_sales_in_cents: i64,
+    #[sql_type = "BigInt"]
+    pub box_office_sale_count: i64,
+    #[sql_type = "BigInt"]
+    pub online_sale_count: i64,
+    #[sql_type = "BigInt"]
+    pub comp_sale_count: i64,
+    #[sql_type = "BigInt"]
+    pub total_box_office_fees_in_cents: i64,
+    #[sql_type = "BigInt"]
+    pub total_online_fees_in_cents: i64,
+    #[sql_type = "BigInt"]
+    pub company_box_office_fees_in_cents: i64,
+    #[sql_type = "BigInt"]
+    pub client_box_office_fees_in_cents: i64,
+    #[sql_type = "BigInt"]
+    pub company_online_fees_in_cents: i64,
+    #[sql_type = "BigInt"]
+    pub client_online_fees_in_cents: i64,
+}
+
 #[derive(Debug, Serialize, Deserialize, PartialEq, Queryable, QueryableByName)]
-pub struct TicketSalesAndCountsRow {
+pub struct TicketCountRow {
+    #[sql_type = "Nullable<dUuid>"]
+    pub organization_id: Option<Uuid>,
+    #[sql_type = "Nullable<dUuid>"]
+    pub event_id: Option<Uuid>,
     #[sql_type = "Nullable<dUuid>"]
     pub ticket_type_id: Option<Uuid>,
     #[sql_type = "Nullable<Text>"]
     pub ticket_name: Option<String>,
     #[sql_type = "Nullable<Text>"]
     pub ticket_status: Option<String>,
-    #[sql_type = "Nullable<dUuid>"]
-    pub event_id: Option<Uuid>,
     #[sql_type = "Nullable<Text>"]
     pub event_name: Option<String>,
-    #[sql_type = "Nullable<dUuid>"]
-    pub organization_id: Option<Uuid>,
-    #[sql_type = "Nullable<dUuid>"]
-    pub ticket_pricing_id: Option<Uuid>,
     #[sql_type = "Nullable<Text>"]
-    pub ticket_pricing_name: Option<String>,
+    pub organization_name: Option<String>,
+    #[sql_type = "BigInt"]
+    pub allocation_count_including_nullified: i64,
     #[sql_type = "BigInt"]
     pub allocation_count: i64,
     #[sql_type = "BigInt"]
@@ -42,6 +86,8 @@ pub struct TicketSalesAndCountsRow {
     pub nullified_count: i64,
     #[sql_type = "BigInt"]
     pub available_for_purchase_count: i64,
+    #[sql_type = "BigInt"]
+    pub total_refunded_count: i64,
     #[sql_type = "BigInt"]
     pub comp_count: i64,
     #[sql_type = "BigInt"]
@@ -66,30 +112,12 @@ pub struct TicketSalesAndCountsRow {
     pub hold_reserved_count: i64,
     #[sql_type = "BigInt"]
     pub hold_nullified_count: i64,
-    #[sql_type = "BigInt"]
-    pub box_office_sales_in_cents: i64,
-    #[sql_type = "BigInt"]
-    pub online_sales_in_cents: i64,
-    #[sql_type = "BigInt"]
-    pub box_office_sale_count: i64,
-    #[sql_type = "BigInt"]
-    pub online_sale_count: i64,
-    #[sql_type = "BigInt"]
-    pub comp_sale_count: i64,
-    #[sql_type = "BigInt"]
-    pub total_refunded_count: i64,
-    #[sql_type = "BigInt"]
-    pub total_box_office_fees_in_cents: i64,
-    #[sql_type = "BigInt"]
-    pub total_online_fees_in_cents: i64,
-    #[sql_type = "BigInt"]
-    pub company_box_office_fees_in_cents: i64,
-    #[sql_type = "BigInt"]
-    pub client_box_office_fees_in_cents: i64,
-    #[sql_type = "BigInt"]
-    pub company_online_fees_in_cents: i64,
-    #[sql_type = "BigInt"]
-    pub client_online_fees_in_cents: i64,
+}
+
+#[derive(Default, Debug, Serialize, Deserialize)]
+pub struct TicketSalesAndCounts {
+    counts: Vec<TicketCountRow>,
+    sales: Vec<TicketSalesRow>,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Queryable, QueryableByName)]
@@ -241,6 +269,55 @@ pub struct EventSummaryOtherFees {
     pub client_fee_in_cents: i64,
 }
 
+impl TicketSalesRow {
+    pub fn fetch(
+        start: Option<NaiveDateTime>,
+        end: Option<NaiveDateTime>,
+        group_by_ticket_type: Option<bool>,
+        group_by_event_id: Option<bool>,
+        event_id: Option<Uuid>,
+        organization_id: Option<Uuid>,
+        conn: &PgConnection,
+    ) -> Result<Vec<TicketSalesRow>, DatabaseError> {
+        let query_ticket_sales = include_str!("../queries/reports/reports_tickets_sales.sql");
+        let q = diesel::sql_query(query_ticket_sales)
+            .bind::<Nullable<Timestamp>, _>(start)
+            .bind::<Nullable<Timestamp>, _>(end)
+            .bind::<Nullable<Bool>, _>(group_by_ticket_type)
+            .bind::<Nullable<Bool>, _>(group_by_event_id)
+            .bind::<Nullable<dUuid>, _>(event_id)
+            .bind::<Nullable<dUuid>, _>(organization_id);
+
+        let rows: Vec<TicketSalesRow> = q
+            .get_results(conn)
+            .to_db_error(ErrorCode::QueryError, "Could not fetch ticket sales")?;
+        Ok(rows)
+    }
+}
+
+impl TicketCountRow {
+    pub fn fetch(
+        event_id: Option<Uuid>,
+        organization_id: Option<Uuid>,
+        group_by_event_id: Option<bool>,
+        group_by_organization_id: Option<bool>,
+        conn: &PgConnection,
+    ) -> Result<Vec<TicketCountRow>, DatabaseError> {
+        let query_ticket_counts = include_str!("../queries/reports/reports_tickets_counts.sql");
+        let q = diesel::sql_query(query_ticket_counts)
+            .bind::<Nullable<dUuid>, _>(event_id)
+            .bind::<Nullable<dUuid>, _>(organization_id)
+            .bind::<Nullable<Bool>, _>(group_by_event_id)
+            .bind::<Nullable<Bool>, _>(group_by_organization_id);
+
+        let rows: Vec<TicketCountRow> = q
+            .get_results(conn)
+            .to_db_error(ErrorCode::QueryError, "Could not fetch ticket counts")?;
+
+        Ok(rows)
+    }
+}
+
 impl Report {
     pub fn transaction_detail_report(
         event_id: Option<Uuid>,
@@ -381,8 +458,8 @@ impl Report {
         event_id: Option<Uuid>,
         organization_id: Option<Uuid>,
         conn: &PgConnection,
-    ) -> Result<Vec<TicketSalesAndCountsRow>, DatabaseError> {
-        Report::ticket_sales_and_counts(event_id, organization_id, None, None, true, false, conn)
+    ) -> Result<TicketSalesAndCounts, DatabaseError> {
+        Report::ticket_sales_and_counts(event_id, organization_id, None, None, false, false, conn)
     }
 
     /// Fetches the generic ticket sales and counts data
@@ -404,24 +481,21 @@ impl Report {
         start: Option<NaiveDateTime>,
         end: Option<NaiveDateTime>,
         per_ticket_type: bool,
-        per_ticket_pricing: bool,
+        _per_ticket_pricing: bool,
         conn: &PgConnection,
-    ) -> Result<Vec<TicketSalesAndCountsRow>, DatabaseError> {
-        let query_ticket_sales_and_counts =
-            include_str!("../queries/reports/reports_tickets_sales_and_counts.sql");
-        let q = diesel::sql_query(query_ticket_sales_and_counts)
-            .bind::<Nullable<dUuid>, _>(event_id)
-            .bind::<Nullable<dUuid>, _>(organization_id)
-            .bind::<Nullable<Timestamp>, _>(start)
-            .bind::<Nullable<Timestamp>, _>(end)
-            .bind::<Bool, _>(per_ticket_pricing)
-            .bind::<Bool, _>(per_ticket_type);
-
-        let rows: Vec<TicketSalesAndCountsRow> = q.get_results(conn).to_db_error(
-            ErrorCode::QueryError,
-            "Could not fetch ticket sales and counts",
+    ) -> Result<TicketSalesAndCounts, DatabaseError> {
+        let sales = TicketSalesRow::fetch(
+            start,
+            end,
+            Some(per_ticket_type),
+            Some(false),
+            event_id,
+            organization_id,
+            conn,
         )?;
+        let counts =
+            TicketCountRow::fetch(event_id, organization_id, Some(false), Some(false), conn)?;
 
-        Ok(rows)
+        Ok(TicketSalesAndCounts { counts, sales })
     }
 }

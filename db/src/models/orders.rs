@@ -159,6 +159,7 @@ impl Order {
     pub fn refund(
         &self,
         refund_items: Vec<RefundItem>,
+        user_id: Uuid,
         conn: &PgConnection,
     ) -> Result<u32, DatabaseError> {
         let mut total_to_be_refunded: u32 = 0;
@@ -208,7 +209,7 @@ impl Order {
                         refunded_ticket.mark_refunded(only_refund_fees, conn)?;
 
                         if ticket_instance.status != TicketInstanceStatus::Redeemed {
-                            ticket_instance.release(conn)?;
+                            ticket_instance.release(user_id, conn)?;
                         }
 
                         total_to_be_refunded += order_item.refund_one_unit(refund_fees, conn)?;

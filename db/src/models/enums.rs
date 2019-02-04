@@ -94,7 +94,9 @@ string_enum! { DomainEventTypes [
     PurchaseCompleted,
     TransferTicketStarted,
     TransferTicketCompleted,
-    TicketInstancePurchased
+    TicketInstanceNullified,
+    TicketInstancePurchased,
+    TicketInstanceRedeemed
 ]}
 string_enum! { DomainActionTypes [
     // Email/SMS/Push Communication

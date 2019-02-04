@@ -881,7 +881,7 @@ impl Event {
                         .sql(")"))
                     .or(artists::id.is_not_null()),
             )
-            .filter(events::event_start.ge(start_time.unwrap()))
+            .filter(events::event_end.ge(start_time.unwrap()))
             .filter(events::event_end.le(end_time.unwrap()))
             .select(events::all_columns)
             .distinct()

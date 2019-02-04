@@ -197,6 +197,7 @@ pub fn cancel(
         organization,
         ticket_type,
         valid_unsold_ticket_count,
+        user.id(),
         connection,
     )?;
 
@@ -258,6 +259,7 @@ pub fn update(
                 organization,
                 ticket_type.clone(),
                 nullify_ticket_count,
+                user.id(),
                 connection,
             )?;
         }
@@ -355,12 +357,13 @@ fn nullify_tickets(
     organization: Organization,
     ticket_type: TicketType,
     quantity: u32,
+    user_id: Uuid,
     connection: &PgConnection,
 ) -> Result<(), BigNeonError> {
     let asset = Asset::find_by_ticket_type(&ticket_type.id, connection)?;
     let org_wallet = Wallet::find_default_for_organization(organization.id, connection)?;
     //Nullify tickets locally
-    let tickets = TicketInstance::nullify_tickets(asset.id, quantity, connection)?;
+    let tickets = TicketInstance::nullify_tickets(asset.id, quantity, user_id, connection)?;
     //Nullify tickets on chain
     if tickets.len() == quantity as usize {
         let tari_ids: Vec<u64> = (0..tickets.len())

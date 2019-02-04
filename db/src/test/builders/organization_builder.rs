@@ -70,7 +70,7 @@ impl<'a> OrganizationBuilder<'a> {
             let fee_schedule = FeeSchedule::create(
                 format!("{} fees.{}", self.name, x).into(),
                 vec![NewFeeScheduleRange {
-                    min_price_in_cents: 0,
+                    min_price_in_cents: 1,
                     company_fee_in_cents: 20,
                     client_fee_in_cents: 30,
                 }],

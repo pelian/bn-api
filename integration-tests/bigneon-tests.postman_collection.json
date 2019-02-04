@@ -15909,7 +15909,7 @@
 											"})",
 											"let json = JSON.parse(responseBody);",
 											"pm.test(\"should not be empty\", function() {",
-											"\tpm.expect(json).to.be.a('array');",
+											"\tpm.expect(json).to.be.a('object');",
 											"});"
 										],
 										"type": "text/javascript"

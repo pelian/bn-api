@@ -150,9 +150,19 @@ fn valid_unsold_ticket_count() {
         .unwrap();
     assert_eq!(TicketInstanceStatus::Reserved, ticket_instance.status);
 
+    // 0 Nullified events
+    let domain_events = DomainEvent::find(
+        Tables::TicketInstances,
+        None,
+        Some(DomainEventTypes::TicketInstanceNullified),
+        connection,
+    )
+    .unwrap();
+    assert_eq!(0, domain_events.len());
+
     // Nullify 49
     let asset = Asset::find_by_ticket_type(&ticket_type.id, connection).unwrap();
-    TicketInstance::nullify_tickets(asset.id, 49, connection).unwrap();
+    TicketInstance::nullify_tickets(asset.id, 49, user.id, connection).unwrap();
     assert_eq!(
         1,
         ticket_type.valid_unsold_ticket_count(connection).unwrap()
@@ -162,8 +172,18 @@ fn valid_unsold_ticket_count() {
     let ticket_instance = TicketInstance::find(ticket_instance.id, connection).unwrap();
     assert_eq!(TicketInstanceStatus::Reserved, ticket_instance.status);
 
+    // 0 Nullified events for this particular ID
+    let domain_events = DomainEvent::find(
+        Tables::TicketInstances,
+        Some(ticket_instance.id),
+        Some(DomainEventTypes::TicketInstanceNullified),
+        connection,
+    )
+    .unwrap();
+    assert_eq!(0, domain_events.len());
+
     // Nullify remaining 1
-    TicketInstance::nullify_tickets(asset.id, 1, connection).unwrap();
+    TicketInstance::nullify_tickets(asset.id, 1, user.id, connection).unwrap();
     assert_eq!(
         0,
         ticket_type.valid_unsold_ticket_count(connection).unwrap()
@@ -172,6 +192,16 @@ fn valid_unsold_ticket_count() {
     // Reload ticket instance, should nullify
     let ticket_instance = TicketInstance::find(ticket_instance.id, connection).unwrap();
     assert_eq!(TicketInstanceStatus::Nullified, ticket_instance.status);
+
+    // 1 Nullified events for this particular ID
+    let domain_events = DomainEvent::find(
+        Tables::TicketInstances,
+        Some(ticket_instance.id),
+        Some(DomainEventTypes::TicketInstanceNullified),
+        connection,
+    )
+    .unwrap();
+    assert_eq!(1, domain_events.len());
 }
 
 #[test]

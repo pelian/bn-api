@@ -60,8 +60,10 @@ impl DisplayTicketPricing {
         let mut fee_in_cents = 0;
         if !is_comp && !box_office_pricing {
             fee_in_cents = fee_schedule
-                .get_range(ticket_pricing.price_in_cents - discount_in_cents, conn)?
-                .fee_in_cents;
+                .get_range(ticket_pricing.price_in_cents - discount_in_cents, conn)
+                .optional()?
+                .map(|f| f.fee_in_cents)
+                .unwrap_or(0);
         }
 
         Ok(DisplayTicketPricing {

@@ -497,8 +497,12 @@ pub fn redeem_ticket(
     let redeemable =
         TicketInstance::show_redeemable_ticket(parameters.ticket_instance_id, connection)?;
 
-    let result =
-        TicketInstance::redeem_ticket(ticket.id, redeem_parameters.redeem_key.clone(), connection)?;
+    let result = TicketInstance::redeem_ticket(
+        ticket.id,
+        redeem_parameters.redeem_key.clone(),
+        auth_user.id(),
+        connection,
+    )?;
 
     match result {
         RedeemResults::TicketRedeemSuccess => {
