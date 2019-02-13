@@ -1,5 +1,6 @@
 use bigneon_db::dev::TestProject;
 use bigneon_db::models::{FeeSchedule, FeeScheduleRange, NewFeeScheduleRange};
+use uuid::Uuid;
 
 #[test]
 fn find() {
@@ -7,6 +8,7 @@ fn find() {
     let creator = project.create_user().finish();
 
     let fee_schedule = FeeSchedule::create(
+        Uuid::nil(),
         "default".to_string(),
         vec![
             NewFeeScheduleRange {

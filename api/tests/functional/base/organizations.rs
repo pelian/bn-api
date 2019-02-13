@@ -156,6 +156,7 @@ pub fn create(role: Roles, should_test_succeed: bool) {
     let auth_user = support::create_auth_user(role, None, &database);
 
     FeeSchedule::create(
+        Uuid::nil(),
         "Zero fees".to_string(),
         vec![NewFeeScheduleRange {
             min_price_in_cents: 0,
@@ -507,7 +508,7 @@ pub fn add_fee_schedule(role: Roles, should_succeed: bool) {
     let organization = database.create_organization().finish();
     let auth_user = support::create_auth_user(role, Some(&organization), &database);
 
-    let json = Json(NewFeeSchedule {
+    let json = Json(NewFeeScheduleRequest {
         name: "Fees".to_string(),
         ranges: vec![
             NewFeeScheduleRange {

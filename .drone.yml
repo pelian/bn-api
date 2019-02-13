@@ -6,7 +6,8 @@ env: &env
   RUST_BACKTRACE: "1"
   API_PORT: "8088"
   API_BASE_URL: "http://localhost:8088"
-  FRONT_END_URL: "http://localhost"
+  # Globee will not allow a localhost url
+  FRONT_END_URL: "https://ci-test.notreal.bigneon.com"
   BUILD_DIR: "api"
   TARI_URL: "TEST"
   COMMUNICATION_DEFAULT_SOURCE_EMAIL: "noreply@bigneon.com"
@@ -31,7 +32,7 @@ env: &env
   API_KEYS_ENCRYPTION_KEY: "test_key"
   GLOBEE_API_KEY: "GDFOzMkPAw79a8TCAHKkiknJB6bEYgbb"
   GLOBEE_BASE_URL: "https://test.globee.com/payment-api/v1/"
-  IPN_BASE_URL: "TEST"
+  VALIDATE_IPNS: false
 
 kind: pipeline
 name: Build
@@ -280,5 +281,4 @@ services:
 ---
 kind: signature
 hmac: d0732805d654025709cd88d938bce443f5123763794ae6192774a39d23dc4068
-
 ...

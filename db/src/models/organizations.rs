@@ -8,7 +8,8 @@ use diesel::sql_types::{BigInt, Text, Timestamp};
 use models::scopes;
 use models::*;
 use schema::{
-    assets, events, order_items, organization_users, organizations, ticket_types, users, venues,
+    assets, events, fee_schedules, order_items, organization_users, organizations, ticket_types,
+    users, venues,
 };
 use std::collections::HashMap;
 use utils::encryption::*;
@@ -117,6 +118,17 @@ impl NewOrganization {
             ))
             .get_result(conn)
             .to_db_error(ErrorCode::InsertError, "Could not create new organization")?;
+
+        diesel::update(fee_schedules::table.filter(fee_schedules::id.eq(org.fee_schedule_id)))
+            .set((
+                fee_schedules::organization_id.eq(org.id),
+                fee_schedules::updated_at.eq(dsl::now),
+            ))
+            .execute(conn)
+            .to_db_error(
+                ErrorCode::UpdateError,
+                "Could not set the fee schedule for this organization",
+            )?;
 
         DomainEvent::create(
             DomainEventTypes::OrganizationCreated,
@@ -526,6 +538,17 @@ impl Organization {
         fee_schedule: &FeeSchedule,
         conn: &PgConnection,
     ) -> Result<Organization, DatabaseError> {
+        diesel::update(fee_schedule)
+            .set((
+                fee_schedules::organization_id.eq(self.id),
+                fee_schedules::updated_at.eq(dsl::now),
+            ))
+            .execute(conn)
+            .to_db_error(
+                ErrorCode::UpdateError,
+                "Could not set the fee schedule for this organization",
+            )?;
+
         diesel::update(self)
             .set((
                 organizations::fee_schedule_id.eq(fee_schedule.id),

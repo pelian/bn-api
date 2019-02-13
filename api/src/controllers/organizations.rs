@@ -57,6 +57,12 @@ pub struct NewOrganizationRequest {
     pub timezone: Option<String>,
 }
 
+#[derive(Serialize, Deserialize)]
+pub struct NewFeeScheduleRequest {
+    pub name: String,
+    pub ranges: Vec<NewFeeScheduleRange>,
+}
+
 pub fn index(
     (connection, query_parameters, user): (Connection, Query<PagingParameters>, User),
 ) -> Result<HttpResponse, BigNeonError> {
@@ -117,6 +123,7 @@ pub fn create(
     let connection = connection.get();
 
     let fee_schedule = FeeSchedule::create(
+        Uuid::nil(),
         format!("{} default fees", new_organization.name),
         vec![NewFeeScheduleRange {
             min_price_in_cents: 0,
@@ -380,14 +387,19 @@ pub fn add_fee_schedule(
     (connection, parameters, json, user): (
         Connection,
         Path<PathParameters>,
-        Json<NewFeeSchedule>,
+        Json<NewFeeScheduleRequest>,
         User,
     ),
 ) -> Result<HttpResponse, BigNeonError> {
     user.requires_scope(Scopes::OrgAdmin)?;
     let connection = connection.get();
 
-    let fee_schedule = json.into_inner().commit(user.id(), connection)?;
+    let new_fee_schedule = NewFeeSchedule {
+        organization_id: parameters.id,
+        name: json.name.clone(),
+        ranges: json.into_inner().ranges,
+    };
+    let fee_schedule = new_fee_schedule.commit(user.id(), connection)?;
     let fee_schedule_ranges = fee_schedule.ranges(connection)?;
 
     Organization::find(parameters.id, connection)?.add_fee_schedule(&fee_schedule, connection)?;

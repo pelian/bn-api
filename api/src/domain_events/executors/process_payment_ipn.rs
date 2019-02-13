@@ -14,7 +14,7 @@ use uuid::Uuid;
 pub struct ProcessPaymentIPNExecutor {
     globee_api_key: String,
     globee_base_url: String,
-    donot_verify_ipn: bool,
+    validate_ipn: bool,
 }
 
 impl DomainActionExecutor for ProcessPaymentIPNExecutor {
@@ -34,19 +34,25 @@ impl ProcessPaymentIPNExecutor {
         ProcessPaymentIPNExecutor {
             globee_api_key: config.globee_api_key.clone(),
             globee_base_url: config.globee_base_url.clone(),
-            donot_verify_ipn: config.ipn_base_url.to_lowercase() == "test",
+            validate_ipn: config.validate_ipns,
         }
     }
 
-    fn perform_job(&self, action: &DomainAction, conn: &Connection) -> Result<(), BigNeonError> {
+    pub fn perform_job(
+        &self,
+        action: &DomainAction,
+        conn: &Connection,
+    ) -> Result<(), BigNeonError> {
         let mut ipn: GlobeeIpnRequest = serde_json::from_value(action.payload.clone())?;
         if ipn.custom_payment_id.is_none() {
-            // TODO: Return failed?
-            return Ok(());
+            return Err(ApplicationError::new(
+                "Invalid IPN, the custom_payment_id must be specified".to_string(),
+            )
+            .into());
         }
         let client = GlobeeClient::new(self.globee_api_key.clone(), self.globee_base_url.clone());
 
-        if !self.donot_verify_ipn {
+        if self.validate_ipn {
             ipn = client.get_payment_request(&ipn.id)?;
         }
 
@@ -99,6 +105,7 @@ impl ProcessPaymentIPNExecutor {
                     None,
                     (ipn.payment_details.received_amount.unwrap_or(0f64) * 100f64) as i64,
                     status,
+                    None,
                     action.payload.clone(),
                     connection,
                 )?
@@ -113,7 +120,7 @@ impl ProcessPaymentIPNExecutor {
                 (ipn.payment_details.received_amount.unwrap_or(0f64) * 100f64) as i64,
                 connection,
             )?;
-            jlog!(Debug, "IPN: Marking paymnent complete", {"ipn_id": ipn.id, "order_id": order_id, "status": status});
+            jlog!(Debug, "IPN: Marking payment complete", {"ipn_id": ipn.id, "order_id": order_id, "status": status});
 
             payment.mark_complete(json!(ipn), None, connection)?;
         } else {

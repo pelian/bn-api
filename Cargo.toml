@@ -7,4 +7,5 @@ members = [
     "tari-client",
     "stripe",
     "logging",
+    "macros"
 ]

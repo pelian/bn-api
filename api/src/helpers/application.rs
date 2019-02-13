@@ -1,4 +1,4 @@
-use actix_web::{http::StatusCode, HttpResponse, Responder};
+use actix_web::{http, http::StatusCode, HttpResponse, Responder};
 use auth::user::User as AuthUser;
 use errors::*;
 use serde_json::{self, Value};
@@ -56,4 +56,10 @@ pub fn created(json: serde_json::Value) -> Result<HttpResponse, BigNeonError> {
     Ok(HttpResponse::new(StatusCode::CREATED)
         .into_builder()
         .json(json))
+}
+
+pub fn redirect(url: &str) -> Result<HttpResponse, BigNeonError> {
+    Ok(HttpResponse::Found()
+        .header(http::header::LOCATION, url)
+        .finish())
 }

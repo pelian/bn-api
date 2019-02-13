@@ -176,6 +176,7 @@ table! {
         version -> Int2,
         created_at -> Timestamp,
         updated_at -> Timestamp,
+        organization_id -> Uuid,
     }
 }
 
@@ -317,6 +318,7 @@ table! {
         raw_data -> Nullable<Json>,
         created_at -> Timestamp,
         updated_at -> Timestamp,
+        url_nonce -> Nullable<Text>,
     }
 }
 

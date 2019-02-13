@@ -16,11 +16,20 @@ pub struct FeeSchedule {
     pub version: i16,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
+    pub organization_id: Uuid,
 }
 
 impl FeeSchedule {
-    pub fn create(name: String, ranges: Vec<(NewFeeScheduleRange)>) -> NewFeeSchedule {
-        NewFeeSchedule { name, ranges }
+    pub fn create(
+        organization_id: Uuid,
+        name: String,
+        ranges: Vec<(NewFeeScheduleRange)>,
+    ) -> NewFeeSchedule {
+        NewFeeSchedule {
+            organization_id,
+            name,
+            ranges,
+        }
     }
 
     pub fn ranges(&self, conn: &PgConnection) -> Result<Vec<FeeScheduleRange>, DatabaseError> {
@@ -36,6 +45,17 @@ impl FeeSchedule {
             .find(id)
             .first::<FeeSchedule>(conn)
             .to_db_error(ErrorCode::QueryError, "Error loading Fee Schedule")
+    }
+
+    pub fn find_for_organization(
+        organization_id: Uuid,
+        conn: &PgConnection,
+    ) -> Result<Vec<FeeSchedule>, DatabaseError> {
+        fee_schedules::table
+            .filter(fee_schedules::organization_id.eq(organization_id))
+            .order_by(fee_schedules::created_at.asc())
+            .get_results::<FeeSchedule>(conn)
+            .to_db_error(ErrorCode::QueryError, "Error loading Fee Schedules")
     }
 
     pub fn get_range(
@@ -69,6 +89,7 @@ impl FeeSchedule {
 
 #[derive(Serialize, Deserialize)]
 pub struct NewFeeSchedule {
+    pub organization_id: Uuid,
     pub name: String,
     pub ranges: Vec<NewFeeScheduleRange>,
 }

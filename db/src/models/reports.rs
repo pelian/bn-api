@@ -130,7 +130,7 @@ pub struct TicketSalesAndCounts {
     sales: Vec<TicketSalesRow>,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Queryable, QueryableByName)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Queryable, QueryableByName)]
 pub struct TransactionReportRow {
     #[sql_type = "Text"]
     pub event_name: String,
@@ -138,6 +138,8 @@ pub struct TransactionReportRow {
     pub ticket_name: String,
     #[sql_type = "BigInt"]
     pub quantity: i64,
+    #[sql_type = "BigInt"]
+    pub actual_quantity: i64,
     #[sql_type = "BigInt"]
     pub refunded_quantity: i64,
     #[sql_type = "BigInt"]
@@ -160,10 +162,14 @@ pub struct TransactionReportRow {
     pub event_fee_gross_in_cents: i64,
     #[sql_type = "BigInt"]
     pub event_fee_gross_in_cents_total: i64,
+    #[sql_type = "Nullable<dUuid>"]
+    pub fee_range_id: Option<Uuid>,
     #[sql_type = "Text"]
     pub order_type: OrderTypes,
     #[sql_type = "Nullable<Text>"]
     pub payment_method: Option<PaymentMethods>,
+    #[sql_type = "Nullable<Text>"]
+    pub payment_provider: Option<String>,
     #[sql_type = "Timestamp"]
     pub transaction_date: NaiveDateTime,
     #[sql_type = "Nullable<Text>"]
@@ -180,6 +186,8 @@ pub struct TransactionReportRow {
     pub last_name: String,
     #[sql_type = "Text"]
     pub email: String,
+    #[sql_type = "Nullable<Timestamp>"]
+    pub event_start: Option<NaiveDateTime>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -277,6 +285,58 @@ pub struct EventSummaryOtherFees {
     pub total_client_fee_in_cents: i64,
     #[sql_type = "BigInt"]
     pub client_fee_in_cents: i64,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub struct ReconciliationSummaryResult {
+    pub payment_method: PaymentMethods,
+    pub payment_provider: String,
+    pub quantity: i64,
+    pub unit_price_in_cents: i64,
+    pub client_fee_in_cents: i64,
+    pub event_fee_in_cents: i64,
+    pub sales_total: i64,
+    pub refund_quantity: i64,
+    pub refund_unit_price_in_cents: i64,
+    pub refund_client_fee_in_cents: i64,
+    pub refund_event_fee_in_cents: i64,
+    pub refund_total: i64,
+    pub total: i64,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub struct ReconciliationFeeRangeResult {
+    pub fee_schedule_id: Uuid,
+    pub version: i16,
+    pub fee_schedule_range_id: Uuid,
+    pub min_price_in_cents: i64,
+    pub upper_price_in_cents: Option<i64>,
+    pub client_fee_in_cents: i64,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub struct ReconciliationDetailResult {
+    pub payment_method: PaymentMethods,
+    pub payment_provider: String,
+    pub quantity: i64,
+    pub unit_price_in_cents: i64,
+    pub client_fee_in_cents: Vec<ReconciliationFeeRangeResult>,
+    pub event_fee_in_cents: i64,
+    pub sales_total: i64,
+    pub refund_quantity: i64,
+    pub refund_unit_price_in_cents: i64,
+    pub refund_client_fee_in_cents: Vec<ReconciliationFeeRangeResult>,
+    pub refund_event_fee_in_cents: i64,
+    pub refund_total: i64,
+    pub total: i64,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+pub struct ReconciliationDetailEventResult {
+    pub event_id: Uuid,
+    pub event_name: String,
+    pub event_start: Option<NaiveDateTime>,
+    pub entries: Vec<ReconciliationDetailResult>,
 }
 
 impl TicketSalesRow {
@@ -507,5 +567,271 @@ impl Report {
             TicketCountRow::fetch(event_id, organization_id, Some(false), Some(false), conn)?;
 
         Ok(TicketSalesAndCounts { counts, sales })
+    }
+
+    pub fn reconciliation_summary_report(
+        organization_id: Uuid,
+        start: Option<NaiveDateTime>,
+        end: Option<NaiveDateTime>,
+        conn: &PgConnection,
+    ) -> Result<Vec<ReconciliationSummaryResult>, DatabaseError> {
+        let event_id: Option<Uuid> = None;
+        let query = include_str!("../queries/reports/reports_transaction_details.sql");
+        let q = diesel::sql_query(query)
+            .bind::<Nullable<dUuid>, _>(event_id)
+            .bind::<Nullable<dUuid>, _>(organization_id)
+            .bind::<Nullable<Timestamp>, _>(start)
+            .bind::<Nullable<Timestamp>, _>(end);
+
+        let transaction_rows: Vec<TransactionReportRow> = q
+            .get_results(conn)
+            .to_db_error(ErrorCode::QueryError, "Could not fetch report results")?;
+
+        //Produce Report
+        let mut results: Vec<ReconciliationSummaryResult> = Vec::new();
+        for row in transaction_rows {
+            if row.payment_method.is_some() && row.payment_provider.is_some() {
+                let entry_exists = results.iter().any(|r| {
+                    r.payment_method == row.payment_method.clone().unwrap()
+                        && r.payment_provider == row.payment_provider.clone().unwrap()
+                });
+                if entry_exists {
+                    if let Some(entry) = results.iter_mut().find(|r| {
+                        r.payment_method == row.payment_method.clone().unwrap()
+                            && r.payment_provider == row.payment_provider.clone().unwrap()
+                    }) {
+                        let ticket_face = row.unit_price_in_cents * row.actual_quantity;
+                        let client_fee = row.client_fee_in_cents * row.actual_quantity;
+                        let event_fee = row.event_fee_client_in_cents * row.actual_quantity;
+                        let refund_ticket_face = row.unit_price_in_cents * row.refunded_quantity;
+                        let refund_client_fee = row.client_fee_in_cents * row.refunded_quantity;
+                        let refund_event_fee =
+                            row.event_fee_client_in_cents * row.refunded_quantity;
+                        let sales_total = ticket_face + client_fee + event_fee;
+                        let refund_total =
+                            refund_ticket_face + refund_client_fee + refund_event_fee;
+                        entry.quantity += row.actual_quantity;
+                        entry.unit_price_in_cents += ticket_face;
+                        entry.client_fee_in_cents += client_fee;
+                        entry.event_fee_in_cents += event_fee;
+                        entry.sales_total += sales_total;
+                        entry.refund_quantity += row.refunded_quantity;
+                        entry.refund_unit_price_in_cents += refund_ticket_face;
+                        entry.refund_client_fee_in_cents += refund_client_fee;
+                        entry.refund_event_fee_in_cents += refund_event_fee;
+                        entry.refund_total += refund_total;
+                        entry.total += sales_total - refund_total;
+                    }
+                } else {
+                    let ticket_face = row.unit_price_in_cents * row.actual_quantity;
+                    let client_fee = row.client_fee_in_cents * row.actual_quantity;
+                    let event_fee = row.event_fee_client_in_cents * row.actual_quantity;
+                    let refund_ticket_face = row.unit_price_in_cents * row.refunded_quantity;
+                    let refund_client_fee = row.client_fee_in_cents * row.refunded_quantity;
+                    let refund_event_fee = row.event_fee_client_in_cents * row.refunded_quantity;
+                    let sales_total = ticket_face + client_fee + event_fee;
+                    let refund_total = refund_ticket_face + refund_client_fee + refund_event_fee;
+                    results.push(ReconciliationSummaryResult {
+                        payment_method: row.payment_method.unwrap(),
+                        payment_provider: row.payment_provider.unwrap(),
+                        quantity: row.actual_quantity,
+                        unit_price_in_cents: ticket_face,
+                        client_fee_in_cents: client_fee,
+                        event_fee_in_cents: event_fee,
+                        sales_total,
+                        refund_quantity: row.refunded_quantity,
+                        refund_unit_price_in_cents: refund_ticket_face,
+                        refund_client_fee_in_cents: refund_client_fee,
+                        refund_event_fee_in_cents: refund_event_fee,
+                        refund_total,
+                        total: sales_total - refund_total,
+                    });
+                }
+            }
+        }
+
+        Ok(results)
+    }
+
+    pub fn reconciliation_detail_report(
+        organization_id: Uuid,
+        start: Option<NaiveDateTime>,
+        end: Option<NaiveDateTime>,
+        conn: &PgConnection,
+    ) -> Result<Vec<ReconciliationDetailEventResult>, DatabaseError> {
+        let event_id: Option<Uuid> = None;
+        let query = include_str!("../queries/reports/reports_transaction_details.sql");
+        let q = diesel::sql_query(query)
+            .bind::<Nullable<dUuid>, _>(event_id)
+            .bind::<Nullable<dUuid>, _>(organization_id)
+            .bind::<Nullable<Timestamp>, _>(start)
+            .bind::<Nullable<Timestamp>, _>(end);
+
+        let transaction_rows: Vec<TransactionReportRow> = q
+            .get_results(conn)
+            .to_db_error(ErrorCode::QueryError, "Could not fetch report results")?;
+
+        //Get the fee schedule ranges for this org and construct an easy to use list of them
+        let fee_schedules = FeeSchedule::find_for_organization(
+            Organization::find(organization_id, conn)?.id,
+            conn,
+        )?;
+
+        struct FeeScheduleWithRange {
+            fee_schedule_id: Uuid,
+            version: i16,
+            ranges: Vec<FeeScheduleRange>,
+        }
+
+        let mut fee_schedule_with_ranges: Vec<FeeScheduleWithRange> = Vec::new();
+
+        for fs in fee_schedules {
+            fee_schedule_with_ranges.push(FeeScheduleWithRange {
+                fee_schedule_id: fs.id,
+                version: fs.version,
+                ranges: fs.ranges(conn)?,
+            });
+            if fee_schedule_with_ranges.last().unwrap().ranges.len() < 1 {
+                return DatabaseError::no_results(
+                    "Could not find fee schedule range for this organization",
+                );
+            }
+        }
+
+        //Generate a vector with all the columns, this will be clones for each payment type
+        let mut fee_schedule_range_columns: Vec<ReconciliationFeeRangeResult> = Vec::new();
+
+        for fsr in fee_schedule_with_ranges {
+            for idx in 0..fsr.ranges.len() {
+                if idx == fsr.ranges.len() - 1 {
+                    fee_schedule_range_columns.push(ReconciliationFeeRangeResult {
+                        fee_schedule_id: fsr.fee_schedule_id,
+                        version: fsr.version,
+                        fee_schedule_range_id: fsr.ranges[idx].id,
+                        min_price_in_cents: fsr.ranges[idx].min_price_in_cents,
+                        upper_price_in_cents: None,
+                        client_fee_in_cents: 0,
+                    });
+                } else {
+                    fee_schedule_range_columns.push(ReconciliationFeeRangeResult {
+                        fee_schedule_id: fsr.fee_schedule_id,
+                        version: fsr.version,
+                        fee_schedule_range_id: fsr.ranges[idx].id,
+                        min_price_in_cents: fsr.ranges[idx].min_price_in_cents,
+                        upper_price_in_cents: Some(fsr.ranges[idx + 1].min_price_in_cents - 1),
+                        client_fee_in_cents: 0,
+                    });
+                }
+            }
+        }
+
+        //Produce Report
+        let mut results: Vec<ReconciliationDetailEventResult> = Vec::new();
+
+        for row in transaction_rows {
+            let event_exists = results.iter().any(|r| r.event_id == row.event_id);
+
+            if !event_exists {
+                results.push(ReconciliationDetailEventResult {
+                    event_id: row.event_id.clone(),
+                    event_name: row.event_name.clone(),
+                    event_start: row.event_start.clone(),
+                    entries: Vec::new(),
+                });
+            }
+
+            if let Some(event_entry) = results.iter_mut().find(|ref r| r.event_id == row.event_id) {
+                if row.payment_method.is_some() && row.payment_provider.is_some() {
+                    let entry_exists = event_entry.entries.iter().any(|r| {
+                        r.payment_method == row.payment_method.clone().unwrap()
+                            && r.payment_provider == row.payment_provider.clone().unwrap()
+                    });
+
+                    //Which fee range column does this row's transaction fall in?
+                    let mut column_idx: Option<usize> = None;
+                    if let Some(fee_range_id) = row.fee_range_id {
+                        for (idx, frc) in fee_schedule_range_columns.iter().enumerate() {
+                            if frc.fee_schedule_range_id == fee_range_id {
+                                column_idx = Some(idx);
+                                break;
+                            }
+                        }
+                    }
+
+                    if let Some(column_idx) = column_idx {
+                        if entry_exists {
+                            if let Some(entry) = event_entry.entries.iter_mut().find(|r| {
+                                r.payment_method == row.payment_method.clone().unwrap()
+                                    && r.payment_provider == row.payment_provider.clone().unwrap()
+                            }) {
+                                let ticket_face = row.unit_price_in_cents * row.actual_quantity;
+                                let client_fee = row.client_fee_in_cents * row.actual_quantity;
+                                let event_fee = row.event_fee_client_in_cents * row.actual_quantity;
+                                let refund_ticket_face =
+                                    row.unit_price_in_cents * row.refunded_quantity;
+                                let refund_client_fee =
+                                    row.client_fee_in_cents * row.refunded_quantity;
+                                let refund_event_fee =
+                                    row.event_fee_client_in_cents * row.refunded_quantity;
+                                let sales_total = ticket_face + client_fee + event_fee;
+                                let refund_total =
+                                    refund_ticket_face + refund_client_fee + refund_event_fee;
+
+                                entry.quantity += row.actual_quantity;
+                                entry.unit_price_in_cents += ticket_face;
+                                entry.client_fee_in_cents[column_idx].client_fee_in_cents +=
+                                    client_fee;
+                                entry.event_fee_in_cents += event_fee;
+                                entry.sales_total += sales_total;
+                                entry.refund_quantity += row.refunded_quantity;
+                                entry.refund_unit_price_in_cents += refund_ticket_face;
+                                entry.refund_client_fee_in_cents[column_idx].client_fee_in_cents +=
+                                    refund_client_fee;
+                                entry.refund_event_fee_in_cents += refund_event_fee;
+                                entry.refund_total += refund_total;
+                                entry.total += sales_total - refund_total;
+                            }
+                        } else {
+                            let ticket_face = row.unit_price_in_cents * row.actual_quantity;
+                            let client_fee = row.client_fee_in_cents * row.actual_quantity;
+                            let event_fee = row.event_fee_client_in_cents * row.actual_quantity;
+                            let refund_ticket_face =
+                                row.unit_price_in_cents * row.refunded_quantity;
+                            let refund_client_fee = row.client_fee_in_cents * row.refunded_quantity;
+                            let refund_event_fee =
+                                row.event_fee_client_in_cents * row.refunded_quantity;
+                            let sales_total = ticket_face + client_fee + event_fee;
+                            let refund_total =
+                                refund_ticket_face + refund_client_fee + refund_event_fee;
+
+                            let mut client_fee_in_cents = fee_schedule_range_columns.clone();
+                            let mut refund_client_fee_in_cents = fee_schedule_range_columns.clone();
+
+                            client_fee_in_cents[column_idx].client_fee_in_cents = client_fee;
+                            refund_client_fee_in_cents[column_idx].client_fee_in_cents =
+                                refund_client_fee;
+
+                            event_entry.entries.push(ReconciliationDetailResult {
+                                payment_method: row.payment_method.unwrap(),
+                                payment_provider: row.payment_provider.unwrap(),
+                                quantity: row.actual_quantity,
+                                unit_price_in_cents: ticket_face,
+                                client_fee_in_cents,
+                                event_fee_in_cents: event_fee,
+                                sales_total,
+                                refund_quantity: row.refunded_quantity,
+                                refund_unit_price_in_cents: refund_ticket_face,
+                                refund_client_fee_in_cents,
+                                refund_event_fee_in_cents: refund_event_fee,
+                                refund_total,
+                                total: sales_total - refund_total,
+                            });
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(results)
     }
 }

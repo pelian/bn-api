@@ -13,7 +13,7 @@ pub enum Environment {
 pub struct Config {
     pub allowed_origins: String,
     pub front_end_url: String,
-    pub api_url: String,
+    pub api_host: String,
     pub api_port: String,
     pub app_name: String,
     pub database_url: String,
@@ -24,7 +24,8 @@ pub struct Config {
     pub facebook_app_secret: Option<String>,
     pub globee_api_key: String,
     pub globee_base_url: String,
-    pub ipn_base_url: String,
+    pub validate_ipns: bool,
+    pub api_base_url: String,
     pub google_recaptcha_secret_key: Option<String>,
     pub http_keep_alive: usize,
     pub block_external_comms: bool,
@@ -52,7 +53,7 @@ pub struct Config {
 
 const ALLOWED_ORIGINS: &str = "ALLOWED_ORIGINS";
 const APP_NAME: &str = "APP_NAME";
-const API_URL: &str = "API_URL";
+const API_HOST: &str = "API_HOST";
 const API_PORT: &str = "API_PORT";
 const DATABASE_URL: &str = "DATABASE_URL";
 const DATABASE_POOL_SIZE: &str = "DATABASE_POOL_SIZE";
@@ -61,7 +62,8 @@ const FACEBOOK_APP_ID: &str = "FACEBOOK_APP_ID";
 const FACEBOOK_APP_SECRET: &str = "FACEBOOK_APP_SECRET";
 const GLOBEE_API_KEY: &str = "GLOBEE_API_KEY";
 const GLOBEE_BASE_URL: &str = "GLOBEE_BASE_URL";
-const IPN_BASE_URL: &str = "IPN_BASE_URL";
+const VALIDATE_IPNS: &str = "VALIDATE_IPNS";
+const API_BASE_URL: &str = "API_BASE_URL";
 const GOOGLE_RECAPTCHA_SECRET_KEY: &str = "GOOGLE_RECAPTCHA_SECRET_KEY";
 const PRIMARY_CURRENCY: &str = "PRIMARY_CURRENCY";
 const STRIPE_SECRET_KEY: &str = "STRIPE_SECRET_KEY";
@@ -120,7 +122,7 @@ impl Config {
         let domain = env::var(&DOMAIN).unwrap_or_else(|_| "api.bigneon.com".to_string());
 
         let allowed_origins = env::var(&ALLOWED_ORIGINS).unwrap_or_else(|_| "*".to_string());
-        let api_url = env::var(&API_URL).unwrap_or_else(|_| "127.0.0.1".to_string());
+        let api_host = env::var(&API_HOST).unwrap_or_else(|_| "127.0.0.1".to_string());
         let api_port = env::var(&API_PORT).unwrap_or_else(|_| "8088".to_string());
 
         let primary_currency = env::var(&PRIMARY_CURRENCY).unwrap_or_else(|_| "usd".to_string());
@@ -161,9 +163,13 @@ impl Config {
             Environment::Production => "https://globee.com/payment-api/v1/".to_string(),
             _ => "https://test.globee.com/payment-api/v1/".to_string(),
         });
-        let ipn_base_url =
-            env::var(&IPN_BASE_URL).expect(&format!("{} must be defined", IPN_BASE_URL));
+        let api_base_url =
+            env::var(&API_BASE_URL).expect(&format!("{} must be defined", API_BASE_URL));
 
+        let validate_ipns = env::var(&VALIDATE_IPNS)
+            .unwrap_or("true".to_string())
+            .parse()
+            .expect(&format!("{} is not a valid boolean value", VALIDATE_IPNS));
         let google_recaptcha_secret_key = env::var(&GOOGLE_RECAPTCHA_SECRET_KEY).ok();
 
         let communication_default_source_email = env::var(&COMMUNICATION_DEFAULT_SOURCE_EMAIL)
@@ -231,7 +237,7 @@ impl Config {
         Config {
             allowed_origins,
             app_name,
-            api_url,
+            api_host,
             api_port,
             database_url,
             database_pool_size,
@@ -241,7 +247,8 @@ impl Config {
             facebook_app_secret,
             globee_api_key,
             globee_base_url,
-            ipn_base_url,
+            validate_ipns,
+            api_base_url,
             google_recaptcha_secret_key,
             http_keep_alive,
             block_external_comms,

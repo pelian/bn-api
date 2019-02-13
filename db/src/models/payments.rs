@@ -1,4 +1,5 @@
 use chrono::NaiveDateTime;
+use chrono::Utc;
 use diesel;
 use diesel::expression::dsl;
 use diesel::pg::PgConnection;
@@ -6,6 +7,7 @@ use diesel::prelude::*;
 use models::*;
 use schema::payments;
 use serde_json;
+use time::Duration;
 use utils::errors::*;
 use uuid::Uuid;
 
@@ -13,7 +15,7 @@ use uuid::Uuid;
 #[derive(Debug, Identifiable, PartialEq, Queryable)]
 pub struct Payment {
     pub id: Uuid,
-    order_id: Uuid,
+    pub order_id: Uuid,
     created_by: Option<Uuid>,
     pub status: PaymentStatus,
     pub payment_method: PaymentMethods,
@@ -23,6 +25,7 @@ pub struct Payment {
     raw_data: Option<serde_json::Value>,
     created_at: NaiveDateTime,
     updated_at: NaiveDateTime,
+    pub url_nonce: Option<String>,
 }
 
 impl Payment {
@@ -35,6 +38,7 @@ impl Payment {
         external_reference: Option<String>,
         amount: i64,
         raw_data: Option<serde_json::Value>,
+        url_nonce: Option<String>,
     ) -> NewPayment {
         NewPayment {
             order_id,
@@ -45,6 +49,7 @@ impl Payment {
             external_reference,
             amount,
             raw_data,
+            url_nonce,
         }
     }
 
@@ -87,6 +92,7 @@ impl Payment {
             self.external_reference.clone(),
             -(refund_amount as i64),
             refund_data.clone(),
+            None,
         )
         .commit(Some(current_user_id), conn)?;
 
@@ -189,7 +195,9 @@ impl Payment {
         current_user_id: Option<Uuid>,
         conn: &PgConnection,
     ) -> Result<(), DatabaseError> {
-        if self.status == PaymentStatus::Completed {
+        if self.status != PaymentStatus::Completed {
+            self.update_status(PaymentStatus::Completed, current_user_id, conn)?;
+
             DomainEvent::create(
                 DomainEventTypes::PaymentCompleted,
                 "Payment was completed".to_string(),
@@ -199,24 +207,56 @@ impl Payment {
                 Some(raw_data),
             )
             .commit(conn)?;
-            return Ok(());
         }
-        self.update_status(PaymentStatus::Completed, current_user_id, conn)?;
-
-        DomainEvent::create(
-            DomainEventTypes::PaymentCompleted,
-            "Payment was completed".to_string(),
-            Tables::Payments,
-            Some(self.id),
-            current_user_id,
-            Some(raw_data),
-        )
-        .commit(conn)?;
-
         self.order(conn)?
             .complete_if_fully_paid(current_user_id, conn)?;
 
         Ok(())
+    }
+    pub fn mark_pending_ipn(
+        &self,
+        current_user_id: Option<Uuid>,
+        conn: &PgConnection,
+    ) -> Result<(), DatabaseError> {
+        if self.status != PaymentStatus::Completed {
+            self.update_status(PaymentStatus::PendingIpn, current_user_id, conn)?;
+            let mut order = self.order(conn)?;
+            order.update_status(current_user_id, OrderStatus::PendingPayment, conn)?;
+            order.set_expiry(
+                current_user_id,
+                Some(Utc::now().naive_utc() + Duration::minutes(120)),
+                conn,
+            )?;
+        }
+        Ok(())
+    }
+
+    pub fn mark_cancelled(
+        &self,
+        raw_data: serde_json::Value,
+        current_user_id: Option<Uuid>,
+        conn: &PgConnection,
+    ) -> Result<(), DatabaseError> {
+        use models::enums::PaymentStatus::*;
+        match self.status {
+            Completed | Authorized | Refunded | PendingConfirmation => {
+                DatabaseError::business_process_error("Could not mark payment as cancelled because it is in a status that doesn't allow cancelling")
+            }
+            Requested | Unpaid | Draft | Unknown | PendingIpn => {
+
+                DomainEvent::create(
+                    DomainEventTypes::PaymentCancelled,
+                    "Payment was cancelled".to_string(),
+                    Tables::Payments,
+                    Some(self.id),
+                    current_user_id,
+                    Some(raw_data),
+                )
+                    .commit(conn)?;
+                self.update_status(Cancelled, current_user_id, conn)
+            }
+            Cancelled => Ok(()),
+        }
     }
 
     fn order(&self, conn: &PgConnection) -> Result<Order, DatabaseError> {
@@ -239,6 +279,7 @@ pub struct NewPayment {
     amount: i64,
     provider: PaymentProviders,
     raw_data: Option<serde_json::Value>,
+    url_nonce: Option<String>,
 }
 
 impl NewPayment {

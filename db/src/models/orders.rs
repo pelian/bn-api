@@ -1171,6 +1171,7 @@ impl Order {
             external_reference,
             amount,
             None,
+            None,
         );
         self.add_payment(payment, Some(current_user_id), conn)
     }
@@ -1182,6 +1183,7 @@ impl Order {
         current_user_id: Option<Uuid>,
         amount: i64,
         status: PaymentStatus,
+        url_nonce: Option<String>,
         data: Value,
         conn: &PgConnection,
     ) -> Result<Payment, DatabaseError> {
@@ -1194,7 +1196,9 @@ impl Order {
             external_reference,
             amount,
             Some(data),
+            url_nonce,
         );
+
         self.add_payment(payment, current_user_id, conn)
     }
 
@@ -1217,6 +1221,7 @@ impl Order {
             Some(external_reference),
             amount,
             Some(provider_data),
+            None,
         );
 
         self.add_payment(payment, Some(current_user_id), conn)
@@ -1269,38 +1274,52 @@ impl Order {
         Ok(invalid_items.is_empty())
     }
 
+    pub fn reset_to_draft(
+        &mut self,
+        current_user_id: Option<Uuid>,
+        conn: &PgConnection,
+    ) -> Result<(), DatabaseError> {
+        match self.status {
+            OrderStatus::Paid => {
+                // still store the payment.
+                DatabaseError::business_process_error(
+                    "Cannot reset to draft, the order is already paid",
+                )
+            }
+            OrderStatus::Cancelled => DatabaseError::business_process_error(
+                "Cannot reset this order because it has been cancelled",
+            ),
+
+            OrderStatus::Draft => Ok(()),
+            OrderStatus::PendingPayment => {
+                self.update_status(current_user_id, OrderStatus::Draft, conn)
+            }
+        }
+    }
+
     fn add_payment(
         &mut self,
         payment: NewPayment,
         current_user_id: Option<Uuid>,
         conn: &PgConnection,
     ) -> Result<Payment, DatabaseError> {
-        match self.status {
-            OrderStatus::Paid => {
-                // still store the payment.
-            }
-            // orders can only expire if the order is in draft
-            OrderStatus::Draft => {
-                // This allows users to lock tickets for a period while they are paying
-                // but for now it allows us some time to manage payment details
-                if payment.status == PaymentStatus::Requested {
-                    self.update_status(current_user_id, OrderStatus::PendingPayment, conn)?;
-                    self.set_expiry(
-                        current_user_id,
-                        Some(Utc::now().naive_utc() + Duration::minutes(120)),
-                        conn,
-                    )?;
-                }
-            }
-            OrderStatus::PendingPayment => {
-
-                // Will be checked for completion later
-            }
-            OrderStatus::Cancelled => {
-
-                // Still accept the payment so that the user's account can be credited
-            }
-        }
+        //        match self.status {
+        //            OrderStatus::Paid => {
+        //                // still store the payment.
+        //            }
+        //            // orders can only expire if the order is in draft
+        //            OrderStatus::Draft => {
+        //             // Leave in draft,
+        //            }
+        //            OrderStatus::PendingPayment => {
+        //
+        //                // Will be checked for completion later
+        //            }
+        //            OrderStatus::Cancelled => {
+        //
+        //                // Still accept the payment so that the user's account can be credited
+        //            }
+        //        }
 
         // Confirm codes are still valid
         for item in self.items(conn)? {
@@ -1308,7 +1327,10 @@ impl Order {
         }
 
         let p = payment.commit(current_user_id, conn)?;
-        self.clear_user_cart(conn)?;
+        if p.status != PaymentStatus::Requested {
+            self.clear_user_cart(conn)?;
+        }
+
         self.complete_if_fully_paid(current_user_id, conn)?;
         Ok(p)
     }
@@ -1318,7 +1340,13 @@ impl Order {
         current_user_id: Option<Uuid>,
         conn: &PgConnection,
     ) -> Result<(), DatabaseError> {
-        if self.total_paid(conn)? >= self.calculate_total(conn)? {
+        if self.status == OrderStatus::Paid {
+            return Ok(());
+        }
+
+        let total_paid = self.total_paid(conn)?;
+        let total_required = self.calculate_total(conn)?;
+        if total_paid >= total_required {
             self.update_status(current_user_id, OrderStatus::Paid, conn)?;
             //Mark tickets as Purchased
             let order_items = OrderItem::find_for_order(self.id, conn)?;
@@ -1327,7 +1355,7 @@ impl Order {
             }
 
             let ticket_ids = TicketInstance::find_ids_for_order(self.id, conn)?;
-            DomainEvent::create(
+            let domain_event = DomainEvent::create(
                 DomainEventTypes::OrderCompleted,
                 "Order completed".into(),
                 Tables::Orders,
@@ -1336,7 +1364,24 @@ impl Order {
                 Some(json!({ "ticket_ids": ticket_ids })),
             )
             .commit(conn)?;
-        }
+
+            DomainAction::create(
+                Some(domain_event.id),
+                DomainActionTypes::SendPurchaseCompletedCommunication,
+                None,
+                json!({"order_id": self.id, "user_id": current_user_id}),
+                Some(Tables::Orders.to_string()),
+                Some(self.id),
+                Utc::now().naive_utc(),
+                // Technically this IPN must be processed and should never expire
+                (Utc::now().naive_utc())
+                    .checked_add_signed(Duration::days(3))
+                    .unwrap(),
+                3,
+            )
+            .commit(conn)?;
+        };
+        jlog!(Debug, "Order was checked for completion but was short", {"required_amount": total_required, "total_paid": total_paid, "order_id": self.id});
         Ok(())
     }
 
@@ -1433,7 +1478,7 @@ impl Order {
         Ok(())
     }
 
-    fn update_status(
+    pub(crate) fn update_status(
         &mut self,
         current_user_id: Option<Uuid>,
         status: OrderStatus,

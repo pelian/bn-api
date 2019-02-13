@@ -68,6 +68,7 @@ impl<'a> OrganizationBuilder<'a> {
         if self.fee_schedule.is_none() {
             let x: u32 = random();
             let fee_schedule = FeeSchedule::create(
+                Uuid::nil(),
                 format!("{} fees.{}", self.name, x).into(),
                 vec![NewFeeScheduleRange {
                     min_price_in_cents: 1,

@@ -25,7 +25,7 @@ use serde::Deserialize;
 use std::error::Error as StdError;
 use std::fmt;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct GlobeeIpnRequest {
     pub id: String,
     pub status: Option<String>,
@@ -150,7 +150,7 @@ impl GlobeeClient {
     }
 }
 
-#[derive(Debug, Error)]
+#[derive(Error, Debug)]
 pub enum GlobeeError {
     ValidationError(Errors),
     HttpError(reqwest::Error),
@@ -159,14 +159,14 @@ pub enum GlobeeError {
     DeserializationError(serde_json::Error),
 }
 
-#[derive(Deserialize)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 struct GlobeeResponse<T> {
     success: bool,
     data: Option<T>,
     errors: Option<Vec<ValidationError>>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct PaymentRequest {
     /// The total amount in the invoice currency.
     // TODO: Replace with numeric type
@@ -223,7 +223,7 @@ impl PaymentRequest {
     }
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct PaymentResponse {
     pub id: String,
     pub status: String,
@@ -241,7 +241,7 @@ pub struct PaymentResponse {
 
 mod date_serialize {
     use chrono::prelude::*;
-    use serde::{self, Deserialize, Deserializer};
+    use serde::{self, Deserialize, Deserializer, Serializer};
 
     pub fn deserialize<'de, D>(deserializer: D) -> Result<NaiveDateTime, D::Error>
     where
@@ -251,13 +251,20 @@ mod date_serialize {
         NaiveDateTime::parse_from_str(&s, "%Y-%m-%d %H:%M:%S").map_err(serde::de::Error::custom)
     }
 
+    pub fn serialize<S>(value: &NaiveDateTime, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&value.format("%Y-%m-%d %H:%M:%S").to_string())
+    }
 }
 
 use serde::Deserializer;
+use serde::Serializer;
 use serde_json::Value;
 use std::str::FromStr;
 
-pub fn num_serialize<'de, D>(deserializer: D) -> Result<Option<f64>, D::Error>
+pub fn string_to_num<'de, D>(deserializer: D) -> Result<Option<f64>, D::Error>
 where
     D: Deserializer<'de>,
 {
@@ -272,8 +279,17 @@ where
         Ok(None)
     }
 }
+pub fn num_to_string<S>(value: &Option<f64>, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    match value {
+        Some(v) => serializer.serialize_str(v.to_string().as_str()),
+        None => serializer.serialize_none(),
+    }
+}
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "lowercase")]
 pub enum ConfirmationSpeed {
     High,
@@ -281,25 +297,30 @@ pub enum ConfirmationSpeed {
     Low,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(transparent)]
 pub struct Email(String);
+impl Email {
+    pub fn new(s: String) -> Email {
+        Email(s)
+    }
+}
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Customer {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
     pub email: Email,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct PaymentDetails {
     pub currency: Option<String>,
 
-    #[serde(deserialize_with = "num_serialize")]
+    #[serde(deserialize_with = "string_to_num", serialize_with = "num_to_string")]
     pub received_amount: Option<f64>,
 
-    #[serde(deserialize_with = "num_serialize")]
+    #[serde(deserialize_with = "string_to_num", serialize_with = "num_to_string")]
     pub received_difference: Option<f64>,
 }
 
@@ -318,7 +339,7 @@ impl fmt::Display for Errors {
     }
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Serialize, Clone)]
 pub struct ValidationError {
     #[serde(rename = "type")]
     pub type_: String,
@@ -343,7 +364,7 @@ pub mod test {
 
     #[test]
     pub fn deserialize_data() {
-        let data = r#"
+        let orig_data = r#"
             {
           "success": true,
           "data": {
@@ -359,9 +380,9 @@ pub mod test {
               "email": "john.smit@hotmail.com"
             },
             "payment_details": {
-              "currency": null,
-              "received_amount" : null,
-              "received_difference" : null
+              "currency": "BTC",
+              "received_amount" : "61.2",
+              "received_difference" :"0"
             },
             "redirect_url": "http:\/\/globee.com\/invoice\/a1B2c3D4e5F6g7H8i9J0kL",
             "success_url": "https:\/\/www.example.com/success",
@@ -374,10 +395,13 @@ pub mod test {
           }
         }
         "#;
-        let response: GlobeeResponse<PaymentResponse> = serde_json::from_str(data).unwrap();
+        let response: GlobeeResponse<PaymentResponse> = serde_json::from_str(orig_data).unwrap();
 
         assert_eq!(response.data.as_ref().unwrap().id, "a1B2c3D4e5F6g7H8i9J0kL");
-        assert_eq!(response.data.unwrap().status, "unpaid");
+        let data = response.clone().data.unwrap();
+        assert_eq!(data.status, "unpaid");
+        assert_eq!(data.payment_details.received_amount, Some(61.2f64));
+        assert_eq!(data.payment_details.received_difference, Some(0f64));
         assert!(response.success);
 
         assert!(response.errors.is_none());

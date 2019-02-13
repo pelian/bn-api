@@ -18,7 +18,7 @@ SELECT e.name                                                                   
        CAST(
              (COALESCE(oi_event_fees.client_fee_in_cents, 0) + COALESCE(oi_event_fees.company_fee_in_cents, 0)) *
              (COALESCE(oi_event_fees.quantity, 0) - COALESCE(oi_event_fees.refunded_quantity, 0)) AS BIGINT)            AS event_fee_gross_in_cents_total,
-
+       oi_fees.fee_schedule_range_id                                                                                    AS fee_range_id,
        orders.paid_at                                                                                                   AS transaction_date,
        orders.order_type,
        p.payment_method,
@@ -37,7 +37,9 @@ SELECT e.name                                                                   
        COALESCE(u.first_name, '')                                                                                       AS first_name,
        COALESCE(u.last_name, '')                                                                                        AS last_name,
        COALESCE(u.phone, '')                                                                                            AS phone,
-       COALESCE(u.email, '')                                                                                            AS email
+       COALESCE(u.email, '')                                                                                            AS email,
+       e.event_start                                                                                                    AS event_start
+
 FROM orders
        LEFT JOIN order_items oi on (orders.id = oi.order_id AND oi.item_type = 'Tickets')
        LEFT JOIN order_items oi_fees on oi.id = oi_fees.parent_id

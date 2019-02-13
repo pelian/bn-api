@@ -63,6 +63,7 @@ impl DomainAction {
             attempt_count: 0,
             max_attempt_count,
             status: DomainActionStatus::Pending,
+            blocked_until: scheduled_at - Duration::minutes(1),
         }
     }
 
@@ -70,10 +71,15 @@ impl DomainAction {
         domain_action_type: Option<DomainActionTypes>,
         conn: &PgConnection,
     ) -> Result<Vec<DomainAction>, DatabaseError> {
+        // Use server time as opposed to db time because
+        // the actions will be created using server time
+        // and if the two are out of sync, some tests will
+        // not find the action
+        let now = Utc::now().naive_utc();
         let mut query = domain_actions::table
-            .filter(domain_actions::scheduled_at.le(dsl::now))
-            .filter(domain_actions::expires_at.gt(dsl::now))
-            .filter(domain_actions::blocked_until.le(dsl::now))
+            .filter(domain_actions::scheduled_at.le(now))
+            .filter(domain_actions::expires_at.gt(now))
+            .filter(domain_actions::blocked_until.le(now))
             .filter(domain_actions::attempt_count.lt(domain_actions::max_attempt_count))
             .filter(domain_actions::status.eq(DomainActionStatus::Pending))
             .into_boxed();
@@ -226,6 +232,7 @@ pub struct NewDomainAction {
     pub attempt_count: i64,
     pub max_attempt_count: i64,
     pub status: DomainActionStatus,
+    pub blocked_until: NaiveDateTime,
 }
 
 impl NewDomainAction {

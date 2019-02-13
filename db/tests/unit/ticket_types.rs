@@ -254,8 +254,11 @@ fn find_by_event_id() {
     assert_eq!(vec![ticket_type.clone(), ticket_type2.clone()], results);
 
     // No access codes on file checking without access code filtering
-    let results = TicketType::find_by_event_id(event.id, false, None, &connection).unwrap();
-    assert_eq!(vec![ticket_type.clone(), ticket_type2.clone()], results);
+    let mut results = TicketType::find_by_event_id(event.id, false, None, &connection).unwrap();
+    results.sort_by_key(|r| r.id);
+    let mut expected = vec![ticket_type.clone(), ticket_type2.clone()];
+    expected.sort_by_key(|r| r.id);
+    assert_eq!(expected, results);
 
     // Add access code
     let code = project

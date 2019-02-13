@@ -1,6 +1,10 @@
-use actix_web::{http::StatusCode, HttpResponse};
+use actix_web::Path;
+use actix_web::Query;
+use actix_web::{http::StatusCode, FromRequest, HttpResponse};
+use bigneon_api::controllers;
 use bigneon_api::controllers::cart;
 use bigneon_api::controllers::cart::*;
+use bigneon_api::domain_events;
 use bigneon_api::extractors::*;
 use bigneon_db::models::*;
 use bigneon_db::schema::{orders, ticket_instances};
@@ -9,6 +13,10 @@ use chrono::Duration;
 use diesel;
 use diesel::prelude::*;
 use functional::base;
+use globee::Customer;
+use globee::Email;
+use globee::GlobeeIpnRequest;
+use globee::PaymentDetails;
 use serde_json;
 use support::database::TestDatabase;
 use support::test_request::TestRequest;
@@ -1061,4 +1069,127 @@ fn checkout_fails_for_invalid_items() {
     // Reload cart
     let cart = Order::find(cart.id, connection).unwrap();
     assert_eq!(cart.status, OrderStatus::Draft);
+}
+
+#[test]
+fn checkout_provider_globee() {
+    let database = TestDatabase::new();
+    let conn = database.connection.get();
+    let event = database
+        .create_event()
+        .with_tickets()
+        .with_ticket_pricing()
+        .finish();
+
+    let user = database.create_user().finish();
+
+    database
+        .create_cart()
+        .for_user(&user)
+        .for_event(&event)
+        .finish();
+    let request = TestRequest::create();
+
+    let input = Json(cart::CheckoutCartRequest {
+        method: PaymentRequest::Provider {
+            provider: PaymentProviders::Globee,
+        },
+    });
+
+    // Must be admin to check out external
+    let user = support::create_auth_user_from_user(&user, Roles::Admin, None, &database);
+
+    let response = cart::checkout((
+        database.connection.clone().into(),
+        input,
+        user.clone(),
+        request.extract_state(),
+    ))
+    .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let body = unwrap_body_to_string(&response).unwrap();
+    let order: DisplayOrder = serde_json::from_str(body).unwrap();
+    assert_eq!(order.status, OrderStatus::Draft);
+
+    // User accepts
+    let db_payment = &Order::find(order.id, conn).unwrap().payments(conn).unwrap()[0];
+
+    let url = format!(
+        "/payments/callback/{}/{}?success=true",
+        db_payment.url_nonce.clone().unwrap(),
+        order.id
+    );
+    let request = TestRequest::create_with_uri_custom_params(&url, vec!["nonce", "id"]);
+    let query = Query::<controllers::payments::QueryParams>::extract(&request.request).unwrap();
+    let mut path = Path::<controllers::payments::PathParams>::extract(&request.request).unwrap();
+    path.nonce = db_payment.url_nonce.clone().unwrap();
+    path.id = order.id;
+
+    let response = controllers::payments::callback((
+        query,
+        path,
+        database.connection.clone().into(),
+        request.extract_state(),
+        OptionalUser(Some(user)),
+    ))
+    .unwrap();
+
+    assert_eq!(response.status(), StatusCode::FOUND);
+
+    let order = Order::find(order.id, conn).unwrap();
+    assert_eq!(order.status, OrderStatus::PendingPayment);
+
+    //let request = TestRequest::create_with_uri("/ipns/globee");
+
+    let ipn = GlobeeIpnRequest {
+        id: "".to_string(),
+        status: Some("confirmed".to_string()),
+        total: None,
+        adjusted_total: None,
+        currency: None,
+        custom_payment_id: Some(order.id.to_string()),
+        custom_store_reference: None,
+        callback_data: None,
+        customer: Customer {
+            name: None,
+            email: Email::new("something@test.com".to_string()),
+        },
+        payment_details: PaymentDetails {
+            currency: Some("BTC".to_string()),
+            received_amount: Some(order.calculate_total(conn).unwrap() as f64 / 100f64),
+            received_difference: Some(0.0),
+        },
+        redirect_url: None,
+        success_url: None,
+        cancel_url: None,
+        ipn_url: None,
+        notification_email: None,
+        confirmation_speed: None,
+        expires_at: None,
+        created_at: None,
+    };
+
+    let response =
+        controllers::ipns::globee((Json(ipn), database.connection.clone().into())).unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+
+    let mut domain_actions =
+        DomainAction::find_pending(Some(DomainActionTypes::PaymentProviderIPN), conn).unwrap();
+
+    assert_eq!(domain_actions.len(), 1);
+
+    let domain_action = domain_actions.remove(0);
+    assert_eq!(domain_action.main_table_id, Some(order.id));
+
+    let processor = domain_events::executors::process_payment_ipn::ProcessPaymentIPNExecutor::new(
+        &request.config,
+    );
+    processor
+        .perform_job(&domain_action, &database.connection.clone())
+        .unwrap();
+
+    let order = Order::find(order.id, conn).unwrap();
+    assert_eq!(order.status, OrderStatus::Paid);
 }

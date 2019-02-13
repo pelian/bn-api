@@ -667,10 +667,10 @@ fn payments() {
 
     let payments = cart.payments(connection).unwrap();
     assert_eq!(payments.len(), 2);
-    assert_eq!(
-        payments.iter().map(|p| p.amount).collect::<Vec<i64>>(),
-        vec![500, 1500]
-    );
+
+    let mut payments = payments.iter().map(|p| p.amount).collect::<Vec<i64>>();
+    payments.sort();
+    assert_eq!(payments, vec![500, 1500]);
 }
 
 #[test]

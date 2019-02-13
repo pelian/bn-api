@@ -1,11 +1,11 @@
+use actix_web::HttpResponse;
 use actix_web::State;
-use actix_web::{http::StatusCode, HttpResponse};
 use auth::user::User;
 use bigneon_db::models::TicketType as Dbticket_types;
 use bigneon_db::models::User as DbUser;
 use bigneon_db::models::*;
 use bigneon_db::utils::errors::Optional;
-use communications::mailers;
+use bigneon_db::utils::rand::random_alpha_string;
 use config::Config;
 use db::Connection;
 use diesel::pg::PgConnection;
@@ -239,7 +239,6 @@ pub fn checkout(
         Some(o) => o,
         None => return application::unprocessable("No cart exists for user"),
     };
-    let order_id = order.id;
     order.lock_version(connection.get())?;
 
     if !order.items_valid_for_purchase(connection.get())? {
@@ -372,51 +371,6 @@ pub fn checkout(
             &state.config,
         )?,
     };
-
-    if payment_response.status() == StatusCode::OK {
-        let conn = connection.get();
-        let new_owner_wallet = Wallet::find_default_for_user(user.id(), conn)?;
-        for (asset_id, token_ids) in &tokens_per_asset {
-            let asset = Asset::find(*asset_id, conn)?;
-            match asset.blockchain_asset_id {
-                Some(a) => {
-                    let wallet_id = match wallet_id_per_asset.get(asset_id) {
-                        Some(w) => w.clone(),
-                        None => return application::internal_server_error(
-                            "Could not complete this checkout because wallet id not found for asset",
-                        ),
-                    };
-                    let org_wallet = Wallet::find(wallet_id, conn)?;
-                    state.config.tari_client.transfer_tokens(&org_wallet.secret_key, &org_wallet.public_key,
-                                                             &a,
-                                                             token_ids.clone(),
-                                                             new_owner_wallet.public_key.clone(),
-                    )?
-                },
-                None => return application::internal_server_error(
-                    "Could not complete this checkout because the asset has not been assigned on the blockchain",
-                ),
-            }
-        }
-
-        let order = Order::find(order_id, conn)?;
-
-        let display_order = order.for_display(None, conn)?;
-
-        let user = DbUser::find(order.on_behalf_of_user_id.unwrap_or(order.user_id), conn)?;
-
-        //Communicate purchase completed to user
-        if let (Some(first_name), Some(email)) = (user.first_name, user.email) {
-            mailers::cart::purchase_completed(
-                &first_name,
-                email,
-                display_order,
-                &state.config,
-                conn,
-            )?;
-        }
-    }
-
     Ok(payment_response)
 }
 
@@ -435,7 +389,8 @@ fn checkout_free(
     order.add_external_payment(Some("Free Checkout".to_string()), user.id(), 0, conn)?;
 
     let order = Order::find(order.id, conn)?;
-    Ok(HttpResponse::Ok().json(json!(order.for_display(None, conn)?)))
+    let response = HttpResponse::Ok().json(json!(order.for_display(None, conn)?));
+    Ok(response)
 }
 
 // TODO: This should actually probably move to an `orders` controller, since the
@@ -685,25 +640,22 @@ fn redirect_to_payment_page(
     let amount = order.calculate_total(conn)?;
 
     let email = user.email.as_ref().unwrap().to_string();
-    let ipn = if config.ipn_base_url.to_lowercase() == "test" {
-        None
-    } else {
-        Some(format!("{}/ipns/globee", config.ipn_base_url))
-    };
+
+    let ipn = Some(format!("{}/ipns/globee", config.api_base_url));
+
+    let nonce = random_alpha_string(12);
     let response = client.create_payment_request(
         amount as f64 / 100_f64,
         email,
         order.id,
         ipn,
         Some(format!(
-            "{}/events/{}/tickets/success",
-            config.front_end_url,
-            order.main_event_id(conn)?
+            "{}/payments/callback/{}/{}?success=true",
+            &config.api_base_url, nonce, order.id,
         )),
         Some(format!(
-            "{}/events/{}/tickets/confirmation",
-            config.front_end_url,
-            order.main_event_id(conn)?
+            "{}/payments/callback/{}/{}?success=false",
+            &config.api_base_url, nonce, order.id,
         )),
     )?;
 
@@ -724,6 +676,7 @@ fn redirect_to_payment_page(
         Some(user.id),
         amount,
         PaymentStatus::Requested,
+        Some(nonce),
         json!(response.clone()),
         conn,
     )?;

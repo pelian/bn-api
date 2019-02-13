@@ -80,6 +80,7 @@ string_enum! { DomainEventTypes [
     OrderStatusUpdated,
     OrderUpdated,
     OrganizationCreated,
+    PaymentCancelled,
     PaymentCreated,
     PaymentCompleted,
     PaymentRefund,
@@ -102,7 +103,8 @@ string_enum! { DomainActionTypes [
     // Marketing Contacts
     MarketingContactsCreateEventList,
     MarketingContactsBulkEventFanListImport,
-    PaymentProviderIPN
+    PaymentProviderIPN,
+    SendPurchaseCompletedCommunication
 
 ]}
 string_enum! { DomainActionStatus [Pending, RetriesExceeded, Errored, Success, Cancelled]}
@@ -118,7 +120,7 @@ string_enum! { OrderItemTypes [Tickets, PerUnitFees, EventFees]}
 string_enum! { OrderTypes [Cart, BackOffice] }
 string_enum! { PaymentMethods [External, CreditCard, Provider] }
 string_enum! { PaymentProviders [External, Globee, Stripe] }
-string_enum! { PaymentStatus [Authorized, Completed, Requested, Refunded, Unpaid, PendingConfirmation, Cancelled, Draft, Unknown] }
+string_enum! { PaymentStatus [Authorized, Completed, Requested, Refunded, Unpaid, PendingConfirmation, Cancelled, Draft, Unknown, PendingIpn] }
 string_enum! { PastOrUpcoming [Past,Upcoming]}
 string_enum! { Roles [Admin, OrgMember, OrgOwner, OrgAdmin, OrgBoxOffice, DoorPerson, User] }
 string_enum! { SortingDir[ Asc, Desc ] }

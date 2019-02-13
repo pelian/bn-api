@@ -40,7 +40,7 @@ impl Server {
         process_http: bool,
         process_actions_til_empty: bool,
     ) {
-        let bind_addr = format!("{}:{}", config.api_url, config.api_port);
+        let bind_addr = format!("{}:{}", config.api_host, config.api_port);
 
         let database = Database::from_config(&config);
 

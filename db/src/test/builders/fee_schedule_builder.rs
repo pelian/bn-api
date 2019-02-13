@@ -17,6 +17,7 @@ impl<'a> FeeScheduleBuilder<'a> {
 
     pub fn finish(self, current_user_id: Uuid) -> FeeSchedule {
         FeeSchedule::create(
+            Uuid::nil(),
             self.name,
             vec![
                 NewFeeScheduleRange {

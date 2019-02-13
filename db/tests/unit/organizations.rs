@@ -9,6 +9,7 @@ fn create() {
 
     let connection = project.get_connection();
     let fee_schedule = FeeSchedule::create(
+        Uuid::nil(),
         format!("Zero fees",).into(),
         vec![NewFeeScheduleRange {
             min_price_in_cents: 0,
@@ -18,6 +19,10 @@ fn create() {
     )
     .commit(creator.id, connection)
     .unwrap();
+
+    let updated_fee_schedule = FeeSchedule::find(fee_schedule.id, connection).unwrap();
+    assert_eq!(updated_fee_schedule.organization_id, Uuid::nil());
+
     let mut organization = Organization::create("Organization", fee_schedule.id);
     organization.sendgrid_api_key = Some("A_Test_Key".to_string());
 
@@ -35,6 +40,10 @@ fn create() {
         organization.sendgrid_api_key,
         Some("A_Test_Key".to_string())
     );
+
+    let updated_fee_schedule = FeeSchedule::find(fee_schedule.id, connection).unwrap();
+
+    assert_eq!(updated_fee_schedule.organization_id, organization.id);
 }
 
 #[test]
@@ -796,11 +805,20 @@ fn add_fee_schedule() {
 
     let organization = project.create_organization().finish();
     let fee_structure = project.create_fee_schedule().finish(creator.id);
+
+    let updated_fee_schedule =
+        FeeSchedule::find(fee_structure.id, project.get_connection()).unwrap();
+    assert_eq!(updated_fee_schedule.organization_id, Uuid::nil());
+
     organization
         .add_fee_schedule(&fee_structure, project.get_connection())
         .unwrap();
     let organization = Organization::find(organization.id, project.get_connection()).unwrap();
     assert_eq!(organization.fee_schedule_id, fee_structure.id);
+
+    let updated_fee_schedule =
+        FeeSchedule::find(fee_structure.id, project.get_connection()).unwrap();
+    assert_eq!(updated_fee_schedule.organization_id, organization.id);
 }
 
 #[test]

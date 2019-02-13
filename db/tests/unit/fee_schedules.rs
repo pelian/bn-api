@@ -1,5 +1,6 @@
 use bigneon_db::dev::TestProject;
 use bigneon_db::models::{FeeSchedule, NewFeeScheduleRange};
+use uuid::Uuid;
 
 #[test]
 fn fee_schedule_create() {
@@ -7,6 +8,7 @@ fn fee_schedule_create() {
     let creator = project.create_user().finish();
 
     let fee_schedule = FeeSchedule::create(
+        Uuid::nil(),
         "default".to_string(),
         vec![
             NewFeeScheduleRange {
@@ -35,6 +37,7 @@ fn fee_schedule_create() {
     );
 
     let fee_schedule2 = FeeSchedule::create(
+        Uuid::nil(),
         "default".to_string(),
         vec![
             NewFeeScheduleRange {
@@ -61,6 +64,7 @@ fn get_fee_schedule_range() {
     let creator = project.create_user().finish();
 
     let fee_schedule = FeeSchedule::create(
+        Uuid::nil(),
         "default".to_string(),
         vec![
             NewFeeScheduleRange {

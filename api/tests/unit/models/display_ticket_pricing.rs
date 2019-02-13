@@ -144,7 +144,7 @@ fn from_ticket_pricing() {
         .for_ticket_type(&ticket_type)
         .with_discount_in_cents(Some(10))
         .with_end_date(NaiveDateTime::from(
-            Utc::now().naive_utc() - Duration::days(1),
+            Utc::now().naive_utc() - Duration::days(1) + Duration::minutes(2),
         ))
         .finish();
     let display_ticket_pricing = DisplayTicketPricing::from_ticket_pricing(

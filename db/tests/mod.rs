@@ -18,5 +18,7 @@ extern crate serde_json;
 extern crate time;
 extern crate uuid;
 extern crate validator;
+//#[macro_use]
+//extern crate macros;
 
 mod unit;

@@ -2,6 +2,7 @@ use actix_web::error::*;
 use actix_web::{FromRequest, HttpRequest};
 use auth::user::User;
 use server::AppState;
+use uuid::Uuid;
 
 pub struct OptionalUser(pub Option<User>);
 
@@ -21,5 +22,8 @@ impl FromRequest<AppState> for OptionalUser {
 impl OptionalUser {
     pub fn into_inner(self) -> Option<User> {
         self.0
+    }
+    pub fn id(&self) -> Option<Uuid> {
+        self.0.as_ref().map(|u| u.id())
     }
 }

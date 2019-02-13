@@ -1,10 +1,10 @@
 use actix_web::HttpResponse;
-use actix_web::Json;
 use bigneon_db::prelude::*;
 use chrono::prelude::*;
 use chrono::Duration;
 use db::Connection;
 use errors::BigNeonError;
+use extractors::Json;
 use globee::GlobeeIpnRequest;
 use log::Level::Debug;
 use uuid::Uuid;

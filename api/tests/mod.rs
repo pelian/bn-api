@@ -14,6 +14,7 @@ extern crate diesel;
 extern crate serde_json;
 #[macro_use]
 extern crate serde_derive;
+extern crate globee;
 extern crate jsonwebtoken as jwt;
 extern crate uuid;
 extern crate validator;
