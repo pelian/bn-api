@@ -280,5 +280,6 @@ services:
           branch: master
 ---
 kind: signature
-hmac: d0732805d654025709cd88d938bce443f5123763794ae6192774a39d23dc4068
+hmac: b18f015dce8c053cfcb898ade59baacfd10a46b8bd6e49c03441a4fc39b9c7e5
+
 ...
