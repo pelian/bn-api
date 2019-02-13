@@ -16,9 +16,6 @@ path="src/lib.rs"
 name="bndb_cli"
 path="src/bin.rs"
 
-[[bench]]
-name="main"
-harness=false
 
 [dependencies]
 backtrace = "0.2"
