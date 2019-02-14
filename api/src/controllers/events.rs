@@ -4,6 +4,7 @@ use bigneon_db::models::*;
 use bigneon_db::utils::errors::{DatabaseError, ErrorCode};
 use chrono::prelude::*;
 use chrono::Duration;
+use controllers::organizations::DisplayOrganizationUser;
 use db::Connection;
 use errors::*;
 use extractors::*;
@@ -1007,5 +1008,48 @@ pub fn fans_index(
     paging.total = total;
     let payload = Payload::new(fans, paging);
 
+    Ok(WebPayload::new(StatusCode::OK, payload))
+}
+
+pub fn users(
+    (connection, path_parameters, query_parameters, user): (
+        Connection,
+        Path<PathParameters>,
+        Query<PagingParameters>,
+        User,
+    ),
+) -> Result<WebPayload<DisplayOrganizationUser>, BigNeonError> {
+    let connection = connection.get();
+    let event = Event::find(path_parameters.id, connection)?;
+    let organization = event.organization(connection)?;
+    user.requires_scope_for_organization_event(Scopes::OrgRead, &organization, &event, connection)?;
+
+    let mut members: Vec<DisplayOrganizationUser> = organization
+        .users(Some(event.id), connection)?
+        .into_iter()
+        .map(|u| DisplayOrganizationUser {
+            user_id: Some(u.1.id),
+            first_name: u.1.first_name,
+            last_name: u.1.last_name,
+            email: u.1.email,
+            roles: u.0.role,
+            invite_or_member: "member".to_string(),
+            invite_id: None,
+        })
+        .collect();
+
+    for inv in organization.pending_invites(connection)? {
+        members.push(DisplayOrganizationUser {
+            user_id: inv.user_id,
+            first_name: None,
+            last_name: None,
+            email: Some(inv.user_email),
+            roles: inv.roles,
+            invite_or_member: "invite".to_string(),
+            invite_id: Some(inv.id),
+        });
+    }
+
+    let payload = Payload::from_data(members, query_parameters.page(), query_parameters.limit());
     Ok(WebPayload::new(StatusCode::OK, payload))
 }

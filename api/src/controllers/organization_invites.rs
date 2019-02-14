@@ -5,6 +5,7 @@ use bigneon_db::utils::errors::DatabaseError;
 use bigneon_db::utils::errors::Optional;
 use communications::mailers;
 use db::Connection;
+use diesel::pg::PgConnection;
 use errors::*;
 use extractors::*;
 use helpers::application;
@@ -29,6 +30,21 @@ pub struct NewOrgInviteRequest {
     pub roles: Vec<Roles>,
     pub event_ids: Option<Vec<Uuid>>,
 }
+pub fn create_for_event(
+    (state, connection, new_org_invite, path, auth_user): (
+        State<AppState>,
+        Connection,
+        Json<NewOrgInviteRequest>,
+        Path<PathParameters>,
+        AuthUser,
+    ),
+) -> Result<HttpResponse, BigNeonError> {
+    let connection = connection.get();
+    let organization = Event::find(path.id, connection)?.organization(connection)?;
+    let mut invite = new_org_invite.into_inner();
+    invite.event_ids = Some(vec![path.id]);
+    create_invite(state, connection, invite, &organization, auth_user)
+}
 
 pub fn create(
     (state, connection, new_org_invite, path, auth_user): (
@@ -41,6 +57,22 @@ pub fn create(
 ) -> Result<HttpResponse, BigNeonError> {
     let connection = connection.get();
     let organization = Organization::find(path.id, connection)?;
+    create_invite(
+        state,
+        connection,
+        new_org_invite.into_inner(),
+        &organization,
+        auth_user,
+    )
+}
+
+fn create_invite(
+    state: State<AppState>,
+    connection: &PgConnection,
+    new_org_invite: NewOrgInviteRequest,
+    organization: &Organization,
+    auth_user: AuthUser,
+) -> Result<HttpResponse, BigNeonError> {
     for role in &new_org_invite.roles {
         match role {
             &Roles::OrgOwner => auth_user.requires_scope_for_organization(
@@ -111,7 +143,7 @@ pub fn create(
     }
 
     invite = OrganizationInvite::create(
-        path.id,
+        organization.id,
         auth_user.id(),
         new_org_invite.user_email.as_str(),
         user_id,

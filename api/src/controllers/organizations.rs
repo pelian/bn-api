@@ -335,7 +335,7 @@ pub fn list_organization_members(
     user.requires_scope_for_organization(Scopes::OrgRead, &organization, connection)?;
 
     let mut members: Vec<DisplayOrganizationUser> = organization
-        .users(connection)?
+        .users(None, connection)?
         .into_iter()
         .map(|u| DisplayOrganizationUser {
             user_id: Some(u.1.id),
