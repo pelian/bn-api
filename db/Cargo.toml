@@ -1,6 +1,6 @@
 [package]
 name = "bigneon_db"
-version = "0.2.307"
+version = "0.2.323"
 authors = ["CjS77","mikethetike"]
 license = "BSD-3"
 repository = "https://github.com/big-neon/bn-db/"
@@ -30,6 +30,7 @@ argon2rs = "0.2"
 itertools = "0.7"
 log = "0.4"
 logging = {path="../logging"}
+macros={path="../macros"}
 ring = "0.13.5"
 serde = "1.0"
 serde_derive = "1.0"
@@ -42,7 +43,6 @@ validator_derive = "0.8"
 time="0.1"
 tari-client= {path="../tari-client"}
 
-macros={path="../macros"}
 embed_dirs_derive = {path="../embed_dirs_derive"}
 
 [dev-dependencies]

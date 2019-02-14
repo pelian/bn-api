@@ -3,7 +3,7 @@ use bigneon_db::prelude::*;
 use bigneon_db::schema::orders;
 use bigneon_db::utils::errors;
 use bigneon_db::utils::errors::ErrorCode;
-use chrono::{Duration, Utc};
+use chrono::{Duration, NaiveDateTime, Utc};
 use diesel;
 use diesel::prelude::*;
 use std::collections::HashMap;
@@ -93,24 +93,42 @@ fn get_profile_for_organization() {
 
     let connection = project.get_connection();
     let user = project.create_user().finish();
+    let user2 = project.create_user().finish();
     let organization = project
         .create_organization()
         .with_fee_schedule(&project.create_fee_schedule().finish(admin.id))
         .finish();
+
     let event = project
         .create_event()
+        .with_event_start(NaiveDateTime::from(
+            Utc::now().naive_utc() + Duration::days(1),
+        ))
         .with_organization(&organization)
         .with_tickets()
         .with_ticket_pricing()
         .finish();
     let event2 = project
         .create_event()
+        .with_event_start(NaiveDateTime::from(
+            Utc::now().naive_utc() + Duration::days(2),
+        ))
+        .with_organization(&organization)
+        .with_tickets()
+        .with_ticket_pricing()
+        .finish();
+    let event3 = project
+        .create_event()
+        .with_event_start(NaiveDateTime::from(
+            Utc::now().naive_utc() + Duration::days(3),
+        ))
         .with_organization(&organization)
         .with_tickets()
         .with_ticket_pricing()
         .finish();
     let ticket_type = &event.ticket_types(true, None, connection).unwrap()[0];
     let ticket_type2 = &event2.ticket_types(true, None, connection).unwrap()[0];
+    let ticket_type3 = &event3.ticket_types(true, None, connection).unwrap()[0];
 
     // No purchases
     assert_eq!(
@@ -128,6 +146,7 @@ fn get_profile_for_organization() {
             thumb_profile_pic_url: user.thumb_profile_pic_url.clone(),
             cover_photo_url: user.cover_photo_url.clone(),
             created_at: user.created_at,
+            attendance_information: Vec::new(),
         }
     );
 
@@ -154,6 +173,7 @@ fn get_profile_for_organization() {
             thumb_profile_pic_url: user.thumb_profile_pic_url.clone(),
             cover_photo_url: user.cover_photo_url.clone(),
             created_at: user.created_at,
+            attendance_information: Vec::new(),
         }
     );
 
@@ -186,6 +206,7 @@ fn get_profile_for_organization() {
             thumb_profile_pic_url: user.thumb_profile_pic_url.clone(),
             cover_photo_url: user.cover_photo_url.clone(),
             created_at: user.created_at,
+            attendance_information: Vec::new(),
         }
     );
 
@@ -209,6 +230,53 @@ fn get_profile_for_organization() {
             thumb_profile_pic_url: user.thumb_profile_pic_url.clone(),
             cover_photo_url: user.cover_photo_url.clone(),
             created_at: user.created_at,
+            attendance_information: Vec::new(),
+        }
+    );
+
+    // Redeem tickets from order
+    let items = cart.items(&connection).unwrap();
+    let order_item = items
+        .iter()
+        .find(|i| i.ticket_type_id == Some(ticket_type.id))
+        .unwrap();
+    let tickets = TicketInstance::find_for_order_item(order_item.id, connection).unwrap();
+    let ticket = &tickets[0];
+    let ticket2 = &tickets[1];
+    TicketInstance::redeem_ticket(
+        ticket.id,
+        ticket.redeem_key.clone().unwrap(),
+        user.id,
+        connection,
+    )
+    .unwrap();
+    TicketInstance::redeem_ticket(
+        ticket2.id,
+        ticket2.redeem_key.clone().unwrap(),
+        user.id,
+        connection,
+    )
+    .unwrap();
+    assert_eq!(
+        user.get_profile_for_organization(&organization, connection)
+            .unwrap(),
+        FanProfile {
+            first_name: user.first_name.clone(),
+            last_name: user.last_name.clone(),
+            email: user.email.clone(),
+            facebook_linked: true,
+            event_count: 1,
+            revenue_in_cents: 1700,
+            ticket_sales: 10,
+            profile_pic_url: user.profile_pic_url.clone(),
+            thumb_profile_pic_url: user.thumb_profile_pic_url.clone(),
+            cover_photo_url: user.cover_photo_url.clone(),
+            created_at: user.created_at,
+            attendance_information: vec![AttendanceInformation {
+                event_name: event.name.clone(),
+                event_id: event.id,
+                event_start: event.event_start
+            }],
         }
     );
 
@@ -230,6 +298,23 @@ fn get_profile_for_organization() {
     cart.add_external_payment(Some("test".to_string()), user.id, 170, connection)
         .unwrap();
     assert_eq!(cart.status, OrderStatus::Paid);
+
+    // Redeem a ticket from new cart
+    let items = cart.items(&connection).unwrap();
+    let order_item = items
+        .iter()
+        .find(|i| i.ticket_type_id == Some(ticket_type.id))
+        .unwrap();
+    let tickets = TicketInstance::find_for_order_item(order_item.id, connection).unwrap();
+    let ticket = &tickets[0];
+    TicketInstance::redeem_ticket(
+        ticket.id,
+        ticket.redeem_key.clone().unwrap(),
+        user.id,
+        connection,
+    )
+    .unwrap();
+
     assert_eq!(
         user.get_profile_for_organization(&organization, connection)
             .unwrap(),
@@ -245,6 +330,11 @@ fn get_profile_for_organization() {
             thumb_profile_pic_url: user.thumb_profile_pic_url.clone(),
             cover_photo_url: user.cover_photo_url.clone(),
             created_at: user.created_at,
+            attendance_information: vec![AttendanceInformation {
+                event_name: event.name.clone(),
+                event_id: event.id,
+                event_start: event.event_start
+            }],
         }
     );
 
@@ -281,6 +371,211 @@ fn get_profile_for_organization() {
             thumb_profile_pic_url: user.thumb_profile_pic_url.clone(),
             cover_photo_url: user.cover_photo_url.clone(),
             created_at: user.created_at,
+            attendance_information: vec![AttendanceInformation {
+                event_name: event.name.clone(),
+                event_id: event.id,
+                event_start: event.event_start
+            }],
+        }
+    );
+
+    // Redeem ticket from new event
+    let items = cart.items(&connection).unwrap();
+    let order_item = items
+        .iter()
+        .find(|i| i.ticket_type_id == Some(ticket_type2.id))
+        .unwrap();
+    let tickets = TicketInstance::find_for_order_item(order_item.id, connection).unwrap();
+    let ticket = &tickets[0];
+
+    // Transfer ticket to different user removing it from attendance information
+    let sender_wallet = Wallet::find_default_for_user(user.id, connection).unwrap();
+    let receiver_wallet = Wallet::find_default_for_user(user2.id, connection).unwrap();
+    let transfer_auth =
+        TicketInstance::authorize_ticket_transfer(user.id, &vec![ticket.id], 3600, connection)
+            .unwrap();
+    TicketInstance::receive_ticket_transfer(
+        transfer_auth,
+        &sender_wallet,
+        receiver_wallet.id,
+        connection,
+    )
+    .unwrap();
+
+    TicketInstance::redeem_ticket(
+        ticket.id,
+        ticket.redeem_key.clone().unwrap(),
+        user.id,
+        connection,
+    )
+    .unwrap();
+    assert_eq!(
+        user.get_profile_for_organization(&organization, connection)
+            .unwrap(),
+        FanProfile {
+            first_name: user.first_name.clone(),
+            last_name: user.last_name.clone(),
+            email: user.email.clone(),
+            facebook_linked: true,
+            event_count: 2,
+            revenue_in_cents: 2040,
+            ticket_sales: 12,
+            profile_pic_url: user.profile_pic_url.clone(),
+            thumb_profile_pic_url: user.thumb_profile_pic_url.clone(),
+            cover_photo_url: user.cover_photo_url.clone(),
+            created_at: user.created_at,
+            attendance_information: vec![AttendanceInformation {
+                event_name: event.name.clone(),
+                event_id: event.id,
+                event_start: event.event_start
+            }],
+        }
+    );
+
+    // Purchase and redeem from other event without transferring
+    let mut cart = Order::find_or_create_cart(&user, connection).unwrap();
+    cart.update_quantities(
+        user.id,
+        &[UpdateOrderItem {
+            ticket_type_id: ticket_type2.id,
+            quantity: 1,
+            redemption_code: None,
+        }],
+        false,
+        false,
+        connection,
+    )
+    .unwrap();
+    assert_eq!(cart.calculate_total(connection).unwrap(), 170);
+    cart.add_external_payment(Some("test".to_string()), user.id, 170, connection)
+        .unwrap();
+    assert_eq!(cart.status, OrderStatus::Paid);
+
+    let items = cart.items(&connection).unwrap();
+    let order_item = items
+        .iter()
+        .find(|i| i.ticket_type_id == Some(ticket_type2.id))
+        .unwrap();
+    let tickets = TicketInstance::find_for_order_item(order_item.id, connection).unwrap();
+    let ticket = &tickets[0];
+    TicketInstance::redeem_ticket(
+        ticket.id,
+        ticket.redeem_key.clone().unwrap(),
+        user.id,
+        connection,
+    )
+    .unwrap();
+
+    assert_eq!(
+        user.get_profile_for_organization(&organization, connection)
+            .unwrap(),
+        FanProfile {
+            first_name: user.first_name.clone(),
+            last_name: user.last_name.clone(),
+            email: user.email.clone(),
+            facebook_linked: true,
+            event_count: 2,
+            revenue_in_cents: 2210,
+            ticket_sales: 13,
+            profile_pic_url: user.profile_pic_url.clone(),
+            thumb_profile_pic_url: user.thumb_profile_pic_url.clone(),
+            cover_photo_url: user.cover_photo_url.clone(),
+            created_at: user.created_at,
+            attendance_information: vec![
+                AttendanceInformation {
+                    event_name: event.name.clone(),
+                    event_id: event.id,
+                    event_start: event.event_start
+                },
+                AttendanceInformation {
+                    event_name: event2.name.clone(),
+                    event_id: event2.id,
+                    event_start: event2.event_start
+                }
+            ],
+        }
+    );
+
+    // Purchased by other user and transferred
+    let mut cart = Order::find_or_create_cart(&user2, connection).unwrap();
+    cart.update_quantities(
+        user2.id,
+        &[UpdateOrderItem {
+            ticket_type_id: ticket_type3.id,
+            quantity: 1,
+            redemption_code: None,
+        }],
+        false,
+        false,
+        connection,
+    )
+    .unwrap();
+    assert_eq!(cart.calculate_total(connection).unwrap(), 170);
+    cart.add_external_payment(Some("test".to_string()), user2.id, 170, connection)
+        .unwrap();
+    assert_eq!(cart.status, OrderStatus::Paid);
+
+    // Redeem ticket from new event
+    let items = cart.items(&connection).unwrap();
+    let order_item = items
+        .iter()
+        .find(|i| i.ticket_type_id == Some(ticket_type3.id))
+        .unwrap();
+    let tickets = TicketInstance::find_for_order_item(order_item.id, connection).unwrap();
+    let ticket = &tickets[0];
+
+    let sender_wallet = Wallet::find_default_for_user(user2.id, connection).unwrap();
+    let receiver_wallet = Wallet::find_default_for_user(user.id, connection).unwrap();
+    let transfer_auth =
+        TicketInstance::authorize_ticket_transfer(user2.id, &vec![ticket.id], 3600, connection)
+            .unwrap();
+    TicketInstance::receive_ticket_transfer(
+        transfer_auth,
+        &sender_wallet,
+        receiver_wallet.id,
+        connection,
+    )
+    .unwrap();
+
+    TicketInstance::redeem_ticket(
+        ticket.id,
+        ticket.redeem_key.clone().unwrap(),
+        user.id,
+        connection,
+    )
+    .unwrap();
+    assert_eq!(
+        user.get_profile_for_organization(&organization, connection)
+            .unwrap(),
+        FanProfile {
+            first_name: user.first_name.clone(),
+            last_name: user.last_name.clone(),
+            email: user.email.clone(),
+            facebook_linked: true,
+            event_count: 2,
+            revenue_in_cents: 2210,
+            ticket_sales: 13,
+            profile_pic_url: user.profile_pic_url.clone(),
+            thumb_profile_pic_url: user.thumb_profile_pic_url.clone(),
+            cover_photo_url: user.cover_photo_url.clone(),
+            created_at: user.created_at,
+            attendance_information: vec![
+                AttendanceInformation {
+                    event_name: event.name.clone(),
+                    event_id: event.id,
+                    event_start: event.event_start
+                },
+                AttendanceInformation {
+                    event_name: event2.name.clone(),
+                    event_id: event2.id,
+                    event_start: event2.event_start
+                },
+                AttendanceInformation {
+                    event_name: event3.name.clone(),
+                    event_id: event3.id,
+                    event_start: event3.event_start
+                }
+            ],
         }
     );
 }

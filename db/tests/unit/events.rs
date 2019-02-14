@@ -467,7 +467,7 @@ fn find_by_ids() {
         vec![event2.clone()],
         Event::find_by_ids(vec![event2.id], connection).unwrap()
     );
-    assert_eq!(
+    assert_equiv!(
         Event::find_by_ids(vec![event.id, event2.id], connection).unwrap(),
         vec![event, event2]
     );
@@ -545,7 +545,7 @@ fn find_by_order_item_ids() {
     // Ticket belonging to both events
     let events =
         Event::find_by_order_item_ids(&vec![order_item.id, order_item2.id], connection).unwrap();
-    assert_eq!(events, vec![event, event2]);
+    assert_equiv!(events, vec![event, event2]);
 }
 
 #[test]
@@ -787,7 +787,7 @@ fn search() {
         project.get_connection(),
     )
     .unwrap();
-    assert_eq!(all_events, all_found_events);
+    assert_equiv!(all_events, all_found_events);
 
     // All events organization owner
     let all_found_events = Event::search(
@@ -805,7 +805,7 @@ fn search() {
         project.get_connection(),
     )
     .unwrap();
-    assert_eq!(all_events_for_organization, all_found_events);
+    assert_equiv!(all_events_for_organization, all_found_events);
 
     // All events organization user
     let all_found_events = Event::search(
@@ -823,7 +823,7 @@ fn search() {
         project.get_connection(),
     )
     .unwrap();
-    assert_eq!(all_events_for_organization, all_found_events);
+    assert_equiv!(all_events_for_organization, all_found_events);
 
     // All events normal user not part of event organization
     let all_found_events = Event::search(
@@ -841,7 +841,7 @@ fn search() {
         project.get_connection(),
     )
     .unwrap();
-    assert_eq!(all_events, all_found_events);
+    assert_equiv!(all_events, all_found_events);
 
     // All events for admin
     let all_found_events = Event::search(
@@ -859,7 +859,7 @@ fn search() {
         project.get_connection(),
     )
     .unwrap();
-    assert_eq!(all_events_for_admin, all_found_events);
+    assert_equiv!(all_events_for_admin, all_found_events);
 
     // No name specified
     let all_found_events = Event::search(
@@ -877,7 +877,7 @@ fn search() {
         project.get_connection(),
     )
     .unwrap();
-    assert_eq!(all_events, all_found_events);
+    assert_equiv!(all_events, all_found_events);
 
     // Limited by publicly accessible and specific to an organization
     let all_found_events = Event::search(
@@ -1050,7 +1050,7 @@ fn search() {
         project.get_connection(),
     )
     .unwrap();
-    assert_eq!(all_events, all_found_events);
+    assert_equiv!(all_events, all_found_events);
 
     // Match events belonging to given region
     let all_found_events = Event::search(
@@ -1342,7 +1342,7 @@ fn find_for_organization() {
         project.get_connection(),
     )
     .unwrap();
-    assert_eq!(
+    assert_equiv!(
         found_event_via_organizations
             .data
             .iter()
@@ -1361,7 +1361,7 @@ fn find_for_organization() {
         project.get_connection(),
     )
     .unwrap();
-    assert_eq!(
+    assert_equiv!(
         found_event_via_organizations
             .data
             .iter()
@@ -1380,7 +1380,7 @@ fn find_for_organization() {
         project.get_connection(),
     )
     .unwrap();
-    assert_eq!(
+    assert_equiv!(
         found_event_via_organizations
             .data
             .iter()
@@ -1545,7 +1545,7 @@ fn ticket_types() {
 
     let ticket_types = event.ticket_types(true, None, conn).unwrap();
 
-    assert_eq!(ticket_types, vec![ticket_type_ga, ticket_type_vip]);
+    assert_equiv!(ticket_types, vec![ticket_type_ga, ticket_type_vip]);
 }
 
 #[test]

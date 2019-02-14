@@ -15,6 +15,7 @@ use schema::{
 };
 use serde_with::rust::double_option;
 use std::borrow::Cow;
+use std::cmp::Ordering;
 use std::collections::HashMap;
 use time::Duration;
 use utils::errors::*;
@@ -58,6 +59,12 @@ pub struct Event {
     pub sendgrid_list_id: Option<i64>,
     pub event_type: EventTypes,
     pub cover_image_url: Option<String>,
+}
+
+impl PartialOrd for Event {
+    fn partial_cmp(&self, other: &Event) -> Option<Ordering> {
+        Some(self.id.cmp(&other.id))
+    }
 }
 
 #[derive(Default, Insertable, Serialize, Deserialize, Validate, Clone)]
