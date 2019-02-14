@@ -453,6 +453,102 @@ fn get_sales_by_date_range() {
 }
 
 #[test]
+fn find_by_ids() {
+    let project = TestProject::new();
+    let connection = project.get_connection();
+    let event = project.create_event().with_name("Event1".into()).finish();
+    let event2 = project.create_event().with_name("Event2".into()).finish();
+
+    assert_eq!(
+        vec![event.clone()],
+        Event::find_by_ids(vec![event.id], connection).unwrap()
+    );
+    assert_eq!(
+        vec![event2.clone()],
+        Event::find_by_ids(vec![event2.id], connection).unwrap()
+    );
+    assert_eq!(
+        Event::find_by_ids(vec![event.id, event2.id], connection).unwrap(),
+        vec![event, event2]
+    );
+}
+
+#[test]
+fn find_by_order_item_ids() {
+    let project = TestProject::new();
+    let creator = project.create_user().finish();
+    let connection = project.get_connection();
+    let organization = project
+        .create_organization()
+        .with_name("Organization1".into())
+        .with_fee_schedule(&project.create_fee_schedule().finish(creator.id))
+        .finish();
+    let organization2 = project
+        .create_organization()
+        .with_name("Organization2".into())
+        .with_fee_schedule(&project.create_fee_schedule().finish(creator.id))
+        .finish();
+    let event = project
+        .create_event()
+        .with_organization(&organization)
+        .with_tickets()
+        .with_ticket_pricing()
+        .finish();
+    let event2 = project
+        .create_event()
+        .with_organization(&organization2)
+        .with_tickets()
+        .with_ticket_pricing()
+        .finish();
+    let user = project.create_user().finish();
+    let mut cart = Order::find_or_create_cart(&user, connection).unwrap();
+    let ticket_type = &event.ticket_types(true, None, connection).unwrap()[0];
+    let ticket_type2 = &event2.ticket_types(true, None, connection).unwrap()[0];
+    cart.update_quantities(
+        user.id,
+        &[
+            UpdateOrderItem {
+                ticket_type_id: ticket_type.id,
+                quantity: 10,
+                redemption_code: None,
+            },
+            UpdateOrderItem {
+                ticket_type_id: ticket_type2.id,
+                quantity: 10,
+                redemption_code: None,
+            },
+        ],
+        false,
+        false,
+        connection,
+    )
+    .unwrap();
+
+    let items = cart.items(&connection).unwrap();
+    let order_item = items
+        .iter()
+        .find(|i| i.ticket_type_id == Some(ticket_type.id))
+        .unwrap();
+    let order_item2 = items
+        .iter()
+        .find(|i| i.ticket_type_id == Some(ticket_type2.id))
+        .unwrap();
+
+    // Ticket belonging to only first event / organization
+    let events = Event::find_by_order_item_ids(&vec![order_item.id], connection).unwrap();
+    assert_eq!(events, vec![event.clone()]);
+
+    // Ticket belonging to only second event / organization
+    let events = Event::find_by_order_item_ids(&vec![order_item2.id], connection).unwrap();
+    assert_eq!(events, vec![event2.clone()]);
+
+    // Ticket belonging to both events
+    let events =
+        Event::find_by_order_item_ids(&vec![order_item.id, order_item2.id], connection).unwrap();
+    assert_eq!(events, vec![event, event2]);
+}
+
+#[test]
 fn find_individuals() {
     let project = TestProject::new();
     let venue = project.create_venue().finish();
@@ -535,6 +631,7 @@ fn find_all_events_for_organization() {
     let events = Event::find_all_events_for_organization(
         organization.id,
         PastOrUpcoming::Past,
+        None,
         0,
         100,
         connection,
@@ -547,6 +644,7 @@ fn find_all_events_for_organization() {
     let events = Event::find_all_events_for_organization(
         organization.id,
         PastOrUpcoming::Upcoming,
+        None,
         0,
         100,
         connection,
@@ -1238,6 +1336,45 @@ fn find_for_organization() {
     let found_event_via_organizations = Event::find_all_events_for_organization(
         organization.id,
         PastOrUpcoming::Past,
+        None,
+        0,
+        100,
+        project.get_connection(),
+    )
+    .unwrap();
+    assert_eq!(
+        found_event_via_organizations
+            .data
+            .iter()
+            .map(|i| i.id)
+            .collect::<Vec<Uuid>>(),
+        all_events
+    );
+
+    // Restrict to just a subset of events
+    let found_event_via_organizations = Event::find_all_events_for_organization(
+        organization.id,
+        PastOrUpcoming::Past,
+        Some(vec![event.id]),
+        0,
+        100,
+        project.get_connection(),
+    )
+    .unwrap();
+    assert_eq!(
+        found_event_via_organizations
+            .data
+            .iter()
+            .map(|i| i.id)
+            .collect::<Vec<Uuid>>(),
+        vec![event.id]
+    );
+
+    // Returning both events
+    let found_event_via_organizations = Event::find_all_events_for_organization(
+        organization.id,
+        PastOrUpcoming::Past,
+        Some(vec![event.id, event2.id]),
         0,
         100,
         project.get_connection(),

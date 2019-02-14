@@ -9,6 +9,7 @@ use std::collections::HashMap;
 use std::str;
 use support::database::TestDatabase;
 use support::test_request::TestRequest;
+use uuid::Uuid;
 use validator::ValidationError;
 
 #[derive(Debug, Deserialize)]
@@ -55,8 +56,19 @@ pub fn create_auth_user_from_user(
             None => database.create_organization().finish(),
         };
 
+        let mut event_ids: Vec<Uuid> = Vec::new();
+        // Add all events for user access
+        if Roles::get_event_limited_roles().contains(&role) {
+            event_ids = organization
+                .events(database.connection.get())
+                .unwrap()
+                .iter()
+                .map(|e| e.id)
+                .collect();
+        }
+
         organization
-            .add_user(user.id, vec![role], database.connection.get())
+            .add_user(user.id, vec![role], event_ids, database.connection.get())
             .unwrap();
 
         AuthUser::new(user.clone(), &test_request.request).unwrap()

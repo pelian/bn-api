@@ -51,26 +51,26 @@ steps:
       when:
           event:
             exclude: [pull_request]
-
-    - name: restore-cache
-      depends_on:
-        - clone
-      image: plugins/s3-cache
-      settings:
-        restore: true
-        endpoint: http://minio1:9000
-        access_key:
-            from_secret: minio_access_key_id
-        secret_key:
-            from_secret: minio_secret_access_key
-        mount:
-            - ./target
-        fallback_path:
-            from_secret: cache_fallback_path
-        root: drone
-      when:
-          event: [pull_request, push]
-          branch: master
+#
+#    - name: restore-cache
+#      depends_on:
+#        - clone
+#      image: plugins/s3-cache
+#      settings:
+#        restore: true
+#        endpoint: http://minio1:9000
+#        access_key:
+#            from_secret: minio_access_key_id
+#        secret_key:
+#            from_secret: minio_secret_access_key
+#        mount:
+#            - ./target
+#        fallback_path:
+#            from_secret: cache_fallback_path
+#        root: drone
+#      when:
+#          event: [pull_request, push]
+#          branch: master
 
     - name: set-version
       depends_on:
@@ -86,7 +86,7 @@ steps:
 
     - name: compile
       depends_on:
-        - restore-cache
+        - clone
       image: rust:1.31.1
       environment: *env
       commands:
@@ -97,23 +97,23 @@ steps:
         event: [pull_request, push]
         branch: master
 
-    - name: rebuild-cache
-      depends_on:
-        - compile
-      image: plugins/s3-cache
-      settings:
-        rebuild: true
-        endpoint: http://minio1:9000
-        access_key:
-            from_secret: minio_access_key_id
-        secret_key:
-            from_secret: minio_secret_access_key
-        mount:
-            - ./target
-        root: drone
-      when:
-        event: [pull_request, push]
-        branch: master
+#    - name: rebuild-cache
+#      depends_on:
+#        - compile
+#      image: plugins/s3-cache
+#      settings:
+#        rebuild: true
+#        endpoint: http://minio1:9000
+#        access_key:
+#            from_secret: minio_access_key_id
+#        secret_key:
+#            from_secret: minio_secret_access_key
+#        mount:
+#            - ./target
+#        root: drone
+#      when:
+#        event: [pull_request, push]
+#        branch: master
 
 #    - name: cargo-audit
 #      depends_on:
@@ -282,6 +282,6 @@ services:
           branch: master
 ---
 kind: signature
-hmac: 4b55fa71764823d963811e8161456d6b49870d9ccdbf2bc98f177abe49909277
+hmac: ff51cb30b2c23e98f73685123e9d2c38ab487699ba374bcf3d2affb523fb8050
 
 ...

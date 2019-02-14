@@ -19,9 +19,9 @@ pub fn create(role: Roles, should_test_succeed: bool) {
     let database = TestDatabase::new();
     let user = database.create_user().finish();
     let organization = database.create_organization().finish();
+    let venue = database.create_venue().finish();
     let auth_user =
         support::create_auth_user_from_user(&user, role, Some(&organization), &database);
-    let venue = database.create_venue().finish();
 
     let name = "event Example";
     let new_event = NewEvent {
@@ -55,8 +55,6 @@ pub fn show_box_office_pricing(role: Roles, should_test_succeed: bool) {
     let conn = database.connection.get();
     let user = database.create_user().finish();
     let organization = database.create_organization().finish();
-    let auth_user =
-        support::create_auth_user_from_user(&user, role, Some(&organization), &database);
     let venue = database.create_venue().finish();
     let event = database
         .create_event()
@@ -81,10 +79,11 @@ pub fn show_box_office_pricing(role: Roles, should_test_succeed: bool) {
 
     let artist1 = database.create_artist().finish();
     let artist2 = database.create_artist().finish();
-
     event.add_artist(artist1.id, conn).unwrap();
     event.add_artist(artist2.id, conn).unwrap();
     let _event_interest = EventInterest::create(event.id, user.id).commit(conn);
+    let auth_user =
+        support::create_auth_user_from_user(&user, role, Some(&organization), &database);
 
     let test_request =
         TestRequest::create_with_uri(&format!("/events/{}?box_office_pricing=true", event.id));
@@ -117,12 +116,12 @@ pub fn update(role: Roles, should_test_succeed: bool) {
     let database = TestDatabase::new();
     let user = database.create_user().finish();
     let organization = database.create_organization().finish();
-    let auth_user =
-        support::create_auth_user_from_user(&user, role, Some(&organization), &database);
     let event = database
         .create_event()
         .with_organization(&organization)
         .finish();
+    let auth_user =
+        support::create_auth_user_from_user(&user, role, Some(&organization), &database);
 
     let new_name = "New Event Name";
     let test_request = TestRequest::create();
@@ -150,13 +149,13 @@ pub fn cancel(role: Roles, should_test_succeed: bool) {
     let database = TestDatabase::new();
     let user = database.create_user().finish();
     let organization = database.create_organization().finish();
-    let auth_user =
-        support::create_auth_user_from_user(&user, role, Some(&organization), &database);
-
     let event = database
         .create_event()
         .with_organization(&organization)
         .finish();
+    let auth_user =
+        support::create_auth_user_from_user(&user, role, Some(&organization), &database);
+
     let test_request = TestRequest::create();
     let mut path = Path::<PathParameters>::extract(&test_request.request).unwrap();
     path.id = event.id;
@@ -177,9 +176,6 @@ pub fn add_artist(role: Roles, should_test_succeed: bool) {
     let database = TestDatabase::new();
     let user = database.create_user().finish();
     let organization = database.create_organization().finish();
-    let auth_user =
-        support::create_auth_user_from_user(&user, role, Some(&organization), &database);
-
     let event = database
         .create_event()
         .with_organization(&organization)
@@ -188,9 +184,10 @@ pub fn add_artist(role: Roles, should_test_succeed: bool) {
         .create_artist()
         .with_organization(&organization)
         .finish();
+    let auth_user =
+        support::create_auth_user_from_user(&user, role, Some(&organization), &database);
 
     let test_request = TestRequest::create();
-
     let new_event_artist = AddArtistRequest {
         artist_id: artist.id,
         rank: 5,
@@ -313,8 +310,8 @@ pub fn remove_interest(role: Roles, should_test_succeed: bool) {
     EventInterest::create(event.id, user.id)
         .commit(database.connection.get())
         .unwrap();
-
     let user = support::create_auth_user_from_user(&user, role, None, &database);
+
     let test_request = TestRequest::create();
 
     let mut path = Path::<PathParameters>::extract(&test_request.request).unwrap();
@@ -336,17 +333,16 @@ pub fn update_artists(role: Roles, should_test_succeed: bool) {
     let database = TestDatabase::new();
     let user = database.create_user().finish();
     let organization = database.create_organization().finish();
-    let auth_user =
-        support::create_auth_user_from_user(&user, role, Some(&organization), &database);
-
     let event = database
         .create_event()
         .with_organization(&organization)
         .finish();
     let artist1 = database.create_artist().finish();
     let artist2 = database.create_artist().finish();
-    let test_request = TestRequest::create();
+    let auth_user =
+        support::create_auth_user_from_user(&user, role, Some(&organization), &database);
 
+    let test_request = TestRequest::create();
     let mut path = Path::<PathParameters>::extract(&test_request.request).unwrap();
     path.id = event.id;
 
@@ -386,15 +382,12 @@ pub fn update_artists(role: Roles, should_test_succeed: bool) {
 pub fn dashboard(role: Roles, should_test_succeed: bool) {
     let database = TestDatabase::new();
     let admin = database.create_user().finish();
-
     let connection = database.connection.get();
     let user = database.create_user().finish();
     let organization = database
         .create_organization()
         .with_fee_schedule(&database.create_fee_schedule().finish(admin.id))
         .finish();
-    let auth_user =
-        support::create_auth_user_from_user(&user, role, Some(&organization), &database);
     let event = database
         .create_event()
         .with_organization(&organization)
@@ -404,6 +397,8 @@ pub fn dashboard(role: Roles, should_test_succeed: bool) {
         .with_ticket_pricing()
         .finish();
     let ticket_type = &event.ticket_types(true, None, connection).unwrap()[0];
+    let auth_user =
+        support::create_auth_user_from_user(&user, role, Some(&organization), &database);
 
     // user purchases 10 tickets
     let mut cart = Order::find_or_create_cart(&user, connection).unwrap();
@@ -471,9 +466,6 @@ pub fn guest_list(role: Roles, should_test_succeed: bool) {
     let database = TestDatabase::new();
     let user = database.create_user().finish();
     let organization = database.create_organization().finish();
-    let auth_user =
-        support::create_auth_user_from_user(&user, role, Some(&organization), &database);
-
     let event = database
         .create_event()
         .with_organization(&organization)
@@ -481,6 +473,8 @@ pub fn guest_list(role: Roles, should_test_succeed: bool) {
         .finish();
     database.create_order().for_event(&event).is_paid().finish();
     database.create_order().for_event(&event).is_paid().finish();
+    let auth_user =
+        support::create_auth_user_from_user(&user, role, Some(&organization), &database);
 
     let test_request = TestRequest::create_with_uri(&format!("/events/{}/guest?query=", event.id,));
     let query_parameters =
@@ -507,8 +501,6 @@ pub fn codes(role: Roles, should_test_succeed: bool) {
     let connection = database.connection.get();
     let user = database.create_user().finish();
     let organization = database.create_organization().finish();
-    let auth_user =
-        support::create_auth_user_from_user(&user, role, Some(&organization), &database);
     let event = database
         .create_event()
         .with_organization(&organization)
@@ -538,10 +530,11 @@ pub fn codes(role: Roles, should_test_succeed: bool) {
         .finish()
         .for_display(connection)
         .unwrap();
-
+    let auth_user =
+        support::create_auth_user_from_user(&user, role, Some(&organization), &database);
     let all_discounts = vec![code, code2];
-    let test_request = TestRequest::create();
 
+    let test_request = TestRequest::create();
     let mut path = Path::<PathParameters>::extract(&test_request.request).unwrap();
     path.id = event.id;
     let test_request = TestRequest::create_with_uri(&format!("/codes?type=Discount"));
@@ -581,17 +574,13 @@ pub fn codes(role: Roles, should_test_succeed: bool) {
 
 pub fn holds(role: Roles, should_test_succeed: bool) {
     let database = TestDatabase::new();
-
     let user = database.create_user().finish();
     let organization = database.create_organization().finish();
-    let auth_user =
-        support::create_auth_user_from_user(&user, role, Some(&organization), &database);
     let event = database
         .create_event()
         .with_organization(&organization)
         .with_ticket_pricing()
         .finish();
-
     let hold = database
         .create_hold()
         .with_name("Hold 1".to_string())
@@ -602,6 +591,8 @@ pub fn holds(role: Roles, should_test_succeed: bool) {
         .with_name("Hold 2".to_string())
         .with_event(&event)
         .finish();
+    let auth_user =
+        support::create_auth_user_from_user(&user, role, Some(&organization), &database);
 
     #[derive(Serialize)]
     struct R {

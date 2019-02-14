@@ -27,6 +27,7 @@ pub struct InviteResponseQuery {
 pub struct NewOrgInviteRequest {
     pub user_email: String,
     pub roles: Vec<Roles>,
+    pub event_ids: Option<Vec<Uuid>>,
 }
 
 pub fn create(
@@ -63,6 +64,16 @@ pub fn create(
                 connection,
             )?,
             &Roles::OrgBoxOffice => auth_user.requires_scope_for_organization(
+                Scopes::OrgUsers,
+                &organization,
+                connection,
+            )?,
+            &Roles::Promoter => auth_user.requires_scope_for_organization(
+                Scopes::OrgUsers,
+                &organization,
+                connection,
+            )?,
+            &Roles::PromoterReadOnly => auth_user.requires_scope_for_organization(
                 Scopes::OrgUsers,
                 &organization,
                 connection,
@@ -105,6 +116,7 @@ pub fn create(
         new_org_invite.user_email.as_str(),
         user_id,
         new_org_invite.roles.clone(),
+        new_org_invite.event_ids.clone(),
     );
 
     let invite = invite.commit(connection)?;
@@ -177,6 +189,16 @@ pub fn destroy(
                 &organization,
                 connection,
             )?,
+            &Roles::Promoter => auth_user.requires_scope_for_organization(
+                Scopes::OrgUsers,
+                &organization,
+                connection,
+            )?,
+            &Roles::PromoterReadOnly => auth_user.requires_scope_for_organization(
+                Scopes::OrgUsers,
+                &organization,
+                connection,
+            )?,
             // Should not happen but if it ever did allow admin to destroy record
             _ => auth_user.requires_scope_for_organization(
                 Scopes::OrgAdmin,
@@ -226,7 +248,12 @@ pub fn accept_request(
             if valid_for_acceptance {
                 invite_details.change_invite_status(1, connection)?;
                 let org = Organization::find(invite_details.organization_id, connection)?;
-                org.add_user(u.id(), invite_details.roles, connection)?;
+                org.add_user(
+                    u.id(),
+                    invite_details.roles,
+                    invite_details.event_ids,
+                    connection,
+                )?;
             } else {
                 return application::unauthorized(Some(u), None);
             }

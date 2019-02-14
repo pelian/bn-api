@@ -14,12 +14,13 @@ pub fn create(role: Roles, should_test_succeed: bool) {
     let database = TestDatabase::new();
     let user = database.create_user().finish();
     let organization = database.create_organization().finish();
-    let auth_user =
-        support::create_auth_user_from_user(&user, role, Some(&organization), &database);
     let event = database
         .create_event()
         .with_organization(&organization)
         .finish();
+    let auth_user =
+        support::create_auth_user_from_user(&user, role, Some(&organization), &database);
+
     //Construct Ticket creation and pricing request
     let test_request = TestRequest::create();
     let state = test_request.extract_state();
@@ -75,14 +76,14 @@ pub fn update(role: Roles, should_test_succeed: bool) {
     let request = TestRequest::create();
     let user = database.create_user().finish();
     let organization = database.create_organization().finish();
-    let auth_user =
-        support::create_auth_user_from_user(&user, role, Some(&organization), &database);
     let event = database
         .create_event()
         .with_organization(&organization)
         .with_tickets()
         .with_ticket_pricing()
         .finish();
+    let auth_user =
+        support::create_auth_user_from_user(&user, role, Some(&organization), &database);
 
     //Retrieve created ticket type and pricing
     let conn = database.connection.get();
@@ -190,14 +191,14 @@ pub fn cancel(role: Roles, should_test_succeed: bool) {
     let database = TestDatabase::new();
     let user = database.create_user().finish();
     let organization = database.create_organization().finish();
-    let auth_user =
-        support::create_auth_user_from_user(&user, role, Some(&organization), &database);
     let event = database
         .create_event()
         .with_organization(&organization)
         .with_tickets()
         .with_ticket_pricing()
         .finish();
+    let auth_user =
+        support::create_auth_user_from_user(&user, role, Some(&organization), &database);
 
     let conn = database.connection.get();
     let created_ticket_type = &event.ticket_types(true, None, conn).unwrap()[0];
@@ -238,14 +239,13 @@ pub fn index(role: Roles, should_test_succeed: bool) {
     let organization = database.create_organization().finish();
     let conn = database.connection.get();
     let fee_schedule = FeeSchedule::find(organization.fee_schedule_id, conn).unwrap();
-    let auth_user =
-        support::create_auth_user_from_user(&user, role, Some(&organization), &database);
-
     let event = database
         .create_event()
         .with_organization(&organization)
         .with_ticket_pricing()
         .finish();
+    let auth_user =
+        support::create_auth_user_from_user(&user, role, Some(&organization), &database);
 
     let mut path = Path::<PathParameters>::extract(&request.request).unwrap();
     path.id = event.id;

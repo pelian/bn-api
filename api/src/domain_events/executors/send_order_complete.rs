@@ -89,7 +89,7 @@ impl SendOrderCompleteExecutor {
                 }
         }
 
-        let display_order = order.for_display(None, conn)?;
+        let display_order = order.for_display(None, order.user_id, conn)?;
 
         let user = User::find(order.on_behalf_of_user_id.unwrap_or(order.user_id), conn)?;
 

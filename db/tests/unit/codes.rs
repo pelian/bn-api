@@ -427,6 +427,16 @@ fn update_ticket_types() {
 }
 
 #[test]
+fn event() {
+    let project = TestProject::new();
+    let connection = project.get_connection();
+    let event = project.create_event().finish();
+    let code = project.create_code().with_event(&event).finish();
+
+    assert_eq!(code.event(connection).unwrap(), event);
+}
+
+#[test]
 fn organization() {
     let project = TestProject::new();
     let connection = project.get_connection();

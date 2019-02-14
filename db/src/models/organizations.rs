@@ -254,7 +254,7 @@ impl Organization {
     }
 
     pub fn find_by_order_item_ids(
-        order_item_ids: Vec<Uuid>,
+        order_item_ids: &Vec<Uuid>,
         conn: &PgConnection,
     ) -> Result<Vec<Organization>, DatabaseError> {
         organizations::table
@@ -512,9 +512,10 @@ impl Organization {
         &self,
         user_id: Uuid,
         role: Vec<Roles>,
+        event_ids: Vec<Uuid>,
         conn: &PgConnection,
     ) -> Result<OrganizationUser, DatabaseError> {
-        let org_user = OrganizationUser::create(self.id, user_id, role).commit(conn)?;
+        let org_user = OrganizationUser::create(self.id, user_id, role, event_ids).commit(conn)?;
         Ok(org_user)
     }
 

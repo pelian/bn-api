@@ -430,6 +430,89 @@ fn find() {
 }
 
 #[test]
+fn get_event_ids_by_organization() {
+    let project = TestProject::new();
+    let connection = project.get_connection();
+    let user = project.create_user().finish();
+
+    // No results
+    assert_eq!(
+        HashMap::new(),
+        user.get_event_ids_by_organization(connection).unwrap()
+    );
+
+    let organization = project
+        .create_organization()
+        .with_name("Organization1".into())
+        .finish();
+    let organization2 = project
+        .create_organization()
+        .with_name("Organization2".into())
+        .finish();
+    let organization3 = project
+        .create_organization()
+        .with_name("Organization3".into())
+        .with_member(&user, Roles::OrgAdmin)
+        .finish();
+
+    let event = project
+        .create_event()
+        .with_organization(&organization)
+        .finish();
+    let event2 = project
+        .create_event()
+        .with_organization(&organization2)
+        .finish();
+    let event3 = project
+        .create_event()
+        .with_organization(&organization2)
+        .finish();
+
+    OrganizationUser::create(
+        organization.id,
+        user.id,
+        vec![Roles::Promoter],
+        vec![event.id],
+    )
+    .commit(connection)
+    .unwrap();
+    OrganizationUser::create(
+        organization2.id,
+        user.id,
+        vec![Roles::Promoter],
+        vec![event2.id, event3.id],
+    )
+    .commit(connection)
+    .unwrap();
+
+    let mut expected_results = HashMap::new();
+    expected_results.insert(organization.id.clone(), vec![event.id]);
+    expected_results.insert(organization2.id.clone(), vec![event2.id, event3.id]);
+    expected_results.insert(organization3.id.clone(), Vec::new());
+
+    assert_eq!(
+        expected_results,
+        user.get_event_ids_by_organization(connection).unwrap()
+    );
+
+    // get_event_ids_for_organization
+    assert_eq!(
+        vec![event.id],
+        user.get_event_ids_for_organization(organization.id, connection)
+            .unwrap()
+    );
+    assert_eq!(
+        vec![event2.id, event3.id],
+        user.get_event_ids_for_organization(organization2.id, connection)
+            .unwrap()
+    );
+    assert!(user
+        .get_event_ids_for_organization(organization3.id, connection)
+        .unwrap()
+        .is_empty());
+}
+
+#[test]
 fn payment_method() {
     let project = TestProject::new();
     let user = project.create_user().finish();
@@ -779,6 +862,7 @@ fn get_scopes_by_organization() {
             Scopes::CompRead,
             Scopes::CompWrite,
             Scopes::DashboardRead,
+            Scopes::EventCancel,
             Scopes::EventFinancialReports,
             Scopes::EventInterest,
             Scopes::EventReports,
@@ -801,6 +885,8 @@ fn get_scopes_by_organization() {
             Scopes::TicketAdmin,
             Scopes::TicketRead,
             Scopes::TicketTransfer,
+            Scopes::TicketTypeRead,
+            Scopes::TicketTypeWrite,
             Scopes::UserRead,
             Scopes::VenueWrite,
         ],
@@ -816,6 +902,7 @@ fn get_scopes_by_organization() {
             Scopes::CompRead,
             Scopes::CompWrite,
             Scopes::DashboardRead,
+            Scopes::EventCancel,
             Scopes::EventInterest,
             Scopes::EventScan,
             Scopes::EventViewGuests,
@@ -831,6 +918,8 @@ fn get_scopes_by_organization() {
             Scopes::TicketAdmin,
             Scopes::TicketRead,
             Scopes::TicketTransfer,
+            Scopes::TicketTypeRead,
+            Scopes::TicketTypeWrite,
             Scopes::VenueWrite,
         ],
     );
@@ -885,6 +974,7 @@ fn get_global_scopes() {
             "comp:read",
             "comp:write",
             "dashboard:read",
+            "event:cancel",
             "event:financial-reports",
             "event:interest",
             "event:reports",
@@ -910,6 +1000,8 @@ fn get_global_scopes() {
             "ticket:admin",
             "ticket:read",
             "ticket:transfer",
+            "ticket-type:read",
+            "ticket-type:write",
             "user:read",
             "venue:write"
         ]

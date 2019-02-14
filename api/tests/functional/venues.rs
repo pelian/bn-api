@@ -82,6 +82,7 @@ fn index_with_org_linked_and_private_venues() {
     let _ = organization.add_user(
         auth_user.id(),
         vec![Roles::OrgMember],
+        Vec::new(),
         database.connection.get(),
     );
     expected_venues.push(venue4);
@@ -149,6 +150,14 @@ mod index_tests {
         base::venues::index(Roles::DoorPerson, true);
     }
     #[test]
+    fn index_promoter() {
+        base::venues::index(Roles::Promoter, true);
+    }
+    #[test]
+    fn index_promoter_read_only() {
+        base::venues::index(Roles::PromoterReadOnly, true);
+    }
+    #[test]
     fn index_org_admin() {
         base::venues::index(Roles::OrgAdmin, true);
     }
@@ -182,6 +191,14 @@ mod create_tests {
         base::venues::create(Roles::DoorPerson, false);
     }
     #[test]
+    fn create_promoter() {
+        base::venues::create(Roles::Promoter, false);
+    }
+    #[test]
+    fn create_promoter_read_only() {
+        base::venues::create(Roles::PromoterReadOnly, false);
+    }
+    #[test]
     fn create_org_admin() {
         base::venues::create(Roles::OrgAdmin, false);
     }
@@ -208,6 +225,14 @@ mod create_tests {
     #[test]
     fn create_with_organization_door_person() {
         base::venues::create_with_organization(Roles::DoorPerson, false);
+    }
+    #[test]
+    fn create_with_organization_promoter() {
+        base::venues::create_with_organization(Roles::Promoter, false);
+    }
+    #[test]
+    fn create_with_organization_promoter_read_only() {
+        base::venues::create_with_organization(Roles::PromoterReadOnly, false);
     }
     #[test]
     fn create_with_organization_org_admin() {
@@ -243,6 +268,14 @@ mod toggle_privacy_tests {
         base::venues::toggle_privacy(Roles::DoorPerson, false);
     }
     #[test]
+    fn toggle_privacy_promoter() {
+        base::venues::toggle_privacy(Roles::Promoter, false);
+    }
+    #[test]
+    fn toggle_privacy_promoter_read_only() {
+        base::venues::toggle_privacy(Roles::PromoterReadOnly, false);
+    }
+    #[test]
     fn toggle_privacy_org_admin() {
         base::venues::toggle_privacy(Roles::OrgAdmin, false);
     }
@@ -276,6 +309,14 @@ mod update_tests {
         base::venues::update(Roles::DoorPerson, false);
     }
     #[test]
+    fn update_promoter() {
+        base::venues::update(Roles::Promoter, false);
+    }
+    #[test]
+    fn update_promoter_read_only() {
+        base::venues::update(Roles::PromoterReadOnly, false);
+    }
+    #[test]
     fn update_org_admin() {
         base::venues::update(Roles::OrgAdmin, false);
     }
@@ -283,6 +324,11 @@ mod update_tests {
     fn update_box_office() {
         base::venues::update(Roles::OrgBoxOffice, false);
     }
+}
+
+#[cfg(test)]
+mod update_with_organization_tests {
+    use super::*;
     #[test]
     fn update_with_organization_org_member() {
         base::venues::update_with_organization(Roles::OrgMember, true, true);
@@ -300,6 +346,31 @@ mod update_tests {
         base::venues::update_with_organization(Roles::OrgOwner, true, true);
     }
     #[test]
+    fn update_with_organization_door_person() {
+        base::venues::update_with_organization(Roles::DoorPerson, false, true);
+    }
+    #[test]
+    fn update_with_organization_promoter() {
+        base::venues::update_with_organization(Roles::Promoter, false, true);
+    }
+    #[test]
+    fn update_with_organization_promoter_read_only() {
+        base::venues::update_with_organization(Roles::PromoterReadOnly, false, true);
+    }
+    #[test]
+    fn update_with_organization_org_admin() {
+        base::venues::update_with_organization(Roles::OrgAdmin, true, true);
+    }
+    #[test]
+    fn update_with_organization_box_office() {
+        base::venues::update_with_organization(Roles::OrgBoxOffice, false, true);
+    }
+}
+
+#[cfg(test)]
+mod update_public_venue_with_organization_tests {
+    use super::*;
+    #[test]
     fn update_public_venue_with_organization_org_member() {
         base::venues::update_with_organization(Roles::OrgMember, false, false);
     }
@@ -316,15 +387,23 @@ mod update_tests {
         base::venues::update_with_organization(Roles::OrgOwner, false, false);
     }
     #[test]
-    fn update_with_organization_door_person() {
+    fn update_public_with_organization_door_person() {
         base::venues::update_with_organization(Roles::DoorPerson, false, false);
     }
     #[test]
-    fn update_with_organization_org_admin() {
-        base::venues::update_with_organization(Roles::OrgAdmin, true, true);
+    fn update_public_with_organization_promoter() {
+        base::venues::update_with_organization(Roles::Promoter, false, false);
     }
     #[test]
-    fn update_with_organization_box_office() {
+    fn update_public_with_organization_promoter_read_only() {
+        base::venues::update_with_organization(Roles::PromoterReadOnly, false, false);
+    }
+    #[test]
+    fn update_public_with_organization_org_admin() {
+        base::venues::update_with_organization(Roles::OrgAdmin, false, false);
+    }
+    #[test]
+    fn update_public_with_organization_box_office() {
         base::venues::update_with_organization(Roles::OrgBoxOffice, false, false);
     }
 }
@@ -355,6 +434,14 @@ mod show_from_organizations_tests {
     #[test]
     fn show_from_organizations_door_person() {
         base::venues::show_from_organizations(Some(Roles::DoorPerson), true);
+    }
+    #[test]
+    fn show_from_organizations_promoter() {
+        base::venues::show_from_organizations(Some(Roles::Promoter), true);
+    }
+    #[test]
+    fn show_from_organizations_promoter_read_only() {
+        base::venues::show_from_organizations(Some(Roles::PromoterReadOnly), true);
     }
     #[test]
     fn show_from_organizations_org_admin() {
@@ -454,6 +541,14 @@ mod add_to_organization_tests {
     #[test]
     fn add_to_organization_door_person() {
         base::venues::add_to_organization(Roles::DoorPerson, false);
+    }
+    #[test]
+    fn add_to_organization_promoter() {
+        base::venues::add_to_organization(Roles::Promoter, false);
+    }
+    #[test]
+    fn add_to_organization_promoter_read_only() {
+        base::venues::add_to_organization(Roles::PromoterReadOnly, false);
     }
     #[test]
     fn add_to_organization_org_admin() {

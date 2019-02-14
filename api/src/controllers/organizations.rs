@@ -18,6 +18,7 @@ const LOG_TARGET: &'static str = "bigneon::controllers::organizations";
 pub struct AddUserRequest {
     pub user_id: Uuid,
     pub roles: Vec<Roles>,
+    pub event_ids: Option<Vec<Uuid>>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -290,11 +291,22 @@ pub fn add_or_replace_user(
             Roles::OrgBoxOffice => {
                 user.requires_scope_for_organization(Scopes::OrgUsers, &organization, connection)?
             }
+            Roles::Promoter => {
+                user.requires_scope_for_organization(Scopes::OrgUsers, &organization, connection)?
+            }
+            Roles::PromoterReadOnly => {
+                user.requires_scope_for_organization(Scopes::OrgUsers, &organization, connection)?
+            }
             _ => return application::forbidden("Role is not allowed for this user"),
         };
     }
 
-    organization.add_user(req.user_id, req.roles, connection)?;
+    organization.add_user(
+        req.user_id,
+        req.roles,
+        req.event_ids.unwrap_or(Vec::new()),
+        connection,
+    )?;
     Ok(HttpResponse::Created().finish())
 }
 

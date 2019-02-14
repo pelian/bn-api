@@ -353,6 +353,14 @@ impl Hold {
         TicketInstance::count_for_hold(self.id, self.ticket_type_id, conn)
     }
 
+    pub fn event(&self, conn: &PgConnection) -> Result<Event, DatabaseError> {
+        use schema::*;
+        events::table
+            .filter(events::id.eq(self.event_id))
+            .first(conn)
+            .to_db_error(ErrorCode::QueryError, "Could not load event for code")
+    }
+
     pub fn organization(&self, conn: &PgConnection) -> Result<Organization, DatabaseError> {
         use schema::*;
         events::table

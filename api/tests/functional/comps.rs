@@ -34,6 +34,14 @@ mod index_tests {
         base::comps::index(Roles::DoorPerson, false);
     }
     #[test]
+    fn index_promoter() {
+        base::comps::index(Roles::Promoter, true);
+    }
+    #[test]
+    fn index_promoter_read_only() {
+        base::comps::index(Roles::PromoterReadOnly, true);
+    }
+    #[test]
     fn index_org_admin() {
         base::comps::index(Roles::OrgAdmin, true);
     }
@@ -65,6 +73,14 @@ mod show_tests {
     #[test]
     fn show_door_person() {
         base::comps::show(Roles::DoorPerson, false);
+    }
+    #[test]
+    fn show_promoter() {
+        base::comps::show(Roles::Promoter, true);
+    }
+    #[test]
+    fn show_promoter_read_only() {
+        base::comps::show(Roles::PromoterReadOnly, true);
     }
     #[test]
     fn show_org_admin() {
@@ -100,6 +116,14 @@ mod create_tests {
         base::comps::create(Roles::DoorPerson, false);
     }
     #[test]
+    fn create_promoter() {
+        base::comps::create(Roles::Promoter, true);
+    }
+    #[test]
+    fn create_promoter_read_only() {
+        base::comps::create(Roles::PromoterReadOnly, false);
+    }
+    #[test]
     fn create_org_admin() {
         base::comps::create(Roles::OrgAdmin, true);
     }
@@ -133,6 +157,14 @@ mod update_tests {
         base::comps::update(Roles::DoorPerson, false);
     }
     #[test]
+    fn update_promoter() {
+        base::comps::update(Roles::Promoter, true);
+    }
+    #[test]
+    fn update_promoter_read_only() {
+        base::comps::update(Roles::PromoterReadOnly, false);
+    }
+    #[test]
     fn update_org_admin() {
         base::comps::update(Roles::OrgAdmin, true);
     }
@@ -164,6 +196,14 @@ mod destroy_tests {
     #[test]
     fn destroy_door_person() {
         base::comps::destroy(Roles::DoorPerson, false);
+    }
+    #[test]
+    fn destroy_promoter() {
+        base::comps::destroy(Roles::Promoter, true);
+    }
+    #[test]
+    fn destroy_promoter_read_only() {
+        base::comps::destroy(Roles::PromoterReadOnly, false);
     }
     #[test]
     fn destroy_org_admin() {

@@ -26,6 +26,6 @@ WHERE e.organization_id = $1
         WHEN $2 IS NULL THEN TRUE -- All events
         WHEN $2 THEN e.event_start >= now() OR e.event_end > now() -- upcoming
         ELSE e.event_end <= now() END -- past
-  AND ($3 IS NULL or e.id = $3)
+  AND ($3 IS NULL or e.id = ANY($3))
   AND ti.status <> 'Nullified'
 GROUP BY t2.name, t2.id, t2.event_id;

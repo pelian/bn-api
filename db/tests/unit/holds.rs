@@ -340,6 +340,16 @@ fn set_quantity() {
 }
 
 #[test]
+fn event() {
+    let project = TestProject::new();
+    let connection = project.get_connection();
+    let event = project.create_event().with_ticket_pricing().finish();
+    let hold = project.create_hold().with_event(&event).finish();
+
+    assert_eq!(hold.event(connection).unwrap(), event);
+}
+
+#[test]
 fn organization() {
     let project = TestProject::new();
     let connection = project.get_connection();

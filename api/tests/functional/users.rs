@@ -16,37 +16,38 @@ use bigneon_api::errors::BigNeonError;
 #[cfg(test)]
 mod history_tests {
     use super::*;
-
     #[test]
     fn history_org_member() {
         base::users::history(Roles::OrgMember, true);
     }
-
     #[test]
     fn history_admin() {
         base::users::history(Roles::Admin, true);
     }
-
     #[test]
     fn history_user() {
         base::users::history(Roles::User, false);
     }
-
     #[test]
     fn history_org_owner() {
         base::users::history(Roles::OrgOwner, true);
     }
-
     #[test]
     fn history_door_person() {
         base::users::history(Roles::DoorPerson, false);
     }
-
+    #[test]
+    fn history_promoter() {
+        base::users::history(Roles::Promoter, false);
+    }
+    #[test]
+    fn history_promoter_read_only() {
+        base::users::history(Roles::PromoterReadOnly, false);
+    }
     #[test]
     fn history_org_admin() {
         base::users::history(Roles::OrgAdmin, true);
     }
-
     #[test]
     fn history_box_office() {
         base::users::history(Roles::OrgBoxOffice, false);
@@ -56,37 +57,38 @@ mod history_tests {
 #[cfg(test)]
 mod profile_tests {
     use super::*;
-
     #[test]
     fn profile_org_member() {
         base::users::profile(Roles::OrgMember, true);
     }
-
     #[test]
     fn profile_admin() {
         base::users::profile(Roles::Admin, true);
     }
-
     #[test]
     fn profile_user() {
         base::users::profile(Roles::User, false);
     }
-
     #[test]
     fn profile_org_owner() {
         base::users::profile(Roles::OrgOwner, true);
     }
-
     #[test]
     fn profile_door_person() {
         base::users::profile(Roles::DoorPerson, false);
     }
-
+    #[test]
+    fn profile_promoter() {
+        base::users::profile(Roles::Promoter, false);
+    }
+    #[test]
+    fn profile_promoter_read_only() {
+        base::users::profile(Roles::PromoterReadOnly, false);
+    }
     #[test]
     fn profile_org_admin() {
         base::users::profile(Roles::OrgAdmin, true);
     }
-
     #[test]
     fn profile_box_office() {
         base::users::profile(Roles::OrgBoxOffice, false);
@@ -96,37 +98,38 @@ mod profile_tests {
 #[cfg(test)]
 mod user_list_organizations_tests {
     use super::*;
-
     #[test]
     fn list_organizations_org_member() {
         base::users::list_organizations(Roles::OrgMember, false);
     }
-
     #[test]
     fn list_organizations_admin() {
         base::users::list_organizations(Roles::Admin, true);
     }
-
     #[test]
     fn list_organizations_user() {
         base::users::list_organizations(Roles::User, false);
     }
-
     #[test]
     fn list_organizations_org_owner() {
         base::users::list_organizations(Roles::OrgOwner, false);
     }
-
     #[test]
     fn list_organizations_door_person() {
         base::users::list_organizations(Roles::DoorPerson, false);
     }
-
+    #[test]
+    fn list_organizations_promoter() {
+        base::users::list_organizations(Roles::Promoter, false);
+    }
+    #[test]
+    fn list_organizations_promoter_read_only() {
+        base::users::list_organizations(Roles::PromoterReadOnly, false);
+    }
     #[test]
     fn list_organizations_org_admin() {
         base::users::list_organizations(Roles::OrgAdmin, false);
     }
-
     #[test]
     fn list_organizations_box_office() {
         base::users::list_organizations(Roles::OrgBoxOffice, false);
@@ -136,37 +139,38 @@ mod user_list_organizations_tests {
 #[cfg(test)]
 mod show_push_notification_tokens_for_user_id_tests {
     use super::*;
-
     #[test]
     fn show_push_notification_tokens_for_user_id_org_member() {
         base::users::show_push_notification_tokens_for_user_id(Roles::OrgMember, false);
     }
-
     #[test]
     fn show_push_notification_tokens_for_user_id_admin() {
         base::users::show_push_notification_tokens_for_user_id(Roles::Admin, true);
     }
-
     #[test]
     fn show_push_notification_tokens_for_user_id_user() {
         base::users::show_push_notification_tokens_for_user_id(Roles::User, false);
     }
-
     #[test]
     fn show_push_notification_tokens_for_user_id_org_owner() {
         base::users::show_push_notification_tokens_for_user_id(Roles::OrgOwner, false);
     }
-
     #[test]
     fn show_push_notification_tokens_for_user_id_door_person() {
         base::users::show_push_notification_tokens_for_user_id(Roles::DoorPerson, false);
     }
-
+    #[test]
+    fn show_push_notification_tokens_for_user_id_promoter() {
+        base::users::show_push_notification_tokens_for_user_id(Roles::Promoter, false);
+    }
+    #[test]
+    fn show_push_notification_tokens_for_user_id_promoter_read_only() {
+        base::users::show_push_notification_tokens_for_user_id(Roles::PromoterReadOnly, false);
+    }
     #[test]
     fn show_push_notification_tokens_for_user_id_org_admin() {
         base::users::show_push_notification_tokens_for_user_id(Roles::OrgAdmin, false);
     }
-
     #[test]
     fn show_push_notification_tokens_for_user_id_box_office() {
         base::users::show_push_notification_tokens_for_user_id(Roles::OrgBoxOffice, false);
@@ -176,37 +180,38 @@ mod show_push_notification_tokens_for_user_id_tests {
 #[cfg(test)]
 mod show_push_notification_tokens_tests {
     use super::*;
-
     #[test]
     fn show_push_notification_tokens_org_member() {
         base::users::show_push_notification_tokens(Roles::OrgMember, true);
     }
-
     #[test]
     fn show_push_notification_tokens_admin() {
         base::users::show_push_notification_tokens(Roles::Admin, true);
     }
-
     #[test]
     fn show_push_notification_tokens_user() {
         base::users::show_push_notification_tokens(Roles::User, true);
     }
-
     #[test]
     fn show_push_notification_tokens_org_owner() {
         base::users::show_push_notification_tokens(Roles::OrgOwner, true);
     }
-
     #[test]
     fn show_push_notification_tokens_door_person() {
         base::users::show_push_notification_tokens(Roles::DoorPerson, true);
     }
-
+    #[test]
+    fn show_push_notification_tokens_promoter() {
+        base::users::show_push_notification_tokens(Roles::Promoter, true);
+    }
+    #[test]
+    fn show_push_notification_tokens_promoter_read_only() {
+        base::users::show_push_notification_tokens(Roles::PromoterReadOnly, true);
+    }
     #[test]
     fn show_push_notification_tokens_org_admin() {
         base::users::show_push_notification_tokens(Roles::OrgAdmin, true);
     }
-
     #[test]
     fn show_push_notification_tokens_box_office() {
         base::users::show_push_notification_tokens(Roles::OrgBoxOffice, true);
@@ -216,37 +221,38 @@ mod show_push_notification_tokens_tests {
 #[cfg(test)]
 mod add_push_notification_token_tests {
     use super::*;
-
     #[test]
     fn add_push_notification_token_org_member() {
         base::users::add_push_notification_token(Roles::OrgMember, true);
     }
-
     #[test]
     fn add_push_notification_token_admin() {
         base::users::add_push_notification_token(Roles::Admin, true);
     }
-
     #[test]
     fn add_push_notification_token_user() {
         base::users::add_push_notification_token(Roles::User, true);
     }
-
     #[test]
     fn add_push_notification_token_org_owner() {
         base::users::add_push_notification_token(Roles::OrgOwner, true);
     }
-
     #[test]
     fn add_push_notification_token_door_person() {
         base::users::add_push_notification_token(Roles::DoorPerson, true);
     }
-
+    #[test]
+    fn add_push_notification_token_promoter() {
+        base::users::add_push_notification_token(Roles::Promoter, true);
+    }
+    #[test]
+    fn add_push_notification_token_promoter_read_only() {
+        base::users::add_push_notification_token(Roles::PromoterReadOnly, true);
+    }
     #[test]
     fn add_push_notification_token_org_admin() {
         base::users::add_push_notification_token(Roles::OrgAdmin, true);
     }
-
     #[test]
     fn add_push_notification_token_box_office() {
         base::users::add_push_notification_token(Roles::OrgBoxOffice, true);
@@ -256,37 +262,38 @@ mod add_push_notification_token_tests {
 #[cfg(test)]
 mod remove_push_notification_token_tests {
     use super::*;
-
     #[test]
     fn remove_push_notification_token_org_member() {
         base::users::remove_push_notification_token(Roles::OrgMember, true);
     }
-
     #[test]
     fn remove_push_notification_token_admin() {
         base::users::remove_push_notification_token(Roles::Admin, true);
     }
-
     #[test]
     fn remove_push_notification_token_user() {
         base::users::remove_push_notification_token(Roles::User, true);
     }
-
     #[test]
     fn remove_push_notification_token_owner() {
         base::users::remove_push_notification_token(Roles::OrgOwner, true);
     }
-
     #[test]
     fn remove_push_notification_token_door_person() {
         base::users::remove_push_notification_token(Roles::DoorPerson, true);
     }
-
+    #[test]
+    fn remove_push_notification_token_promoter() {
+        base::users::remove_push_notification_token(Roles::Promoter, true);
+    }
+    #[test]
+    fn remove_push_notification_token_promoter_read_only() {
+        base::users::remove_push_notification_token(Roles::PromoterReadOnly, true);
+    }
     #[test]
     fn remove_push_notification_token_org_admin() {
         base::users::remove_push_notification_token(Roles::OrgAdmin, true);
     }
-
     #[test]
     fn remove_push_notification_token_box_office() {
         base::users::remove_push_notification_token(Roles::OrgBoxOffice, true);
@@ -296,37 +303,38 @@ mod remove_push_notification_token_tests {
 #[cfg(test)]
 mod users_show_tests {
     use super::*;
-
     #[test]
     fn show_org_member() {
         base::users::show(Roles::OrgMember, false);
     }
-
     #[test]
     fn show_admin() {
         base::users::show(Roles::Admin, true);
     }
-
     #[test]
     fn show_user() {
         base::users::show(Roles::User, false);
     }
-
     #[test]
     fn show_org_owner() {
         base::users::show(Roles::OrgOwner, false);
     }
-
     #[test]
     fn show_door_person() {
         base::users::show(Roles::DoorPerson, false);
     }
-
+    #[test]
+    fn show_promoter() {
+        base::users::show(Roles::Promoter, false);
+    }
+    #[test]
+    fn show_promoter_read_only() {
+        base::users::show(Roles::PromoterReadOnly, false);
+    }
     #[test]
     fn show_org_admin() {
         base::users::show(Roles::OrgAdmin, false);
     }
-
     #[test]
     fn show_box_office() {
         base::users::show(Roles::OrgBoxOffice, false);
@@ -485,6 +493,7 @@ fn current_user_organization_owner() {
             "comp:read",
             "comp:write",
             "dashboard:read",
+            "event:cancel",
             "event:financial-reports",
             "event:interest",
             "event:reports",
@@ -507,6 +516,8 @@ fn current_user_organization_owner() {
             "ticket:admin",
             "ticket:read",
             "ticket:transfer",
+            "ticket-type:read",
+            "ticket-type:write",
             "user:read",
             "venue:write",
         ]
@@ -557,6 +568,7 @@ fn current_user_organization_member() {
             "comp:read",
             "comp:write",
             "dashboard:read",
+            "event:cancel",
             "event:interest",
             "event:scan",
             "event:view-guests",
@@ -572,6 +584,8 @@ fn current_user_organization_member() {
             "ticket:admin",
             "ticket:read",
             "ticket:transfer",
+            "ticket-type:read",
+            "ticket-type:write",
             "venue:write",
         ]
         .into_iter()

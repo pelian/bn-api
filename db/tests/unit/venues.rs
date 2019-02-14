@@ -153,7 +153,7 @@ fn all() {
     let venue3 = venue3.add_to_organization(&organization.id, conn);
     let user = project.create_user().finish();
     let _org_user = organization
-        .add_user(user.id, vec![Roles::OrgMember], conn)
+        .add_user(user.id, vec![Roles::OrgMember], Vec::new(), conn)
         .unwrap();
     all_venues.push(venue3.unwrap());
     let all_found_venues = Venue::all(Some(&user), conn).unwrap();

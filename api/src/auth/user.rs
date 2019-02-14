@@ -1,6 +1,6 @@
 use actix_web::{HttpRequest, Result};
 use bigneon_db::models::User as DbUser;
-use bigneon_db::models::{Organization, Scopes};
+use bigneon_db::models::{Event, Organization, Roles, Scopes};
 use bigneon_db::prelude::errors::EnumParseError;
 use diesel::PgConnection;
 use errors::*;
@@ -48,6 +48,7 @@ impl User {
         &self,
         scope: Scopes,
         organization: Option<&Organization>,
+        event: Option<&Event>,
         connection: Option<&PgConnection>,
         log_on_failure: bool,
     ) -> Result<bool, BigNeonError> {
@@ -56,12 +57,35 @@ impl User {
         }
 
         let mut logging_data = HashMap::new();
+
         if let (Some(organization), Some(connection)) = (organization, connection) {
             let organization_scopes = organization.get_scopes_for_user(&self.user, connection)?;
             logging_data.insert("organization_scopes", json!(organization_scopes));
             logging_data.insert("organization_id", json!(organization.id));
+
             if organization_scopes.contains(&scope) {
-                return Ok(true);
+                // User is an event limited access user so their organization event ids must include this event
+                if event.is_some() {
+                    // If the user's roles include an event limited role
+                    let user_roles = organization.get_roles_for_user(&self.user, connection)?;
+                    if Roles::get_event_limited_roles()
+                        .iter()
+                        .find(|r| user_roles.contains(&r))
+                        .is_some()
+                    {
+                        if self
+                            .user
+                            .get_event_ids_for_organization(organization.id, connection)?
+                            .contains(&event.unwrap().id)
+                        {
+                            return Ok(true);
+                        }
+                    } else {
+                        return Ok(true);
+                    }
+                } else {
+                    return Ok(true);
+                }
             }
         }
 
@@ -75,7 +99,17 @@ impl User {
     }
 
     pub fn has_scope(&self, scope: Scopes) -> Result<bool, BigNeonError> {
-        self.check_scope_access(scope, None, None, false)
+        self.check_scope_access(scope, None, None, None, false)
+    }
+
+    pub fn has_scope_for_organization_event(
+        &self,
+        scope: Scopes,
+        organization: &Organization,
+        event: &Event,
+        conn: &PgConnection,
+    ) -> Result<bool, BigNeonError> {
+        self.check_scope_access(scope, Some(organization), Some(event), Some(conn), false)
     }
 
     pub fn has_scope_for_organization(
@@ -84,7 +118,7 @@ impl User {
         organization: &Organization,
         conn: &PgConnection,
     ) -> Result<bool, BigNeonError> {
-        self.check_scope_access(scope, Some(organization), Some(conn), false)
+        self.check_scope_access(scope, Some(organization), None, Some(conn), false)
     }
 
     pub fn log_unauthorized_access_attempt(&self, mut logging_data: HashMap<&'static str, Value>) {
@@ -97,7 +131,24 @@ impl User {
     }
 
     pub fn requires_scope(&self, scope: Scopes) -> Result<(), BigNeonError> {
-        if self.check_scope_access(scope, None, None, true)? {
+        if self.check_scope_access(scope, None, None, None, true)? {
+            return Ok(());
+        }
+        Err(AuthError::new(
+            AuthErrorType::Unauthorized,
+            "User does not have the required permissions".to_string(),
+        )
+        .into())
+    }
+
+    pub fn requires_scope_for_organization_event(
+        &self,
+        scope: Scopes,
+        organization: &Organization,
+        event: &Event,
+        conn: &PgConnection,
+    ) -> Result<(), BigNeonError> {
+        if self.check_scope_access(scope, Some(organization), Some(event), Some(conn), true)? {
             return Ok(());
         }
         Err(AuthError::new(
@@ -113,7 +164,7 @@ impl User {
         organization: &Organization,
         conn: &PgConnection,
     ) -> Result<(), BigNeonError> {
-        if self.check_scope_access(scope, Some(organization), Some(conn), true)? {
+        if self.check_scope_access(scope, Some(organization), None, Some(conn), true)? {
             return Ok(());
         }
         Err(AuthError::new(

@@ -122,12 +122,18 @@ string_enum! { PaymentMethods [External, CreditCard, Provider] }
 string_enum! { PaymentProviders [External, Globee, Stripe] }
 string_enum! { PaymentStatus [Authorized, Completed, Requested, Refunded, Unpaid, PendingConfirmation, Cancelled, Draft, Unknown, PendingIpn] }
 string_enum! { PastOrUpcoming [Past,Upcoming]}
-string_enum! { Roles [Admin, OrgMember, OrgOwner, OrgAdmin, OrgBoxOffice, DoorPerson, User] }
+string_enum! { Roles [Admin, DoorPerson, OrgMember, OrgOwner, OrgAdmin, OrgBoxOffice, Promoter, PromoterReadOnly, User] }
 string_enum! { SortingDir[ Asc, Desc ] }
 string_enum! { Tables [Events, FeeSchedules, Orders, Organizations, Payments, PaymentMethods, TicketInstances] }
 string_enum! { TicketInstanceStatus [Available, Reserved, Purchased, Redeemed, Nullified]}
 string_enum! { TicketPricingStatus [Published, Deleted, Default] }
 string_enum! { TicketTypeStatus [NoActivePricing, Published, SoldOut, Cancelled] }
+
+impl Roles {
+    pub fn get_event_limited_roles() -> Vec<Roles> {
+        vec![Roles::Promoter, Roles::PromoterReadOnly]
+    }
+}
 
 impl Default for EventStatus {
     fn default() -> EventStatus {
@@ -148,6 +154,14 @@ impl Tables {
 }
 
 #[test]
+fn get_event_limited_roles() {
+    assert_eq!(
+        Roles::get_event_limited_roles(),
+        vec![Roles::Promoter, Roles::PromoterReadOnly]
+    );
+}
+
+#[test]
 fn display() {
     assert_eq!(Roles::Admin.to_string(), "Admin");
     assert_eq!(Roles::OrgAdmin.to_string(), "OrgAdmin");
@@ -155,6 +169,8 @@ fn display() {
     assert_eq!(Roles::OrgOwner.to_string(), "OrgOwner");
     assert_eq!(Roles::OrgBoxOffice.to_string(), "OrgBoxOffice");
     assert_eq!(Roles::DoorPerson.to_string(), "DoorPerson");
+    assert_eq!(Roles::Promoter.to_string(), "Promoter");
+    assert_eq!(Roles::PromoterReadOnly.to_string(), "PromoterReadOnly");
     assert_eq!(Roles::User.to_string(), "User");
 }
 

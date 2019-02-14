@@ -67,7 +67,12 @@ pub fn create(
 ) -> Result<HttpResponse, BigNeonError> {
     let conn = conn.get();
     let event = Event::find(path.id, conn)?;
-    user.requires_scope_for_organization(Scopes::HoldWrite, &event.organization(conn)?, conn)?;
+    user.requires_scope_for_organization_event(
+        Scopes::HoldWrite,
+        &event.organization(conn)?,
+        &event,
+        conn,
+    )?;
 
     let hold = Hold::create_hold(
         req.name.clone(),
@@ -128,7 +133,12 @@ pub fn update(
     let conn = conn.get();
 
     let hold = Hold::find(path.id, conn)?;
-    user.requires_scope_for_organization(Scopes::HoldWrite, &hold.organization(conn)?, conn)?;
+    user.requires_scope_for_organization_event(
+        Scopes::HoldWrite,
+        &hold.organization(conn)?,
+        &hold.event(conn)?,
+        conn,
+    )?;
     let quantity = req.quantity;
     let hold = hold.update(req.into_inner().into(), conn)?;
     if let Some(quantity) = quantity {
@@ -143,7 +153,12 @@ pub fn show(
 ) -> Result<HttpResponse, BigNeonError> {
     let conn = conn.get();
     let hold = Hold::find(path.id, conn)?;
-    user.requires_scope_for_organization(Scopes::OrgRead, &hold.organization(conn)?, conn)?;
+    user.requires_scope_for_organization_event(
+        Scopes::HoldRead,
+        &hold.organization(conn)?,
+        &hold.event(conn)?,
+        conn,
+    )?;
 
     #[derive(Serialize)]
     struct R {
@@ -206,7 +221,12 @@ pub fn split(
 ) -> Result<HttpResponse, BigNeonError> {
     let conn = conn.get();
     let hold = Hold::find(path.id, conn)?;
-    user.requires_scope_for_organization(Scopes::HoldWrite, &hold.organization(conn)?, conn)?;
+    user.requires_scope_for_organization_event(
+        Scopes::HoldWrite,
+        &hold.organization(conn)?,
+        &hold.event(conn)?,
+        conn,
+    )?;
     let new_hold = hold.split(
         req.name.clone(),
         req.redemption_code.clone(),
@@ -225,7 +245,12 @@ pub fn destroy(
 ) -> Result<HttpResponse, BigNeonError> {
     let conn = conn.get();
     let hold = Hold::find(path.id, conn)?;
-    user.requires_scope_for_organization(Scopes::HoldWrite, &hold.organization(conn)?, conn)?;
+    user.requires_scope_for_organization_event(
+        Scopes::HoldWrite,
+        &hold.organization(conn)?,
+        &hold.event(conn)?,
+        conn,
+    )?;
     hold.destroy(conn)?;
     Ok(HttpResponse::Ok().finish())
 }

@@ -167,17 +167,17 @@ fn find_by_order_item_ids() {
 
     // Ticket belonging to only first event / organization
     let organizations =
-        Organization::find_by_order_item_ids(vec![order_item.id], connection).unwrap();
+        Organization::find_by_order_item_ids(&vec![order_item.id], connection).unwrap();
     assert_eq!(organizations, vec![organization.clone()]);
 
     // Ticket belonging to only second event / organization
     let organizations =
-        Organization::find_by_order_item_ids(vec![order_item2.id], connection).unwrap();
+        Organization::find_by_order_item_ids(&vec![order_item2.id], connection).unwrap();
     assert_eq!(organizations, vec![organization2.clone()]);
 
     // Ticket belonging to both events / organizations
     let organizations =
-        Organization::find_by_order_item_ids(vec![order_item.id, order_item2.id], connection)
+        Organization::find_by_order_item_ids(&vec![order_item.id, order_item2.id], connection)
             .unwrap();
     assert_eq!(organizations, vec![organization, organization2]);
 }
@@ -318,9 +318,14 @@ fn users() {
         .create_organization()
         .with_member(&user3, Roles::OrgOwner)
         .finish();
-    OrganizationUser::create(organization2.id, user2.id, vec![Roles::OrgMember])
-        .commit(project.get_connection())
-        .unwrap();
+    OrganizationUser::create(
+        organization2.id,
+        user2.id,
+        vec![Roles::OrgMember],
+        Vec::new(),
+    )
+    .commit(project.get_connection())
+    .unwrap();
 
     // Owner is included in the user results for organization2 but not organization2
     let user_results = organization.users(project.get_connection()).unwrap();
@@ -334,7 +339,7 @@ fn users() {
     );
 
     // Explicitly make the organization user an org user
-    OrganizationUser::create(organization.id, user.id, vec![Roles::OrgMember])
+    OrganizationUser::create(organization.id, user.id, vec![Roles::OrgMember], Vec::new())
         .commit(project.get_connection())
         .unwrap();
     let user_results = organization.users(project.get_connection()).unwrap();
@@ -346,9 +351,14 @@ fn users() {
     assert_eq!(user3.id, user_results2[1].1.id);
 
     // Add a new user to the organization
-    OrganizationUser::create(organization.id, user2.id, vec![Roles::OrgMember])
-        .commit(project.get_connection())
-        .unwrap();
+    OrganizationUser::create(
+        organization.id,
+        user2.id,
+        vec![Roles::OrgMember],
+        Vec::new(),
+    )
+    .commit(project.get_connection())
+    .unwrap();
     let user_results = organization.users(project.get_connection()).unwrap();
     assert_eq!(user_results.len(), 2);
     assert_eq!(user.id, user_results[0].1.id);
@@ -487,12 +497,22 @@ fn remove_users() {
         .create_organization()
         .with_member(&user, Roles::OrgOwner)
         .finish();
-    OrganizationUser::create(organization.id, user2.id, vec![Roles::OrgMember])
-        .commit(project.get_connection())
-        .unwrap();
-    OrganizationUser::create(organization.id, user3.id, vec![Roles::OrgMember])
-        .commit(project.get_connection())
-        .unwrap();
+    OrganizationUser::create(
+        organization.id,
+        user2.id,
+        vec![Roles::OrgMember],
+        Vec::new(),
+    )
+    .commit(project.get_connection())
+    .unwrap();
+    OrganizationUser::create(
+        organization.id,
+        user3.id,
+        vec![Roles::OrgMember],
+        Vec::new(),
+    )
+    .commit(project.get_connection())
+    .unwrap();
     let user2_id = user2.id;
 
     let mut user_results = organization.users(project.get_connection()).unwrap();
@@ -565,6 +585,8 @@ pub fn get_scopes_for_user() {
     let door_person = project.create_user().finish();
     let member = project.create_user().finish();
     let no_access_user = project.create_user().finish();
+    let promoter = project.create_user().finish();
+    let promoter_read_only = project.create_user().finish();
     let organization = project
         .create_organization()
         .with_member(&owner, Roles::OrgOwner)
@@ -572,6 +594,8 @@ pub fn get_scopes_for_user() {
         .with_member(&org_admin, Roles::OrgAdmin)
         .with_member(&box_office, Roles::OrgBoxOffice)
         .with_member(&door_person, Roles::DoorPerson)
+        .with_member(&promoter, Roles::Promoter)
+        .with_member(&promoter_read_only, Roles::PromoterReadOnly)
         .finish();
     let mut admin = project.create_user().finish();
     admin = admin.add_role(Roles::Admin, connection).unwrap();
@@ -592,6 +616,7 @@ pub fn get_scopes_for_user() {
             "comp:read",
             "comp:write",
             "dashboard:read",
+            "event:cancel",
             "event:financial-reports",
             "event:interest",
             "event:reports",
@@ -614,6 +639,8 @@ pub fn get_scopes_for_user() {
             "ticket:admin",
             "ticket:read",
             "ticket:transfer",
+            "ticket-type:read",
+            "ticket-type:write",
             "user:read",
             "venue:write"
         ]
@@ -635,6 +662,7 @@ pub fn get_scopes_for_user() {
             "comp:read",
             "comp:write",
             "dashboard:read",
+            "event:cancel",
             "event:financial-reports",
             "event:interest",
             "event:reports",
@@ -656,6 +684,8 @@ pub fn get_scopes_for_user() {
             "ticket:admin",
             "ticket:read",
             "ticket:transfer",
+            "ticket-type:read",
+            "ticket-type:write",
             "user:read",
             "venue:write"
         ]
@@ -692,6 +722,53 @@ pub fn get_scopes_for_user() {
 
     assert_eq!(
         organization
+            .get_scopes_for_user(&promoter, connection)
+            .unwrap()
+            .iter()
+            .map(|i| i.to_string())
+            .collect::<Vec<String>>(),
+        vec![
+            "code:read",
+            "code:write",
+            "comp:read",
+            "comp:write",
+            "dashboard:read",
+            "event:financial-reports",
+            "event:interest",
+            "event:reports",
+            "event:view-guests",
+            "event:write",
+            "hold:read",
+            "hold:write",
+            "order:read",
+            "order:refund",
+            "ticket:read",
+            "ticket-type:read"
+        ]
+    );
+
+    assert_eq!(
+        organization
+            .get_scopes_for_user(&promoter_read_only, connection)
+            .unwrap()
+            .iter()
+            .map(|i| i.to_string())
+            .collect::<Vec<String>>(),
+        vec![
+            "code:read",
+            "comp:read",
+            "dashboard:read",
+            "event:interest",
+            "event:view-guests",
+            "hold:read",
+            "order:read",
+            "ticket:read",
+            "ticket-type:read"
+        ]
+    );
+
+    assert_eq!(
+        organization
             .get_scopes_for_user(&member, connection)
             .unwrap()
             .iter()
@@ -706,6 +783,7 @@ pub fn get_scopes_for_user() {
             "comp:read",
             "comp:write",
             "dashboard:read",
+            "event:cancel",
             "event:interest",
             "event:scan",
             "event:view-guests",
@@ -721,6 +799,8 @@ pub fn get_scopes_for_user() {
             "ticket:admin",
             "ticket:read",
             "ticket:transfer",
+            "ticket-type:read",
+            "ticket-type:write",
             "venue:write",
         ]
     );
@@ -741,6 +821,7 @@ pub fn get_scopes_for_user() {
             "comp:read",
             "comp:write",
             "dashboard:read",
+            "event:cancel",
             "event:financial-reports",
             "event:interest",
             "event:reports",
@@ -763,6 +844,8 @@ pub fn get_scopes_for_user() {
             "ticket:admin",
             "ticket:read",
             "ticket:transfer",
+            "ticket-type:read",
+            "ticket-type:write",
             "user:read",
             "venue:write"
         ]
@@ -785,7 +868,7 @@ fn add_user() {
         .with_member(&user, Roles::OrgOwner)
         .finish();
     let organization_user = organization
-        .add_user(user2.id, vec![Roles::OrgMember], connection)
+        .add_user(user2.id, vec![Roles::OrgMember], Vec::new(), connection)
         .unwrap();
 
     assert_eq!(organization_user.user_id, user2.id);

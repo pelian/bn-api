@@ -270,6 +270,14 @@ mod show_other_user_ticket_tests {
         base::tickets::show_other_user_ticket(Roles::DoorPerson, true);
     }
     #[test]
+    fn show_other_user_ticket_promoter() {
+        base::tickets::show_other_user_ticket(Roles::Promoter, true);
+    }
+    #[test]
+    fn show_other_user_ticket_promoter_read_only() {
+        base::tickets::show_other_user_ticket(Roles::PromoterReadOnly, true);
+    }
+    #[test]
     fn show_other_user_ticket_org_admin() {
         base::tickets::show_other_user_ticket(Roles::OrgAdmin, true);
     }
@@ -303,6 +311,14 @@ mod redeem_ticket {
         base::tickets::redeem_ticket(Roles::DoorPerson, true);
     }
     #[test]
+    fn redeem_ticket_promoter() {
+        base::tickets::redeem_ticket(Roles::Promoter, false);
+    }
+    #[test]
+    fn redeem_ticket_promoter_read_only() {
+        base::tickets::redeem_ticket(Roles::PromoterReadOnly, false);
+    }
+    #[test]
     fn redeem_ticket_org_admin() {
         base::tickets::redeem_ticket(Roles::OrgAdmin, true);
     }
@@ -334,6 +350,14 @@ mod show_redeem_key {
     #[test]
     fn show_redeemable_ticket_door_person() {
         base::tickets::show_redeemable_ticket(Roles::DoorPerson, true);
+    }
+    #[test]
+    fn show_redeemable_ticket_promoter() {
+        base::tickets::show_redeemable_ticket(Roles::Promoter, true);
+    }
+    #[test]
+    fn show_redeemable_ticket_promoter_read_only() {
+        base::tickets::show_redeemable_ticket(Roles::PromoterReadOnly, true);
     }
     #[test]
     fn show_redeemable_ticket_org_admin() {

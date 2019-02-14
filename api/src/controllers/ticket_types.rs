@@ -77,7 +77,12 @@ pub fn create(
     let connection = connection.get();
     let event = Event::find(path.id, connection)?;
     let organization = event.organization(connection)?;
-    user.requires_scope_for_organization(Scopes::EventWrite, &organization, connection)?;
+    user.requires_scope_for_organization_event(
+        Scopes::TicketTypeWrite,
+        &organization,
+        &event,
+        connection,
+    )?;
     //Retrieve default wallet
     let org_wallet = Wallet::find_default_for_organization(event.organization_id, connection)?;
 
@@ -144,7 +149,12 @@ pub fn index(
     let connection = connection.get();
     let event = Event::find(path.id, connection)?;
     let organization = event.organization(connection)?;
-    user.requires_scope_for_organization(Scopes::EventWrite, &organization, connection)?;
+    user.requires_scope_for_organization_event(
+        Scopes::TicketTypeRead,
+        &organization,
+        &event,
+        connection,
+    )?;
 
     let fee_schedule = FeeSchedule::find(organization.fee_schedule_id, connection)?;
     //TODO refactor using paging params
@@ -175,7 +185,12 @@ pub fn cancel(
     let connection = connection.get();
     let event = Event::find(path.event_id, connection)?;
     let organization = event.organization(connection)?;
-    user.requires_scope_for_organization(Scopes::EventWrite, &organization, connection)?;
+    user.requires_scope_for_organization_event(
+        Scopes::TicketTypeWrite,
+        &organization,
+        &event,
+        connection,
+    )?;
 
     let ticket_type = TicketType::find(path.ticket_type_id, connection)?;
     ticket_type.cancel(connection)?;
@@ -217,7 +232,12 @@ pub fn update(
     let event = Event::find(path.event_id, connection)?;
     let organization = event.organization(connection)?;
     let fee_schedule_id = organization.fee_schedule_id;
-    user.requires_scope_for_organization(Scopes::EventWrite, &organization, connection)?;
+    user.requires_scope_for_organization_event(
+        Scopes::TicketTypeWrite,
+        &organization,
+        &event,
+        connection,
+    )?;
 
     let data = data.into_inner();
     jlog!(Debug, "Updating ticket type", {"ticket_type_id": path.ticket_type_id, "event_id":event.id, "request": &data});

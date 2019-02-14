@@ -23,8 +23,6 @@ pub fn profile(role: Roles, should_test_true: bool) {
         .create_organization()
         .with_fee_schedule(&database.create_fee_schedule().finish(admin.id))
         .finish();
-    let auth_user =
-        support::create_auth_user_from_user(&user, role, Some(&organization), &database);
     let event = database
         .create_event()
         .with_organization(&organization)
@@ -49,6 +47,8 @@ pub fn profile(role: Roles, should_test_true: bool) {
     cart.add_external_payment(Some("test".to_string()), user.id, 1700, connection)
         .unwrap();
     assert_eq!(cart.status, OrderStatus::Paid);
+    let auth_user =
+        support::create_auth_user_from_user(&user, role, Some(&organization), &database);
 
     let test_request = TestRequest::create_with_uri_custom_params("/", vec!["id", "user_id"]);
     let mut path = Path::<OrganizationFanPathParameters>::extract(&test_request.request).unwrap();
@@ -93,8 +93,6 @@ pub fn history(role: Roles, should_test_true: bool) {
         .create_organization()
         .with_fee_schedule(&database.create_fee_schedule().finish(admin.id))
         .finish();
-    let auth_user =
-        support::create_auth_user_from_user(&user, role, Some(&organization), &database);
     let event = database
         .create_event()
         .with_organization(&organization)
@@ -119,6 +117,8 @@ pub fn history(role: Roles, should_test_true: bool) {
     cart.add_external_payment(Some("test".to_string()), user.id, 1700, connection)
         .unwrap();
     assert_eq!(cart.status, OrderStatus::Paid);
+    let auth_user =
+        support::create_auth_user_from_user(&user, role, Some(&organization), &database);
 
     let test_request = TestRequest::create_with_uri_custom_params("/", vec!["id", "user_id"]);
     let mut path = Path::<OrganizationFanPathParameters>::extract(&test_request.request).unwrap();

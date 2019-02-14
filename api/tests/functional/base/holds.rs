@@ -13,13 +13,13 @@ pub fn create(role: Roles, should_test_succeed: bool) {
     let database = TestDatabase::new();
     let organization = database.create_organization().finish();
     let user = database.create_user().finish();
-    let auth_user =
-        support::create_auth_user_from_user(&user, role, Some(&organization), &database);
     let event = database
         .create_event()
         .with_tickets()
         .with_organization(&organization)
         .finish();
+    let auth_user =
+        support::create_auth_user_from_user(&user, role, Some(&organization), &database);
 
     let name = "Hold Example".to_string();
     let redemption_code = "IHAVEACODE".to_string();

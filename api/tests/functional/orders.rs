@@ -64,6 +64,14 @@ mod show_other_user_order_tests {
         base::orders::show_other_user_order(Roles::DoorPerson, false);
     }
     #[test]
+    fn show_other_user_order_promoter() {
+        base::orders::show_other_user_order(Roles::Promoter, true);
+    }
+    #[test]
+    fn show_other_user_order_promoter_read_only() {
+        base::orders::show_other_user_order(Roles::PromoterReadOnly, true);
+    }
+    #[test]
     fn show_other_user_order_org_admin() {
         base::orders::show_other_user_order(Roles::OrgAdmin, true);
     }
@@ -99,6 +107,17 @@ mod show_other_user_order_not_matching_users_organization_tests {
     fn show_other_user_order_not_matching_users_organization_door_person() {
         base::orders::show_other_user_order_not_matching_users_organization(
             Roles::DoorPerson,
+            false,
+        );
+    }
+    #[test]
+    fn show_other_user_order_not_matching_users_organization_promoter() {
+        base::orders::show_other_user_order_not_matching_users_organization(Roles::Promoter, false);
+    }
+    #[test]
+    fn show_other_user_order_not_matching_users_organization_promoter_read_only() {
+        base::orders::show_other_user_order_not_matching_users_organization(
+            Roles::PromoterReadOnly,
             false,
         );
     }
@@ -200,6 +219,14 @@ mod details_tests {
         base::orders::details(Roles::DoorPerson, false);
     }
     #[test]
+    fn details_promoter() {
+        base::orders::details(Roles::Promoter, true);
+    }
+    #[test]
+    fn details_promoter_read_only() {
+        base::orders::details(Roles::PromoterReadOnly, true);
+    }
+    #[test]
     fn details_org_admin() {
         base::orders::details(Roles::OrgAdmin, true);
     }
@@ -231,6 +258,14 @@ mod refund_tests {
     #[test]
     fn refund_door_person() {
         base::orders::refund(Roles::DoorPerson, false);
+    }
+    #[test]
+    fn refund_promoter() {
+        base::orders::refund(Roles::Promoter, true);
+    }
+    #[test]
+    fn refund_promoter_read_only() {
+        base::orders::refund(Roles::PromoterReadOnly, false);
     }
     #[test]
     fn refund_org_admin() {
@@ -376,10 +411,7 @@ pub fn details_with_tickets_user_has_no_access_to() {
     let body = support::unwrap_body_to_string(&response).unwrap();
     let details_response: DetailsResponse = serde_json::from_str(&body).unwrap();
     assert_eq!(details_response.items, expected_order_details);
-    assert_eq!(
-        details_response.order_contains_tickets_for_other_organizations,
-        true
-    );
+    assert_eq!(details_response.order_contains_other_tickets, true);
 }
 
 #[test]

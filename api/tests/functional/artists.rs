@@ -121,6 +121,7 @@ fn index_with_org_linked_and_private_venues() {
     let _ = org1.add_user(
         user_id,
         vec![Roles::OrgMember],
+        Vec::new(),
         database.connection.clone().get(),
     );
     expected_artists.push(artist4);
@@ -339,6 +340,14 @@ mod create_tests {
         base::artists::create(Roles::DoorPerson, false);
     }
     #[test]
+    fn create_promoter() {
+        base::artists::create(Roles::Promoter, false);
+    }
+    #[test]
+    fn create_promoter_read_only() {
+        base::artists::create(Roles::PromoterReadOnly, false);
+    }
+    #[test]
     fn create_org_admin() {
         base::artists::create(Roles::OrgAdmin, false);
     }
@@ -365,6 +374,14 @@ mod create_tests {
     #[test]
     fn create_with_organization_door_person() {
         base::artists::create_with_organization(Roles::DoorPerson, false);
+    }
+    #[test]
+    fn create_with_organization_promoter() {
+        base::artists::create_with_organization(Roles::Promoter, false);
+    }
+    #[test]
+    fn create_with_organization_promoter_read_only() {
+        base::artists::create_with_organization(Roles::PromoterReadOnly, false);
     }
     #[test]
     fn create_with_organization_org_admin() {
@@ -437,6 +454,14 @@ mod toggle_privacy_tests {
         base::artists::toggle_privacy(Roles::DoorPerson, false);
     }
     #[test]
+    fn toggle_privacy_promoter() {
+        base::artists::toggle_privacy(Roles::Promoter, false);
+    }
+    #[test]
+    fn toggle_privacy_promoter_read_only() {
+        base::artists::toggle_privacy(Roles::PromoterReadOnly, false);
+    }
+    #[test]
     fn toggle_privacy_org_admin() {
         base::artists::toggle_privacy(Roles::OrgAdmin, false);
     }
@@ -470,6 +495,14 @@ mod update_tests {
         base::artists::update(Roles::DoorPerson, false);
     }
     #[test]
+    fn update_promoter() {
+        base::artists::update(Roles::Promoter, false);
+    }
+    #[test]
+    fn update_promoter_read_only() {
+        base::artists::update(Roles::PromoterReadOnly, false);
+    }
+    #[test]
     fn update_org_admin() {
         base::artists::update(Roles::OrgAdmin, false);
     }
@@ -477,6 +510,11 @@ mod update_tests {
     fn update_box_office() {
         base::artists::update(Roles::OrgBoxOffice, false);
     }
+}
+
+#[cfg(test)]
+mod update_with_organization_tests {
+    use super::*;
     #[test]
     fn update_with_organization_org_member() {
         base::artists::update_with_organization(Roles::OrgMember, true, true);
@@ -498,6 +536,14 @@ mod update_tests {
         base::artists::update_with_organization(Roles::DoorPerson, false, true);
     }
     #[test]
+    fn update_with_organization_promoter() {
+        base::artists::update_with_organization(Roles::Promoter, false, true);
+    }
+    #[test]
+    fn update_with_organization_promoter_read_only() {
+        base::artists::update_with_organization(Roles::PromoterReadOnly, false, true);
+    }
+    #[test]
     fn update_with_organization_org_admin() {
         base::artists::update_with_organization(Roles::OrgAdmin, true, true);
     }
@@ -505,6 +551,11 @@ mod update_tests {
     fn update_with_organization_box_office() {
         base::artists::update_with_organization(Roles::OrgBoxOffice, false, true);
     }
+}
+
+#[cfg(test)]
+mod update_public_artist_with_organization_tests {
+    use super::*;
     #[test]
     fn update_public_artist_with_organization_org_member() {
         base::artists::update_with_organization(Roles::OrgMember, false, false);
@@ -524,6 +575,14 @@ mod update_tests {
     #[test]
     fn update_public_artist_with_organization_door_person() {
         base::artists::update_with_organization(Roles::DoorPerson, false, false);
+    }
+    #[test]
+    fn update_public_artist_with_organization_promoter() {
+        base::artists::update_with_organization(Roles::Promoter, false, false);
+    }
+    #[test]
+    fn update_public_artist_with_organization_promoter_read_only() {
+        base::artists::update_with_organization(Roles::PromoterReadOnly, false, false);
     }
     #[test]
     fn update_public_artist_with_organization_org_admin() {

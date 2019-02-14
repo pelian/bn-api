@@ -73,6 +73,14 @@ mod create_tests {
         base::regions::create(Roles::DoorPerson, false);
     }
     #[test]
+    fn create_promoter() {
+        base::regions::create(Roles::Promoter, false);
+    }
+    #[test]
+    fn create_promoter_read_only() {
+        base::regions::create(Roles::PromoterReadOnly, false);
+    }
+    #[test]
     fn create_org_admin() {
         base::regions::create(Roles::OrgAdmin, false);
     }
@@ -104,6 +112,14 @@ mod update_tests {
     #[test]
     fn update_door_person() {
         base::regions::update(Roles::DoorPerson, false);
+    }
+    #[test]
+    fn update_promoter() {
+        base::regions::update(Roles::Promoter, false);
+    }
+    #[test]
+    fn update_promoter_read_only() {
+        base::regions::update(Roles::PromoterReadOnly, false);
     }
     #[test]
     fn update_org_admin() {

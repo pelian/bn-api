@@ -295,6 +295,7 @@ pub fn add_user(role: Roles, should_test_succeed: bool) {
     let json = Json(organizations::AddUserRequest {
         user_id: user2.id,
         roles: vec![Roles::OrgMember],
+        event_ids: None,
     });
     let mut path = Path::<PathParameters>::extract(&test_request.request).unwrap();
     path.id = organization.id;

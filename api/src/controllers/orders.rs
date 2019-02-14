@@ -31,7 +31,6 @@ pub fn show(
     (conn, path, user): (Connection, Path<PathParameters>, User),
 ) -> Result<HttpResponse, BigNeonError> {
     let connection = conn.get();
-    user.requires_scope(Scopes::OrderReadOwn)?;
     let order = Order::find(path.id, connection)?;
 
     let mut organization_ids = Vec::new();
@@ -45,6 +44,8 @@ pub fn show(
         if organization_ids.is_empty() {
             return application::forbidden("You do not have access to this order");
         }
+    } else if order.user_id == user.id() {
+        user.requires_scope(Scopes::OrderReadOwn)?;
     }
 
     let organization_id_filter = if order.user_id != user.id() {
@@ -52,13 +53,17 @@ pub fn show(
     } else {
         None
     };
-    Ok(HttpResponse::Ok().json(json!(order.for_display(organization_id_filter, connection)?)))
+    Ok(HttpResponse::Ok().json(json!(order.for_display(
+        organization_id_filter,
+        user.id(),
+        connection
+    )?)))
 }
 
 #[derive(Deserialize, Serialize)]
 pub struct DetailsResponse {
     pub items: Vec<OrderDetailsLineItem>,
-    pub order_contains_tickets_for_other_organizations: bool,
+    pub order_contains_other_tickets: bool,
 }
 
 pub fn details(
@@ -69,12 +74,9 @@ pub fn details(
 
     // Confirm that the authorized user has read order details access to at least one of the order's associated organizations
     let mut organization_ids = Vec::new();
-    let mut order_contains_tickets_for_other_organizations = false;
     for organization in order.organizations(connection)? {
         if user.has_scope_for_organization(Scopes::OrderRead, &organization, connection)? {
             organization_ids.push(organization.id);
-        } else {
-            order_contains_tickets_for_other_organizations = true;
         }
     }
     if organization_ids.is_empty() {
@@ -84,8 +86,12 @@ pub fn details(
     }
 
     Ok(HttpResponse::Ok().json(json!(DetailsResponse {
-        items: order.details(organization_ids, connection)?,
-        order_contains_tickets_for_other_organizations
+        items: order.details(&organization_ids, user.id(), connection)?,
+        order_contains_other_tickets: order.partially_visible_order(
+            &organization_ids,
+            user.id(),
+            connection
+        )?
     })))
 }
 
@@ -126,12 +132,25 @@ pub fn refund(
         .iter()
         .map(|refund_item| refund_item.order_item_id)
         .collect();
-    let organizations = Organization::find_by_order_item_ids(order_item_ids, connection)?;
+    let mut organization_map = HashMap::new();
+    for organization in Organization::find_by_order_item_ids(&order_item_ids, connection)? {
+        organization_map.insert(organization.id, organization);
+    }
 
     // Check for any organizations where user lacks order refund access
-    let mut authorized_to_refund_items = !organizations.is_empty();
-    for organization in organizations {
-        if !user.has_scope_for_organization(Scopes::OrderRefund, &organization, connection)? {
+    let mut authorized_to_refund_items = !organization_map.is_empty();
+    for event in Event::find_by_order_item_ids(&order_item_ids, connection)? {
+        if let Some(organization) = organization_map.get(&event.organization_id) {
+            if !user.has_scope_for_organization_event(
+                Scopes::OrderRefund,
+                &organization,
+                &event,
+                connection,
+            )? {
+                authorized_to_refund_items = false;
+                break;
+            }
+        } else {
             authorized_to_refund_items = false;
             break;
         }
@@ -323,7 +342,7 @@ pub fn refund(
 
     // Reload order
     let order = Order::find(order.id, connection)?;
-    let display_order = order.for_display(None, connection)?;
+    let display_order = order.for_display(None, user.id(), connection)?;
     let user = DbUser::find(
         order.on_behalf_of_user_id.unwrap_or(order.user_id),
         connection,
@@ -365,7 +384,7 @@ pub fn update(
 
     let order = order.update(json.into_inner(), user.id(), conn)?;
 
-    Ok(HttpResponse::Ok().json(order.for_display(None, conn)?))
+    Ok(HttpResponse::Ok().json(order.for_display(None, user.id(), conn)?))
 }
 
 pub fn tickets(

@@ -318,6 +318,82 @@ fn items_valid_for_purchase() {
 }
 
 #[test]
+fn partially_visible_order() {
+    let project = TestProject::new();
+    let connection = project.get_connection();
+    let organization = project.create_organization().with_event_fee().finish();
+    let event = project
+        .create_event()
+        .with_organization(&organization)
+        .with_tickets()
+        .with_ticket_pricing()
+        .finish();
+    let event2 = project
+        .create_event()
+        .with_organization(&organization)
+        .with_tickets()
+        .with_ticket_pricing()
+        .finish();
+    let user = project.create_user().finish();
+    let user2 = project.create_user().finish();
+    let mut cart = Order::find_or_create_cart(&user, connection).unwrap();
+    let ticket_type = &event.ticket_types(true, None, connection).unwrap()[0];
+    let ticket_type2 = &event2.ticket_types(true, None, connection).unwrap()[0];
+    cart.update_quantities(
+        user.id,
+        &[
+            UpdateOrderItem {
+                ticket_type_id: ticket_type.id,
+                quantity: 2,
+                redemption_code: None,
+            },
+            UpdateOrderItem {
+                ticket_type_id: ticket_type2.id,
+                quantity: 2,
+                redemption_code: None,
+            },
+        ],
+        false,
+        false,
+        connection,
+    )
+    .unwrap();
+
+    // With no events filter and no filter of organizations
+    OrganizationUser::create(organization.id, user2.id, vec![Roles::OrgMember], vec![])
+        .commit(connection)
+        .unwrap();
+    assert!(!cart
+        .partially_visible_order(&vec![organization.id], user2.id, connection)
+        .unwrap());
+
+    // With access and event filter
+    OrganizationUser::create(organization.id, user2.id, vec![Roles::Promoter], vec![])
+        .commit(connection)
+        .unwrap();
+    assert!(cart
+        .partially_visible_order(&vec![organization.id], user2.id, connection)
+        .unwrap());
+
+    // With access and event filter
+    OrganizationUser::create(
+        organization.id,
+        user2.id,
+        vec![Roles::Promoter],
+        vec![event.id, event2.id],
+    )
+    .commit(connection)
+    .unwrap();
+    assert!(!cart
+        .partially_visible_order(&vec![organization.id], user2.id, connection)
+        .unwrap());
+
+    assert!(cart
+        .partially_visible_order(&vec![], user2.id, connection)
+        .unwrap());
+}
+
+#[test]
 fn details() {
     let project = TestProject::new();
     let connection = project.get_connection();
@@ -334,6 +410,10 @@ fn details() {
         .with_ticket_pricing()
         .finish();
     let user = project.create_user().finish();
+    let user2 = project.create_user().finish();
+    OrganizationUser::create(organization.id, user2.id, vec![Roles::OrgMember], vec![])
+        .commit(connection)
+        .unwrap();
     let mut cart = Order::find_or_create_cart(&user, connection).unwrap();
     let ticket_type = &event.ticket_types(true, None, connection).unwrap()[0];
     cart.update_quantities(
@@ -423,11 +503,16 @@ fn details() {
         refundable: true,
     });
 
-    let order_details = cart.details(vec![organization.id], connection).unwrap();
+    let order_details = cart
+        .details(&vec![organization.id], user2.id, connection)
+        .unwrap();
     assert_eq!(expected_order_details, order_details);
 
     // No details when this organization is not specified
-    assert!(cart.details(vec![], connection).unwrap().is_empty());
+    assert!(cart
+        .details(&vec![], user2.id, connection)
+        .unwrap()
+        .is_empty());
 
     // Refund already refunded ticket which doesn't change anything
     let refund_items = vec![RefundItem {
@@ -435,7 +520,9 @@ fn details() {
         ticket_instance_id: Some(ticket.id),
     }];
     assert!(cart.refund(refund_items, user.id, connection).is_err());
-    let order_details = cart.details(vec![organization.id], connection).unwrap();
+    let order_details = cart
+        .details(&vec![organization.id], user2.id, connection)
+        .unwrap();
     assert_eq!(expected_order_details, order_details);
 
     // Refund last item triggering event fee to refund as well
@@ -490,7 +577,32 @@ fn details() {
         refundable: false,
     });
 
-    let order_details = cart.details(vec![organization.id], connection).unwrap();
+    let order_details = cart
+        .details(&vec![organization.id], user2.id, connection)
+        .unwrap();
+    assert_eq!(expected_order_details, order_details);
+
+    // With events filter
+    OrganizationUser::create(organization.id, user2.id, vec![Roles::Promoter], vec![])
+        .commit(connection)
+        .unwrap();
+    let order_details = cart
+        .details(&vec![organization.id], user2.id, connection)
+        .unwrap();
+    assert!(order_details.is_empty());
+
+    // With access and event filter
+    OrganizationUser::create(
+        organization.id,
+        user2.id,
+        vec![Roles::Promoter],
+        vec![event.id],
+    )
+    .commit(connection)
+    .unwrap();
+    let order_details = cart
+        .details(&vec![organization.id], user2.id, connection)
+        .unwrap();
     assert_eq!(expected_order_details, order_details);
 }
 
@@ -1631,8 +1743,8 @@ fn find_for_user_for_display() {
     assert_eq!(order1.id, ids[0]);
 
     // User list so items shown in full
-    assert!(!&display_orders[0].order_contains_tickets_for_other_organizations);
-    //    assert!(!&display_orders[1].order_contains_tickets_for_other_organizations);
+    assert!(!&display_orders[0].order_contains_other_tickets);
+    //    assert!(!&display_orders[1].order_contains_other_tickets);
 }
 
 #[test]
@@ -1647,12 +1759,12 @@ fn for_display() {
         .set(orders::expires_at.eq(one_minute_from_now))
         .get_result::<Order>(connection)
         .unwrap();
-    let display_order = order.for_display(None, connection).unwrap();
+    let display_order = order.for_display(None, order.user_id, connection).unwrap();
     // Check both 59 and 60 for the purposes of the test to avoid timing errors
     assert!(vec![59, 60].contains(&display_order.seconds_until_expiry.unwrap()));
 
     // No organization filtering
-    assert!(!display_order.order_contains_tickets_for_other_organizations);
+    assert!(!display_order.order_contains_other_tickets);
 
     // 1 minute ago expires
     let one_minute_ago = NaiveDateTime::from(Utc::now().naive_utc() - Duration::minutes(1));
@@ -1660,7 +1772,7 @@ fn for_display() {
         .set(orders::expires_at.eq(one_minute_ago))
         .get_result::<Order>(connection)
         .unwrap();
-    let display_order = order.for_display(None, connection).unwrap();
+    let display_order = order.for_display(None, order.user_id, connection).unwrap();
     assert_eq!(Some(0), display_order.seconds_until_expiry);
 }
 
@@ -1668,6 +1780,7 @@ fn for_display() {
 fn for_display_with_invalid_items() {
     let project = TestProject::new();
     let connection = project.get_connection();
+    let user = project.create_user().finish();
     let organization = project.create_organization().finish();
     let event = project
         .create_event()
@@ -1698,7 +1811,6 @@ fn for_display_with_invalid_items() {
         .finish();
 
     // Normal order for ticket type
-    let user = project.create_user().finish();
     let mut cart = Order::find_or_create_cart(&user, connection).unwrap();
     cart.update_quantities(
         user.id,
@@ -1742,7 +1854,7 @@ fn for_display_with_invalid_items() {
         .execute(connection)
         .unwrap();
 
-    let display_order = cart.for_display(None, connection).unwrap();
+    let display_order = cart.for_display(None, user.id, connection).unwrap();
     assert_eq!(
         1,
         display_order
@@ -1779,7 +1891,7 @@ fn for_display_with_invalid_items() {
     .execute(connection)
     .unwrap();
 
-    let display_order = cart.for_display(None, connection).unwrap();
+    let display_order = cart.for_display(None, user.id, connection).unwrap();
     assert_eq!(
         2,
         display_order
@@ -1863,7 +1975,7 @@ fn for_display_with_invalid_items() {
     )
     .unwrap();
 
-    let display_order = cart.for_display(None, connection).unwrap();
+    let display_order = cart.for_display(None, user.id, connection).unwrap();
 
     // Check against expected counts for status based on above
     assert_eq!(
@@ -1921,7 +2033,7 @@ fn for_display_with_invalid_items() {
     // Clear invalid items
     cart.clear_invalid_items(user.id, connection).unwrap();
 
-    let display_order = cart.for_display(None, connection).unwrap();
+    let display_order = cart.for_display(None, user.id, connection).unwrap();
     assert_eq!(
         1,
         display_order
@@ -1978,7 +2090,7 @@ fn for_display_with_invalid_items() {
         .unwrap();
 
     // Paid order does not include valid_for_purchase
-    let display_order = cart.for_display(None, connection).unwrap();
+    let display_order = cart.for_display(None, user.id, connection).unwrap();
     let generated_json = json!(display_order).to_string();
     assert!(!generated_json.contains("valid_for_purchase"));
     let deserialized_display_order: DisplayOrder = serde_json::from_str(&generated_json).unwrap();
@@ -1986,7 +2098,7 @@ fn for_display_with_invalid_items() {
 }
 
 #[test]
-fn for_display_with_organization_id_filter() {
+fn for_display_with_organization_id_and_event_id_filters() {
     let project = TestProject::new();
     let connection = project.get_connection();
 
@@ -2005,6 +2117,25 @@ fn for_display_with_organization_id_filter() {
     let ticket_type2 = &event2.ticket_types(true, None, connection).unwrap()[0];
 
     let user = project.create_user().finish();
+    let user2 = project.create_user().finish();
+
+    OrganizationUser::create(
+        event.organization_id,
+        user2.id,
+        vec![Roles::OrgMember],
+        vec![],
+    )
+    .commit(connection)
+    .unwrap();
+    OrganizationUser::create(
+        event2.organization_id,
+        user2.id,
+        vec![Roles::OrgMember],
+        vec![],
+    )
+    .commit(connection)
+    .unwrap();
+
     let mut cart = Order::find_or_create_cart(&user, connection).unwrap();
     cart.update_quantities(
         user.id,
@@ -2027,15 +2158,15 @@ fn for_display_with_organization_id_filter() {
     .unwrap();
 
     // No filtering
-    let display_order = cart.for_display(None, connection).unwrap();
-    assert!(!display_order.order_contains_tickets_for_other_organizations);
+    let display_order = cart.for_display(None, user2.id, connection).unwrap();
+    assert!(!display_order.order_contains_other_tickets);
     assert_eq!(display_order.items.len(), 4); // 2 tickets, 2 fees
 
     // With filtering
     let display_order = cart
-        .for_display(Some(vec![event.organization_id]), connection)
+        .for_display(Some(vec![event.organization_id]), user2.id, connection)
         .unwrap();
-    assert!(display_order.order_contains_tickets_for_other_organizations);
+    assert!(display_order.order_contains_other_tickets);
     assert_eq!(display_order.items.len(), 2); // 1 ticket, 1 fee
     let order_item: &DisplayOrderItem = display_order
         .items
@@ -2048,10 +2179,90 @@ fn for_display_with_organization_id_filter() {
     let display_order = cart
         .for_display(
             Some(vec![event.organization_id, event2.organization_id]),
+            user2.id,
             connection,
         )
         .unwrap();
-    assert!(!display_order.order_contains_tickets_for_other_organizations);
+    assert!(!display_order.order_contains_other_tickets);
+    assert_eq!(display_order.items.len(), 4); // 2 tickets, 2 fees
+
+    // Filtered by event_id
+    OrganizationUser::create(
+        event.organization_id,
+        user2.id,
+        vec![Roles::Promoter],
+        vec![event.id],
+    )
+    .commit(connection)
+    .unwrap();
+    OrganizationUser::create(
+        event2.organization_id,
+        user2.id,
+        vec![Roles::Promoter],
+        vec![],
+    )
+    .commit(connection)
+    .unwrap();
+    let display_order = cart
+        .for_display(
+            Some(vec![event.organization_id, event2.organization_id]),
+            user2.id,
+            connection,
+        )
+        .unwrap();
+    assert!(display_order.order_contains_other_tickets);
+    assert_eq!(display_order.items.len(), 2); // 1 tickets, 1 fees
+
+    OrganizationUser::create(
+        event.organization_id,
+        user2.id,
+        vec![Roles::Promoter],
+        vec![],
+    )
+    .commit(connection)
+    .unwrap();
+    OrganizationUser::create(
+        event2.organization_id,
+        user2.id,
+        vec![Roles::Promoter],
+        vec![event2.id],
+    )
+    .commit(connection)
+    .unwrap();
+    let display_order = cart
+        .for_display(
+            Some(vec![event.organization_id, event2.organization_id]),
+            user2.id,
+            connection,
+        )
+        .unwrap();
+    assert!(display_order.order_contains_other_tickets);
+    assert_eq!(display_order.items.len(), 2); // 1 tickets, 1 fees
+
+    OrganizationUser::create(
+        event.organization_id,
+        user2.id,
+        vec![Roles::Promoter],
+        vec![event.id],
+    )
+    .commit(connection)
+    .unwrap();
+    OrganizationUser::create(
+        event2.organization_id,
+        user2.id,
+        vec![Roles::Promoter],
+        vec![event2.id],
+    )
+    .commit(connection)
+    .unwrap();
+    let display_order = cart
+        .for_display(
+            Some(vec![event.organization_id, event2.organization_id]),
+            user2.id,
+            connection,
+        )
+        .unwrap();
+    assert!(!display_order.order_contains_other_tickets);
     assert_eq!(display_order.items.len(), 4); // 2 tickets, 2 fees
 }
 

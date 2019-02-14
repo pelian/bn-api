@@ -36,6 +36,14 @@ mod create_tests {
         base::ticket_types::create(Roles::DoorPerson, false);
     }
     #[test]
+    fn create_promoter() {
+        base::ticket_types::create(Roles::Promoter, false);
+    }
+    #[test]
+    fn create_promoter_read_only() {
+        base::ticket_types::create(Roles::PromoterReadOnly, false);
+    }
+    #[test]
     fn create_org_admin() {
         base::ticket_types::create(Roles::OrgAdmin, true);
     }
@@ -67,6 +75,14 @@ mod update_tests {
     #[test]
     fn update_door_person() {
         base::ticket_types::update(Roles::DoorPerson, false);
+    }
+    #[test]
+    fn update_promoter() {
+        base::ticket_types::update(Roles::Promoter, false);
+    }
+    #[test]
+    fn update_promoter_read_only() {
+        base::ticket_types::update(Roles::PromoterReadOnly, false);
     }
     #[test]
     fn update_org_admin() {
@@ -102,6 +118,14 @@ mod cancel_tests {
         base::ticket_types::cancel(Roles::DoorPerson, false);
     }
     #[test]
+    fn cancel_promoter() {
+        base::ticket_types::cancel(Roles::Promoter, false);
+    }
+    #[test]
+    fn cancel_promoter_read_only() {
+        base::ticket_types::cancel(Roles::PromoterReadOnly, false);
+    }
+    #[test]
     fn cancel_org_admin() {
         base::ticket_types::cancel(Roles::OrgAdmin, true);
     }
@@ -133,6 +157,14 @@ mod index_tests {
     #[test]
     fn index_door_person() {
         base::ticket_types::index(Roles::DoorPerson, false);
+    }
+    #[test]
+    fn index_promoter() {
+        base::ticket_types::index(Roles::Promoter, true);
+    }
+    #[test]
+    fn index_promoter_read_only() {
+        base::ticket_types::index(Roles::PromoterReadOnly, true);
     }
     #[test]
     fn index_org_admin() {

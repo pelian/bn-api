@@ -33,6 +33,14 @@ mod create_tests {
         base::holds::create(Roles::DoorPerson, false);
     }
     #[test]
+    fn create_promoter() {
+        base::holds::create(Roles::Promoter, true);
+    }
+    #[test]
+    fn create_promoter_read_only() {
+        base::holds::create(Roles::PromoterReadOnly, false);
+    }
+    #[test]
     fn create_org_admin() {
         base::holds::create(Roles::OrgAdmin, true);
     }
@@ -64,6 +72,14 @@ mod update_tests {
     #[test]
     fn update_door_person() {
         base::holds::update(Roles::DoorPerson, false);
+    }
+    #[test]
+    fn update_promoter() {
+        base::holds::update(Roles::Promoter, true);
+    }
+    #[test]
+    fn update_promoter_read_only() {
+        base::holds::update(Roles::PromoterReadOnly, false);
     }
     #[test]
     fn update_org_admin() {

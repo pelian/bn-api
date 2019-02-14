@@ -171,6 +171,14 @@ impl Code {
         Ok(())
     }
 
+    pub fn event(&self, conn: &PgConnection) -> Result<Event, DatabaseError> {
+        use schema::*;
+        events::table
+            .filter(events::id.eq(self.event_id))
+            .first(conn)
+            .to_db_error(ErrorCode::QueryError, "Could not load event for code")
+    }
+
     pub fn organization(&self, conn: &PgConnection) -> Result<Organization, DatabaseError> {
         use schema::*;
         events::table

@@ -18,6 +18,7 @@ pub struct OrgInviteBuilder<'a> {
     status_change_at: Option<NaiveDateTime>,
     accepted: Option<i16>,
     role: Roles,
+    event_ids: Vec<Uuid>,
     connection: &'a PgConnection,
 }
 
@@ -35,6 +36,7 @@ impl<'a> OrgInviteBuilder<'a> {
             status_change_at: None,
             role: Roles::OrgMember,
             accepted: None,
+            event_ids: Vec::new(),
         }
     }
 
@@ -45,6 +47,11 @@ impl<'a> OrgInviteBuilder<'a> {
 
     pub fn with_role(mut self, role: Roles) -> OrgInviteBuilder<'a> {
         self.role = role;
+        self
+    }
+
+    pub fn with_event_ids(mut self, event_ids: Vec<Uuid>) -> OrgInviteBuilder<'a> {
+        self.event_ids = event_ids;
         self
     }
 
@@ -90,6 +97,7 @@ impl<'a> OrgInviteBuilder<'a> {
             &self.user_email,
             self.user_id,
             vec![self.role],
+            Some(self.event_ids.clone()),
         )
         .commit(self.connection)
         .unwrap();

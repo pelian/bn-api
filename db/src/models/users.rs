@@ -404,6 +404,47 @@ impl User {
         scopes::get_scopes(self.role.clone())
     }
 
+    pub fn get_event_ids_for_organization(
+        &self,
+        organization_id: Uuid,
+        conn: &PgConnection,
+    ) -> Result<Vec<Uuid>, DatabaseError> {
+        organization_users::table
+            .filter(organization_users::user_id.eq(self.id))
+            .filter(organization_users::organization_id.eq(organization_id))
+            .select(organization_users::event_ids)
+            .first(conn)
+            .to_db_error(
+                ErrorCode::QueryError,
+                "Could not retrieve organizations for user",
+            )
+    }
+
+    pub fn get_event_ids_by_organization(
+        &self,
+        conn: &PgConnection,
+    ) -> Result<HashMap<Uuid, Vec<Uuid>>, DatabaseError> {
+        let mut events_by_organization = HashMap::new();
+
+        let organization_event_mapping = organization_users::table
+            .filter(organization_users::user_id.eq(self.id))
+            .select((
+                organization_users::organization_id,
+                organization_users::event_ids,
+            ))
+            .load::<(Uuid, Vec<Uuid>)>(conn)
+            .to_db_error(
+                ErrorCode::QueryError,
+                "Could not retrieve organizations for user",
+            )?;
+
+        for (organization_id, event_ids) in organization_event_mapping {
+            events_by_organization.insert(organization_id, event_ids);
+        }
+
+        Ok(events_by_organization)
+    }
+
     pub fn get_roles_by_organization(
         &self,
         conn: &PgConnection,

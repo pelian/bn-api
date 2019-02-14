@@ -25,6 +25,33 @@ fn create() {
 }
 
 #[test]
+fn create_event_limited_access_user() {
+    let project = TestProject::new();
+    let user = project.create_user().finish();
+    let organization = project
+        .create_organization()
+        .with_member(&user, Roles::OrgOwner)
+        .finish();
+    let event = project
+        .create_event()
+        .with_organization(&organization)
+        .finish();
+    let organization_invite = OrganizationInvite::create(
+        organization.id,
+        user.id,
+        &"valid@test.com".to_string(),
+        Some(user.id),
+        vec![Roles::Promoter],
+        Some(vec![event.id]),
+    )
+    .commit(project.get_connection())
+    .unwrap();
+
+    assert_eq!(vec![event.id], organization_invite.event_ids);
+    assert_eq!(vec![Roles::Promoter], organization_invite.roles);
+}
+
+#[test]
 fn create_with_validation_errors() {
     let project = TestProject::new();
     let user = project.create_user().finish();
@@ -32,12 +59,14 @@ fn create_with_validation_errors() {
         .create_organization()
         .with_member(&user, Roles::OrgOwner)
         .finish();
+    let other_organization_event = project.create_event().finish();
     let result = OrganizationInvite::create(
         organization.id,
         user.id,
         &"invalid-email".to_string(),
         Some(user.id),
-        vec![Roles::OrgMember],
+        vec![Roles::Promoter],
+        Some(vec![other_organization_event.id]),
     )
     .commit(project.get_connection());
 
@@ -57,6 +86,17 @@ fn create_with_validation_errors() {
                         .unwrap()
                         .into_owned(),
                     "User email is invalid"
+                );
+
+                assert!(errors.contains_key("event_ids"));
+                assert_eq!(errors["event_ids"].len(), 1);
+                assert_eq!(
+                    errors["event_ids"][0].code,
+                    "event_ids_do_not_belong_to_organization"
+                );
+                assert_eq!(
+                    &errors["event_ids"][0].message.clone().unwrap().into_owned(),
+                    "Event ids invalid for organization user"
                 );
             }
             _ => panic!("Expected validation error"),

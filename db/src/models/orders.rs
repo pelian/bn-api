@@ -10,7 +10,7 @@ use diesel::sql_types::{BigInt, Bool, Integer, Nullable, Text, Uuid as dUuid};
 use itertools::Itertools;
 use log::Level::{self, Debug};
 use models::*;
-use schema::{events, order_items, orders, organizations, payments, users};
+use schema::{events, order_items, orders, organization_users, organizations, payments, users};
 use serde_json;
 use serde_json::Value;
 use std::borrow::Cow;
@@ -257,15 +257,47 @@ impl Order {
 
     pub fn details(
         &self,
-        organization_ids: Vec<Uuid>,
+        organization_ids: &Vec<Uuid>,
+        user_id: Uuid,
         conn: &PgConnection,
     ) -> Result<Vec<OrderDetailsLineItem>, DatabaseError> {
         let query = include_str!("../queries/order_details.sql");
         diesel::sql_query(query)
             .bind::<dUuid, _>(self.id)
             .bind::<Array<dUuid>, _>(organization_ids)
+            .bind::<dUuid, _>(user_id)
             .load(conn)
             .to_db_error(ErrorCode::QueryError, "Could not load order items")
+    }
+
+    pub fn partially_visible_order(
+        &self,
+        organization_ids: &Vec<Uuid>,
+        user_id: Uuid,
+        conn: &PgConnection,
+    ) -> Result<bool, DatabaseError> {
+        select(exists(
+            order_items::table
+                .inner_join(events::table.on(order_items::event_id.eq(events::id.nullable())))
+                .left_join(
+                    organization_users::table.on(events::organization_id
+                        .eq(organization_users::organization_id)
+                        .and(organization_users::user_id.eq(user_id))),
+                )
+                .filter(events::organization_id.ne_all(organization_ids).or(sql("(
+                        NOT events.id = ANY(organization_users.event_ids)
+                        AND (
+                            'Promoter' = ANY(organization_users.role)
+                            OR 'PromoterReadOnly' = ANY(organization_users.role)
+                        )
+                    )")))
+                .filter(order_items::order_id.eq(self.id)),
+        ))
+        .get_result(conn)
+        .to_db_error(
+            ErrorCode::QueryError,
+            "Could not check if order items exist",
+        )
     }
 
     pub fn organizations(&self, conn: &PgConnection) -> Result<Vec<Organization>, DatabaseError> {
@@ -976,7 +1008,7 @@ impl Order {
             .to_db_error(ErrorCode::QueryError, "Could not load orders")?;
         let mut r = Vec::<DisplayOrder>::new();
         for order in orders {
-            r.push(order.for_display(None, conn)?);
+            r.push(order.for_display(None, user_id, conn)?);
         }
         Ok(r)
     }
@@ -1011,6 +1043,7 @@ impl Order {
     pub fn for_display(
         &self,
         organization_ids: Option<Vec<Uuid>>,
+        user_id: Uuid,
         conn: &PgConnection,
     ) -> Result<DisplayOrder, DatabaseError> {
         let now = Utc::now().naive_utc();
@@ -1030,9 +1063,14 @@ impl Order {
         unique_events.dedup(); //Compiler doesnt like chaining these...
 
         let mut limited_tickets_remaining: Vec<TicketsRemaining> = Vec::new();
+        for e in Event::find_by_ids(unique_events, conn)? {
+            if let Some(ref organization_ids) = organization_ids {
+                if !organization_ids.contains(&e.organization_id) {
+                    continue;
+                }
+            }
 
-        for e in unique_events {
-            let tickets_bought = Order::quantity_for_user_for_event(&self.user_id, &e, conn)?;
+            let tickets_bought = Order::quantity_for_user_for_event(&self.user_id, &e.id, conn)?;
             for (tt_id, num) in tickets_bought {
                 let limit = TicketType::find(tt_id, conn)?.limit_per_person;
                 if limit > 0 {
@@ -1045,13 +1083,39 @@ impl Order {
         }
 
         // Check if this order contains any other organization items if a list of organization_ids is passed in
-        let mut order_contains_tickets_for_other_organizations = false;
+        let mut order_contains_other_tickets = false;
         if let Some(ref organization_ids) = organization_ids {
-            order_contains_tickets_for_other_organizations = select(exists(
+            order_contains_other_tickets = select(exists(
                 order_items::table
+                    .inner_join(orders::table.on(orders::id.eq(order_items::order_id)))
                     .inner_join(events::table.on(order_items::event_id.eq(events::id.nullable())))
+                    .left_join(
+                        organization_users::table
+                            .on(organization_users::organization_id.eq(events::organization_id)),
+                    )
+                    .inner_join(users::table.on(users::id.eq(user_id)))
                     .filter(order_items::order_id.eq(self.id))
-                    .filter(events::organization_id.ne_all(organization_ids)),
+                    .filter(orders::user_id.ne(user_id))
+                    .filter(organization_users::user_id.eq(user_id))
+                    .filter(
+                        sql("(
+                        'Admin' = ANY(users.role)
+                        OR orders.on_behalf_of_user_id = users.id
+                        OR organization_users.id is NULL
+                        OR (
+                            NOT events.id = ANY(organization_users.event_ids)
+                            AND (
+                                    'Promoter' = ANY(organization_users.role)
+                                    OR 'PromoterReadOnly' = ANY(organization_users.role)
+                            )
+                        )
+                        OR NOT events.organization_id = ANY (")
+                        .bind::<Array<dUuid>, _>(organization_ids)
+                        .sql(
+                            ")
+                    )",
+                        ),
+                    ),
             ))
             .get_result(conn)
             .to_db_error(
@@ -1089,7 +1153,7 @@ impl Order {
                 })
                 .collect();
 
-        let items = self.items_for_display(organization_ids, conn)?;
+        let items = self.items_for_display(organization_ids, user_id, conn)?;
         Ok(DisplayOrder {
             id: self.id,
             status: self.status.clone(),
@@ -1114,16 +1178,17 @@ impl Order {
                 None
             },
             allowed_payment_methods,
-            order_contains_tickets_for_other_organizations,
+            order_contains_other_tickets,
         })
     }
 
     pub fn items_for_display(
         &self,
         organization_ids: Option<Vec<Uuid>>,
+        user_id: Uuid,
         conn: &PgConnection,
     ) -> Result<Vec<DisplayOrderItem>, DatabaseError> {
-        OrderItem::find_for_display(self.id, organization_ids, conn)
+        OrderItem::find_for_display(self.id, organization_ids, user_id, conn)
     }
 
     pub fn find_item(
@@ -1630,7 +1695,7 @@ pub struct DisplayOrder {
     pub paid_at: Option<NaiveDateTime>,
     pub checkout_url: Option<String>,
     pub allowed_payment_methods: Vec<AllowedPaymentMethod>,
-    pub order_contains_tickets_for_other_organizations: bool,
+    pub order_contains_other_tickets: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub valid_for_purchase: Option<bool>,
 }

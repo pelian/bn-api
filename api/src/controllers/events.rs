@@ -455,7 +455,12 @@ pub fn publish(
 ) -> Result<HttpResponse, BigNeonError> {
     let conn = connection.get();
     let event = Event::find(path.id, conn)?;
-    user.requires_scope_for_organization(Scopes::EventWrite, &event.organization(conn)?, conn)?;
+    user.requires_scope_for_organization_event(
+        Scopes::EventWrite,
+        &event.organization(conn)?,
+        &event,
+        conn,
+    )?;
     event.publish(conn)?;
 
     // TODO: Remove domain action and replace with domain event EventPublished
@@ -470,7 +475,12 @@ pub fn unpublish(
 ) -> Result<HttpResponse, BigNeonError> {
     let conn = connection.get();
     let event = Event::find(path.id, conn)?;
-    user.requires_scope_for_organization(Scopes::EventWrite, &event.organization(conn)?, conn)?;
+    user.requires_scope_for_organization_event(
+        Scopes::EventWrite,
+        &event.organization(conn)?,
+        &event,
+        conn,
+    )?;
     event.unpublish(conn)?;
     Ok(HttpResponse::Ok().finish())
 }
@@ -497,7 +507,12 @@ pub fn redeem_ticket(
     )?;
     let db_event = Event::find(ticket.event_id, connection)?;
     let organization = db_event.organization(connection)?;
-    auth_user.requires_scope_for_organization(Scopes::RedeemTicket, &organization, connection)?;
+    auth_user.requires_scope_for_organization_event(
+        Scopes::RedeemTicket,
+        &organization,
+        &db_event,
+        connection,
+    )?;
 
     let redeemable =
         TicketInstance::show_redeemable_ticket(parameters.ticket_instance_id, connection)?;
@@ -546,12 +561,22 @@ pub fn show_from_organizations(
     let org = Organization::find(path.id, conn)?;
     user.requires_scope_for_organization(Scopes::RedeemTicket, &org, conn)?;
 
+    let user_roles = org.get_roles_for_user(&user.user, conn)?;
     let events = Event::find_all_events_for_organization(
         path.id,
         paging
             .get_tag("past_or_upcoming")
             .unwrap_or_else(|| "Upcoming".to_string())
             .parse()?,
+        if Roles::get_event_limited_roles()
+            .iter()
+            .find(|r| user_roles.contains(&r))
+            .is_some()
+        {
+            Some(user.user.get_event_ids_for_organization(org.id, conn)?)
+        } else {
+            None
+        },
         paging.page(),
         paging.limit(),
         conn,
@@ -582,7 +607,12 @@ pub fn dashboard(
 ) -> Result<HttpResponse, BigNeonError> {
     let conn = connection.get();
     let event = Event::find(path.id, conn)?;
-    user.requires_scope_for_organization(Scopes::DashboardRead, &event.organization(conn)?, conn)?;
+    user.requires_scope_for_organization_event(
+        Scopes::DashboardRead,
+        &event.organization(conn)?,
+        &event,
+        conn,
+    )?;
     let summary = event.summary(conn)?;
     let start_utc = query
         .start_utc
@@ -641,7 +671,12 @@ pub fn update(
     let connection = connection.get();
     let event = Event::find(parameters.id, connection)?;
     let organization = event.organization(connection)?;
-    user.requires_scope_for_organization(Scopes::EventWrite, &organization, connection)?;
+    user.requires_scope_for_organization_event(
+        Scopes::EventWrite,
+        &organization,
+        &event,
+        connection,
+    )?;
 
     let updated_event = event.update(event_parameters.into_inner(), connection)?;
     Ok(HttpResponse::Ok().json(&updated_event))
@@ -653,7 +688,12 @@ pub fn cancel(
     let connection = connection.get();
     let event = Event::find(parameters.id, connection)?;
     let organization = event.organization(connection)?;
-    user.requires_scope_for_organization(Scopes::EventWrite, &organization, connection)?;
+    user.requires_scope_for_organization_event(
+        Scopes::EventCancel,
+        &organization,
+        &event,
+        connection,
+    )?;
 
     //Doing this in the DB layer so it can use the DB time as now.
     let updated_event = event.cancel(connection)?;
@@ -715,7 +755,12 @@ pub fn add_artist(
     let connection = connection.get();
     let event = Event::find(parameters.id, connection)?;
     let organization = event.organization(connection)?;
-    user.requires_scope_for_organization(Scopes::EventWrite, &organization, connection)?;
+    user.requires_scope_for_organization_event(
+        Scopes::EventWrite,
+        &organization,
+        &event,
+        connection,
+    )?;
 
     let event_artist = EventArtist::create(
         parameters.id,
@@ -740,7 +785,12 @@ pub fn update_artists(
     let connection = connection.get();
     let event = Event::find(parameters.id, connection)?;
     let organization = event.organization(connection)?;
-    user.requires_scope_for_organization(Scopes::EventWrite, &organization, connection)?;
+    user.requires_scope_for_organization_event(
+        Scopes::EventWrite,
+        &organization,
+        &event,
+        connection,
+    )?;
 
     EventArtist::clear_all_from_event(parameters.id, connection)?;
 
@@ -797,9 +847,10 @@ pub fn guest_list(
     //TODO refactor GuestListQueryParameters to PagingParameters
     let conn = connection.get();
     let event = Event::find(path.id, conn)?;
-    user.requires_scope_for_organization(
+    user.requires_scope_for_organization_event(
         Scopes::EventViewGuests,
         &event.organization(conn)?,
+        &event,
         conn,
     )?;
     let tickets = event.guest_list(&query.query, conn)?;
@@ -840,9 +891,11 @@ pub fn codes(
     ),
 ) -> Result<HttpResponse, BigNeonError> {
     let conn = conn.get();
-    user.requires_scope_for_organization(
+    let event = Event::find(path.id, conn)?;
+    user.requires_scope_for_organization_event(
         Scopes::CodeRead,
-        &Organization::find_for_event(path.id, conn)?,
+        &event.organization(conn)?,
+        &event,
         conn,
     )?;
 
@@ -868,9 +921,11 @@ pub fn holds(
     ),
 ) -> Result<HttpResponse, BigNeonError> {
     let conn = conn.get();
-    user.requires_scope_for_organization(
+    let event = Event::find(path.id, conn)?;
+    user.requires_scope_for_organization_event(
         Scopes::HoldRead,
-        &Organization::find_for_event(path.id, conn)?,
+        &event.organization(conn)?,
+        &event,
         conn,
     )?;
     let holds = Hold::find_for_event(path.id, conn)?;
@@ -925,7 +980,7 @@ pub fn fans_index(
     let connection = connection.get();
     let event = Event::find(path.id, connection)?;
     let org = event.organization(connection)?;
-    user.requires_scope_for_organization(Scopes::OrgFans, &org, &connection)?;
+    user.requires_scope_for_organization_event(Scopes::OrgFans, &org, &event, &connection)?;
 
     let no_result_is_ok = |e: DatabaseError| match e.error_code {
         ErrorCode::NoResults => Ok((Vec::<DisplayFan>::new(), 0)),

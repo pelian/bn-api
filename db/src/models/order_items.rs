@@ -375,6 +375,7 @@ impl OrderItem {
     pub(crate) fn find_for_display(
         order_id: Uuid,
         organization_ids: Option<Vec<Uuid>>,
+        user_id: Uuid,
         conn: &PgConnection,
     ) -> Result<Vec<DisplayOrderItem>, DatabaseError> {
         diesel::sql_query(
@@ -405,12 +406,12 @@ impl OrderItem {
              ELSE 'Valid'
            END AS cart_item_status
         FROM order_items oi
-           JOIN orders o on oi.order_id = o.id
+           JOIN orders o ON oi.order_id = o.id
+           LEFT JOIN ticket_pricing tp ON tp.id = oi.ticket_pricing_id
            LEFT JOIN events e ON oi.event_id = e.id
-           LEFT JOIN ticket_pricing tp
-           INNER JOIN ticket_types tt
-            ON tp.ticket_type_id = tt.id
-            ON oi.ticket_pricing_id = tp.id
+           LEFT JOIN users u on u.id = $3
+           LEFT JOIN organization_users ou ON ou.organization_id = e.organization_id and ou.user_id = $3
+           LEFT JOIN ticket_types tt ON tp.ticket_type_id = tt.id
            LEFT JOIN holds h ON oi.hold_id = h.id
            LEFT JOIN ticket_instances ti ON ti.id = (
                SELECT ti.id
@@ -432,15 +433,26 @@ impl OrderItem {
         WHERE oi.order_id = $1
         -- Filter by organization id if list provided otherwise do not filter
         AND (
-            e.organization_id is null
+            e.id is NULL
             OR e.organization_id = ANY($2)
             OR $2 IS NULL
+        )
+        AND (
+            'Admin' = ANY(u.role)
+            OR o.user_id = $3
+            OR o.on_behalf_of_user_id = $3
+            OR (
+                NOT 'Promoter' = ANY(ou.role)
+                AND NOT 'PromoterReadOnly' = ANY(ou.role)
+            )
+            OR e.id = ANY(ou.event_ids)
         )
         ORDER BY oi.item_type DESC
         "#,
         )
         .bind::<dUuid, _>(order_id)
         .bind::<Nullable<Array<dUuid>>, _>(organization_ids)
+        .bind::<dUuid, _>(user_id)
         .load(conn)
         .to_db_error(ErrorCode::QueryError, "Could not load order items")
     }

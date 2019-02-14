@@ -31,6 +31,14 @@ mod create_tests {
         base::organization_invites::create(Roles::DoorPerson, false);
     }
     #[test]
+    fn create_promoter() {
+        base::organization_invites::create(Roles::Promoter, false);
+    }
+    #[test]
+    fn create_promoter_read_only() {
+        base::organization_invites::create(Roles::PromoterReadOnly, false);
+    }
+    #[test]
     fn create_org_admin() {
         base::organization_invites::create(Roles::OrgAdmin, true);
     }
@@ -62,6 +70,14 @@ mod index_tests {
     #[test]
     fn index_door_person() {
         base::organization_invites::index(Roles::DoorPerson, false);
+    }
+    #[test]
+    fn index_promoter() {
+        base::organization_invites::index(Roles::Promoter, false);
+    }
+    #[test]
+    fn index_promoter_read_only() {
+        base::organization_invites::index(Roles::PromoterReadOnly, false);
     }
     #[test]
     fn index_org_admin() {
@@ -97,6 +113,14 @@ mod destroy_tests {
         base::organization_invites::destroy(Roles::DoorPerson, false);
     }
     #[test]
+    fn destroy_promoter() {
+        base::organization_invites::destroy(Roles::Promoter, false);
+    }
+    #[test]
+    fn destroy_promoter_read_only() {
+        base::organization_invites::destroy(Roles::PromoterReadOnly, false);
+    }
+    #[test]
     fn destroy_org_admin() {
         base::organization_invites::destroy(Roles::OrgAdmin, true);
     }
@@ -130,6 +154,14 @@ mod create_for_new_user_tests {
         base::organization_invites::create_for_new_user(Roles::DoorPerson, false);
     }
     #[test]
+    fn create_for_new_user_promoter() {
+        base::organization_invites::create_for_new_user(Roles::Promoter, false);
+    }
+    #[test]
+    fn create_for_new_user_promoter_read_only() {
+        base::organization_invites::create_for_new_user(Roles::PromoterReadOnly, false);
+    }
+    #[test]
     fn create_for_new_user_org_admin() {
         base::organization_invites::create_for_new_user(Roles::OrgAdmin, true);
     }
@@ -161,6 +193,14 @@ mod accept_tests {
     #[test]
     fn accept_door_person() {
         base::organization_invites::accept_invite_status_of_invite(Roles::DoorPerson, true);
+    }
+    #[test]
+    fn accept_promoter() {
+        base::organization_invites::accept_invite_status_of_invite(Roles::Promoter, true);
+    }
+    #[test]
+    fn accept_promoter_read_only() {
+        base::organization_invites::accept_invite_status_of_invite(Roles::PromoterReadOnly, true);
     }
     #[test]
     fn accept_org_admin() {

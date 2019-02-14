@@ -55,7 +55,7 @@ WHERE e.organization_id = $1
         WHEN $2 IS NULL THEN TRUE -- All events
         WHEN $2 THEN e.event_start >= now() OR e.event_end > now() -- upcoming
         ELSE e.event_end <= now() END -- past
-  AND ($5 IS NULL OR e.id = $5)
+  AND ($5 IS NULL OR e.id = ANY($5))
 ORDER BY CASE WHEN $2 THEN e.event_start END ASC, CASE WHEN NOT $2 THEN e.event_start END DESC
 LIMIT $4
 OFFSET $3;

@@ -15,6 +15,7 @@ pub enum Scopes {
     CompRead,
     CompWrite,
     DashboardRead,
+    EventCancel,
     EventFinancialReports,
     EventInterest,
     EventReports,
@@ -40,6 +41,8 @@ pub enum Scopes {
     TicketAdmin,
     TicketRead,
     TicketTransfer,
+    TicketTypeRead,
+    TicketTypeWrite,
     UserRead,
     VenueWrite,
 }
@@ -64,6 +67,7 @@ impl fmt::Display for Scopes {
             Scopes::CompRead => "comp:read",
             Scopes::CompWrite => "comp:write",
             Scopes::DashboardRead => "dashboard:read",
+            Scopes::EventCancel => "event:cancel",
             Scopes::EventWrite => "event:write",
             Scopes::EventFinancialReports => "event:financial-reports",
             Scopes::EventInterest => "event:interest",
@@ -91,6 +95,8 @@ impl fmt::Display for Scopes {
             Scopes::TicketAdmin => "ticket:admin",
             Scopes::TicketRead => "ticket:read",
             Scopes::TicketTransfer => "ticket:transfer",
+            Scopes::TicketTypeRead => "ticket-type:read",
+            Scopes::TicketTypeWrite => "ticket-type:write",
         };
         write!(f, "{}", s)
     }
@@ -109,6 +115,7 @@ impl FromStr for Scopes {
             "comp:read" => Scopes::CompRead,
             "comp:write" => Scopes::CompWrite,
             "dashboard:read" => Scopes::DashboardRead,
+            "event:cancel" => Scopes::EventCancel,
             "event:write" => Scopes::EventWrite,
             "event:financial-reports" => Scopes::EventFinancialReports,
             "event:interest" => Scopes::EventInterest,
@@ -136,6 +143,8 @@ impl FromStr for Scopes {
             "ticket:admin" => Scopes::TicketAdmin,
             "ticket:read" => Scopes::TicketRead,
             "ticket:transfer" => Scopes::TicketTransfer,
+            "ticket-type:read" => Scopes::TicketTypeRead,
+            "ticket-type:write" => Scopes::TicketTypeWrite,
             _ => {
                 return Err(EnumParseError {
                     message: "Could not parse value".to_string(),
@@ -188,6 +197,33 @@ fn get_scopes_for_role(role: Roles) -> Vec<Scopes> {
             roles.extend(get_scopes_for_role(Roles::DoorPerson));
             roles
         }
+        PromoterReadOnly => {
+            let mut roles = vec![
+                Scopes::CodeRead,
+                Scopes::CompRead,
+                Scopes::DashboardRead,
+                Scopes::EventViewGuests,
+                Scopes::EventInterest,
+                Scopes::HoldRead,
+                Scopes::OrderRead,
+                Scopes::TicketRead,
+                Scopes::TicketTypeRead,
+            ];
+            roles
+        }
+        Promoter => {
+            let mut roles = vec![
+                Scopes::CodeWrite,
+                Scopes::CompWrite,
+                Scopes::EventFinancialReports,
+                Scopes::EventReports,
+                Scopes::EventWrite,
+                Scopes::HoldWrite,
+                Scopes::OrderRefund,
+            ];
+            roles.extend(get_scopes_for_role(Roles::PromoterReadOnly));
+            roles
+        }
         OrgMember => {
             let mut roles = vec![
                 Scopes::ArtistWrite,
@@ -198,6 +234,7 @@ fn get_scopes_for_role(role: Roles) -> Vec<Scopes> {
                 Scopes::CompRead,
                 Scopes::CompWrite,
                 Scopes::DashboardRead,
+                Scopes::EventCancel,
                 Scopes::EventScan,
                 Scopes::EventViewGuests,
                 Scopes::EventWrite,
@@ -210,6 +247,8 @@ fn get_scopes_for_role(role: Roles) -> Vec<Scopes> {
                 Scopes::RedeemTicket,
                 Scopes::TicketAdmin,
                 Scopes::TicketRead,
+                Scopes::TicketTypeRead,
+                Scopes::TicketTypeWrite,
                 Scopes::VenueWrite,
             ];
             roles.extend(get_scopes_for_role(Roles::User));
@@ -262,6 +301,7 @@ fn get_scopes_for_role_test() {
             Scopes::CompRead,
             Scopes::CompWrite,
             Scopes::DashboardRead,
+            Scopes::EventCancel,
             Scopes::EventFinancialReports,
             Scopes::EventInterest,
             Scopes::EventReports,
@@ -284,6 +324,8 @@ fn get_scopes_for_role_test() {
             Scopes::TicketAdmin,
             Scopes::TicketRead,
             Scopes::TicketTransfer,
+            Scopes::TicketTypeRead,
+            Scopes::TicketTypeWrite,
             Scopes::UserRead,
             Scopes::VenueWrite,
         ],
@@ -313,6 +355,7 @@ fn get_scopes_test() {
             "comp:read",
             "comp:write",
             "dashboard:read",
+            "event:cancel",
             "event:financial-reports",
             "event:interest",
             "event:reports",
@@ -332,6 +375,8 @@ fn get_scopes_test() {
             "org:users",
             "org:write",
             "redeem:ticket",
+            "ticket-type:read",
+            "ticket-type:write",
             "ticket:admin",
             "ticket:read",
             "ticket:transfer",
@@ -355,6 +400,7 @@ fn get_scopes_test() {
             "comp:read",
             "comp:write",
             "dashboard:read",
+            "event:cancel",
             "event:financial-reports",
             "event:interest",
             "event:reports",
@@ -377,6 +423,8 @@ fn get_scopes_test() {
             "org:write",
             "redeem:ticket",
             "region:write",
+            "ticket-type:read",
+            "ticket-type:write",
             "ticket:admin",
             "ticket:read",
             "ticket:transfer",
@@ -400,6 +448,7 @@ fn get_scopes_test() {
             "comp:read",
             "comp:write",
             "dashboard:read",
+            "event:cancel",
             "event:financial-reports",
             "event:interest",
             "event:reports",
@@ -425,6 +474,8 @@ fn get_scopes_test() {
             "ticket:admin",
             "ticket:read",
             "ticket:transfer",
+            "ticket-type:read",
+            "ticket-type:write",
             "user:read",
             "venue:write",
         ],

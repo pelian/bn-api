@@ -9,6 +9,7 @@ use utils::errors::ConvertToDatabaseError;
 use utils::errors::{DatabaseError, ErrorCode};
 use uuid::Uuid;
 use validator::Validate;
+use validators::{self, *};
 
 pub const INVITE_EXPIRATION_PERIOD_IN_DAYS: i64 = 7;
 
@@ -40,6 +41,7 @@ pub struct OrganizationInvite {
     pub updated_at: NaiveDateTime,
     pub sent_invite: bool,
     pub roles: Vec<Roles>,
+    pub event_ids: Vec<Uuid>,
 }
 
 #[derive(Insertable, PartialEq, Debug, Deserialize, Validate)]
@@ -52,6 +54,7 @@ pub struct NewOrganizationInvite {
     pub security_token: Option<Uuid>,
     pub user_id: Option<Uuid>,
     pub roles: Vec<Roles>,
+    pub event_ids: Option<Vec<Uuid>>,
 }
 
 #[derive(Debug, PartialEq, Queryable, Serialize, QueryableByName)]
@@ -67,9 +70,34 @@ pub struct DisplayInvite {
 }
 
 impl NewOrganizationInvite {
+    pub fn validate_record(&self, conn: &PgConnection) -> Result<(), DatabaseError> {
+        let validation_errors = validators::append_validation_error(
+            self.validate(),
+            "event_ids",
+            event_ids_belong_to_organization_validation(
+                true,
+                self.organization_id,
+                &self.event_ids.clone().unwrap_or(Vec::new()),
+                conn,
+            )?,
+        );
+
+        Ok(validation_errors?)
+    }
+
     pub fn commit(&mut self, conn: &PgConnection) -> Result<OrganizationInvite, DatabaseError> {
+        // Clear event ids if role is not the limited access role
+        if Roles::get_event_limited_roles()
+            .iter()
+            .find(|r| self.roles.contains(&r))
+            .is_none()
+            || self.event_ids.is_none()
+        {
+            self.event_ids = Some(Vec::new());
+        }
+
         self.security_token = Some(Uuid::new_v4());
-        self.validate()?;
+        self.validate_record(conn)?;
         let res = diesel::insert_into(organization_invites::table)
             .values(&*self)
             .get_result(conn);
@@ -84,6 +112,7 @@ impl OrganizationInvite {
         email: &str,
         user_id: Option<Uuid>,
         roles: Vec<Roles>,
+        event_ids: Option<Vec<Uuid>>,
     ) -> NewOrganizationInvite {
         NewOrganizationInvite {
             organization_id: org_id,
@@ -92,6 +121,7 @@ impl OrganizationInvite {
             security_token: None,
             user_id,
             roles,
+            event_ids,
         }
     }
 

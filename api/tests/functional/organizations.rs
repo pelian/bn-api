@@ -25,6 +25,14 @@ mod index_tests {
         organizations::index(Roles::DoorPerson);
     }
     #[test]
+    fn index_promoter() {
+        organizations::index(Roles::Promoter);
+    }
+    #[test]
+    fn index_promoter_read_only() {
+        organizations::index(Roles::PromoterReadOnly);
+    }
+    #[test]
     fn index_org_admin() {
         organizations::index(Roles::OrgAdmin);
     }
@@ -56,6 +64,14 @@ mod show_tests {
     #[test]
     fn show_door_person() {
         organizations::show(Roles::DoorPerson, false);
+    }
+    #[test]
+    fn show_promoter() {
+        organizations::show(Roles::Promoter, false);
+    }
+    #[test]
+    fn show_promoter_read_only() {
+        organizations::show(Roles::PromoterReadOnly, false);
     }
     #[test]
     fn show_org_admin() {
@@ -91,6 +107,14 @@ mod index_for_all_orgs_tests {
         organizations::index_for_all_orgs(Roles::DoorPerson, false);
     }
     #[test]
+    fn index_for_all_orgs_promoter() {
+        organizations::index_for_all_orgs(Roles::Promoter, false);
+    }
+    #[test]
+    fn index_for_all_orgs_promoter_read_only() {
+        organizations::index_for_all_orgs(Roles::PromoterReadOnly, false);
+    }
+    #[test]
     fn index_for_all_orgs_org_admin() {
         organizations::index_for_all_orgs(Roles::OrgAdmin, false);
     }
@@ -122,6 +146,14 @@ mod create_tests {
     #[test]
     fn create_door_person() {
         organizations::create(Roles::DoorPerson, false);
+    }
+    #[test]
+    fn create_promoter() {
+        organizations::create(Roles::Promoter, false);
+    }
+    #[test]
+    fn create_promoter_read_only() {
+        organizations::create(Roles::PromoterReadOnly, false);
     }
     #[test]
     fn create_org_admin() {
@@ -157,6 +189,14 @@ mod remove_user_tests {
         organizations::remove_user(Roles::DoorPerson, false);
     }
     #[test]
+    fn remove_user_promoter() {
+        organizations::remove_user(Roles::Promoter, false);
+    }
+    #[test]
+    fn remove_user_promoter_read_only() {
+        organizations::remove_user(Roles::PromoterReadOnly, false);
+    }
+    #[test]
     fn remove_user_org_admin() {
         organizations::remove_user(Roles::OrgAdmin, true);
     }
@@ -188,6 +228,14 @@ mod add_user_tests {
     #[test]
     fn add_user_door_person() {
         organizations::add_user(Roles::DoorPerson, false);
+    }
+    #[test]
+    fn add_user_promoter() {
+        organizations::add_user(Roles::Promoter, false);
+    }
+    #[test]
+    fn add_user_promoter_read_only() {
+        organizations::add_user(Roles::PromoterReadOnly, false);
     }
     #[test]
     fn add_user_org_admin() {
@@ -223,6 +271,14 @@ mod add_venue_tests {
         organizations::add_venue(Roles::DoorPerson, false);
     }
     #[test]
+    fn add_venue_promoter() {
+        organizations::add_venue(Roles::Promoter, false);
+    }
+    #[test]
+    fn add_venue_promoter_read_only() {
+        organizations::add_venue(Roles::PromoterReadOnly, false);
+    }
+    #[test]
     fn add_venue_org_admin() {
         organizations::add_venue(Roles::OrgAdmin, true);
     }
@@ -254,6 +310,14 @@ mod add_artist_tests {
     #[test]
     fn add_artist_door_person() {
         organizations::add_artist(Roles::DoorPerson, false);
+    }
+    #[test]
+    fn add_artist_promoter() {
+        organizations::add_artist(Roles::Promoter, false);
+    }
+    #[test]
+    fn add_artist_promoter_read_only() {
+        organizations::add_artist(Roles::PromoterReadOnly, false);
     }
     #[test]
     fn add_artist_org_admin() {
@@ -289,6 +353,14 @@ mod update_tests {
         organizations::update(Roles::DoorPerson, false);
     }
     #[test]
+    fn update_promoter() {
+        organizations::update(Roles::Promoter, false);
+    }
+    #[test]
+    fn update_promoter_read_only() {
+        organizations::update(Roles::PromoterReadOnly, false);
+    }
+    #[test]
     fn update_org_admin() {
         organizations::update(Roles::OrgAdmin, true);
     }
@@ -320,6 +392,14 @@ mod list_organization_members_tests {
     #[test]
     fn list_organization_members_door_person() {
         organizations::list_organization_members(Roles::DoorPerson, false);
+    }
+    #[test]
+    fn list_organization_members_promoter() {
+        organizations::list_organization_members(Roles::Promoter, false);
+    }
+    #[test]
+    fn list_organization_members_promoter_read_only() {
+        organizations::list_organization_members(Roles::PromoterReadOnly, false);
     }
     #[test]
     fn list_organization_members_org_admin() {
@@ -355,6 +435,14 @@ mod show_fee_schedule_tests {
         organizations::show_fee_schedule(Roles::DoorPerson, false);
     }
     #[test]
+    fn show_fee_schedule_promoter() {
+        organizations::show_fee_schedule(Roles::Promoter, false);
+    }
+    #[test]
+    fn show_fee_schedule_promoter_read_only() {
+        organizations::show_fee_schedule(Roles::PromoterReadOnly, false);
+    }
+    #[test]
     fn show_fee_schedule_org_admin() {
         organizations::show_fee_schedule(Roles::OrgAdmin, true);
     }
@@ -386,6 +474,10 @@ mod add_fee_schedule_tests {
     #[test]
     fn add_fee_schedule_door_person() {
         organizations::add_fee_schedule(Roles::DoorPerson, false);
+    }
+    #[test]
+    fn add_fee_schedule_promoter_read_only() {
+        organizations::add_fee_schedule(Roles::PromoterReadOnly, false);
     }
     #[test]
     fn add_fee_schedule_org_admin() {

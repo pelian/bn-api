@@ -4,12 +4,14 @@ use chrono_tz::Tz;
 use diesel;
 use diesel::expression::dsl;
 use diesel::expression::sql_literal::sql;
+use diesel::pg::types::sql_types::Array;
 use diesel::prelude::*;
-use diesel::sql_types;
+use diesel::sql_types::{BigInt, Bool, Date, Integer, Nullable, Text, Timestamp, Uuid as dUuid};
 use log::Level;
 use models::*;
 use schema::{
-    artists, event_artists, events, orders, organization_users, organizations, payments, venues,
+    artists, event_artists, events, order_items, orders, organization_users, organizations,
+    payments, ticket_types, venues,
 };
 use serde_with::rust::double_option;
 use std::borrow::Cow;
@@ -259,11 +261,11 @@ impl Event {
     ) -> Result<HashMap<Uuid, (i64, i64)>, DatabaseError> {
         #[derive(Debug, Queryable, QueryableByName)]
         struct R {
-            #[sql_type = "sql_types::Uuid"]
+            #[sql_type = "dUuid"]
             event_id: Uuid,
-            #[sql_type = "sql_types::BigInt"]
+            #[sql_type = "BigInt"]
             min_ticket_price: i64,
-            #[sql_type = "sql_types::BigInt"]
+            #[sql_type = "BigInt"]
             max_ticket_price: i64,
         }
 
@@ -288,8 +290,8 @@ impl Event {
         "#;
 
         let results: Vec<R> = diesel::sql_query(query)
-            .bind::<diesel::pg::types::sql_types::Array<diesel::sql_types::Uuid>, _>(event_ids)
-            .bind::<diesel::sql_types::Bool, _>(box_office_pricing)
+            .bind::<Array<dUuid>, _>(event_ids)
+            .bind::<Bool, _>(box_office_pricing)
             .get_results(conn)
             .to_db_error(
                 ErrorCode::QueryError,
@@ -397,12 +399,38 @@ impl Event {
         Event::find(self.id, conn)
     }
 
+    pub fn find_by_order_item_ids(
+        order_item_ids: &Vec<Uuid>,
+        conn: &PgConnection,
+    ) -> Result<Vec<Event>, DatabaseError> {
+        events::table
+            .inner_join(organizations::table.on(events::organization_id.eq(organizations::id)))
+            .inner_join(ticket_types::table.on(ticket_types::event_id.eq(events::id)))
+            .inner_join(
+                order_items::table.on(order_items::ticket_type_id.eq(ticket_types::id.nullable())),
+            )
+            .filter(order_items::id.eq_any(order_item_ids))
+            .select(events::all_columns)
+            .order_by(events::name.asc())
+            .distinct()
+            .load(conn)
+            .to_db_error(ErrorCode::QueryError, "Error loading organizations")
+    }
+
     pub fn find(id: Uuid, conn: &PgConnection) -> Result<Event, DatabaseError> {
         DatabaseError::wrap(
             ErrorCode::QueryError,
             "Error loading event",
             events::table.find(id).first::<Event>(conn),
         )
+    }
+
+    pub fn find_by_ids(ids: Vec<Uuid>, conn: &PgConnection) -> Result<Vec<Event>, DatabaseError> {
+        events::table
+            .filter(events::id.eq_any(ids))
+            .order_by(events::name)
+            .get_results(conn)
+            .to_db_error(ErrorCode::QueryError, "Error loading events")
     }
 
     pub fn cancel(self, conn: &PgConnection) -> Result<Event, DatabaseError> {
@@ -497,13 +525,14 @@ impl Event {
     pub fn find_all_events_for_organization(
         organization_id: Uuid,
         past_or_upcoming: PastOrUpcoming,
+        event_ids: Option<Vec<Uuid>>,
         page: u32,
         limit: u32,
         conn: &PgConnection,
     ) -> Result<paging::Payload<EventSummaryResult>, DatabaseError> {
         #[derive(QueryableByName)]
         struct Total {
-            #[sql_type = "sql_types::BigInt"]
+            #[sql_type = "BigInt"]
             total: i64,
         };
 
@@ -518,11 +547,13 @@ impl Event {
                     OR COALESCE(e.event_end, '31 Dec 1999') > now()
                 ELSE
                     COALESCE(e.event_end, '31 Dec 1999') <= now()
-            END;
+            END
+            AND ($3 IS NULL OR e.id = ANY($3));
         "#,
         )
-        .bind::<sql_types::Uuid, _>(organization_id)
-        .bind::<sql_types::Bool, _>(past_or_upcoming == PastOrUpcoming::Upcoming)
+        .bind::<dUuid, _>(organization_id)
+        .bind::<Bool, _>(past_or_upcoming == PastOrUpcoming::Upcoming)
+        .bind::<Nullable<Array<dUuid>>, _>(event_ids.clone())
         .get_results(conn)
         .to_db_error(
             ErrorCode::QueryError,
@@ -533,9 +564,9 @@ impl Event {
         paging.total = total.remove(0).total as u64;
 
         let results = Event::find_summary_data(
-            Some(organization_id),
-            None,
+            organization_id,
             Some(past_or_upcoming),
+            event_ids,
             page,
             limit,
             conn,
@@ -547,77 +578,76 @@ impl Event {
     }
 
     pub fn summary(&self, conn: &PgConnection) -> Result<EventSummaryResult, DatabaseError> {
-        let mut results = Event::find_summary_data(None, Some(self), None, 0, 100, conn)?;
+        let mut results = Event::find_summary_data(
+            self.organization_id,
+            None,
+            Some(vec![self.id]),
+            0,
+            100,
+            conn,
+        )?;
         Ok(results.remove(0))
     }
 
     fn find_summary_data(
-        organization_id: Option<Uuid>,
-        event: Option<&Event>,
+        organization_id: Uuid,
         past_or_upcoming: Option<PastOrUpcoming>,
+        event_ids: Option<Vec<Uuid>>,
         page: u32,
         limit: u32,
         conn: &PgConnection,
     ) -> Result<Vec<EventSummaryResult>, DatabaseError> {
-        use diesel::sql_types::Nullable as N;
-
-        let organization_id = match event {
-            Some(e) => e.organization_id,
-            None => organization_id
-                .expect("Either organization_id or event must be used when calling this method"),
-        };
-
         #[derive(QueryableByName)]
         struct R {
-            #[sql_type = "sql_types::Uuid"]
+            #[sql_type = "dUuid"]
             id: Uuid,
-            #[sql_type = "sql_types::Text"]
+            #[sql_type = "Text"]
             name: String,
-            #[sql_type = "sql_types::Uuid"]
+            #[sql_type = "dUuid"]
             organization_id: Uuid,
-            #[sql_type = "N<sql_types::Uuid>"]
+            #[sql_type = "Nullable<dUuid>"]
             venue_id: Option<Uuid>,
-            #[sql_type = "N<sql_types::Text>"]
+            #[sql_type = "Nullable<Text>"]
             venue_name: Option<String>,
-            #[sql_type = "N<sql_types::Text>"]
+            #[sql_type = "Nullable<Text>"]
             venue_timezone: Option<String>,
-            #[sql_type = "sql_types::Timestamp"]
+            #[sql_type = "Timestamp"]
             created_at: NaiveDateTime,
-            #[sql_type = "N<sql_types::Timestamp>"]
+            #[sql_type = "Nullable<Timestamp>"]
             event_start: Option<NaiveDateTime>,
-            #[sql_type = "N<sql_types::Timestamp>"]
+            #[sql_type = "Nullable<Timestamp>"]
             door_time: Option<NaiveDateTime>,
-            #[sql_type = "N<sql_types::Timestamp>"]
+            #[sql_type = "Nullable<Timestamp>"]
             event_end: Option<NaiveDateTime>,
-            #[sql_type = "sql_types::Text"]
+            #[sql_type = "Text"]
             status: EventStatus,
-            #[sql_type = "N<sql_types::Text>"]
+            #[sql_type = "Nullable<Text>"]
             promo_image_url: Option<String>,
-            #[sql_type = "N<sql_types::Text>"]
+            #[sql_type = "Nullable<Text>"]
             additional_info: Option<String>,
-            #[sql_type = "N<sql_types::Text>"]
+            #[sql_type = "Nullable<Text>"]
             top_line_info: Option<String>,
-            #[sql_type = "N<sql_types::Integer>"]
+            #[sql_type = "Nullable<Integer>"]
             age_limit: Option<i32>,
-            #[sql_type = "N<sql_types::Timestamp>"]
+            #[sql_type = "Nullable<Timestamp>"]
             cancelled_at: Option<NaiveDateTime>,
-            #[sql_type = "N<sql_types::BigInt>"]
+            #[sql_type = "Nullable<BigInt>"]
             min_price: Option<i64>,
-            #[sql_type = "N<sql_types::BigInt>"]
+            #[sql_type = "Nullable<BigInt>"]
             max_price: Option<i64>,
-            #[sql_type = "N<sql_types::Timestamp>"]
+            #[sql_type = "Nullable<Timestamp>"]
             publish_date: Option<NaiveDateTime>,
-            #[sql_type = "N<sql_types::Timestamp>"]
+            #[sql_type = "Nullable<Timestamp>"]
             on_sale: Option<NaiveDateTime>,
-            #[sql_type = "N<sql_types::BigInt>"]
+            #[sql_type = "Nullable<BigInt>"]
             sales_total_in_cents: Option<i64>,
-            #[sql_type = "sql_types::Bool"]
+            #[sql_type = "Bool"]
             is_external: bool,
-            #[sql_type = "N<sql_types::Text>"]
+            #[sql_type = "Nullable<Text>"]
             external_url: Option<String>,
-            #[sql_type = "N<sql_types::Text>"]
+            #[sql_type = "Nullable<Text>"]
             override_status: Option<EventOverrideStatus>,
-            #[sql_type = "sql_types::Text"]
+            #[sql_type = "Text"]
             event_type: EventTypes,
         }
 
@@ -625,11 +655,11 @@ impl Event {
 
         jlog!(Level::Debug, "Fetching summary data for event");
         let events: Vec<R> = diesel::sql_query(query_events)
-            .bind::<sql_types::Uuid, _>(organization_id)
-            .bind::<N<sql_types::Bool>, _>(past_or_upcoming.map(|p| p == PastOrUpcoming::Upcoming))
-            .bind::<sql_types::BigInt, _>((page * limit) as i64)
-            .bind::<sql_types::BigInt, _>(limit as i64)
-            .bind::<N<sql_types::Uuid>, _>(event.map(|e| e.id))
+            .bind::<dUuid, _>(organization_id)
+            .bind::<Nullable<Bool>, _>(past_or_upcoming.map(|p| p == PastOrUpcoming::Upcoming))
+            .bind::<BigInt, _>((page * limit) as i64)
+            .bind::<BigInt, _>(limit as i64)
+            .bind::<Nullable<Array<dUuid>>, _>(event_ids.clone())
             .get_results(conn)
             .to_db_error(
                 ErrorCode::QueryError,
@@ -642,9 +672,9 @@ impl Event {
         jlog!(Level::Debug, "Fetching summary data for ticket types");
 
         let ticket_types: Vec<EventSummaryResultTicketType> = diesel::sql_query(query_ticket_types)
-            .bind::<sql_types::Uuid, _>(organization_id)
-            .bind::<N<sql_types::Bool>, _>(past_or_upcoming.map(|p| p == PastOrUpcoming::Upcoming))
-            .bind::<sql_types::Nullable<sql_types::Uuid>, _>(event.map(|e| e.id))
+            .bind::<dUuid, _>(organization_id)
+            .bind::<Nullable<Bool>, _>(past_or_upcoming.map(|p| p == PastOrUpcoming::Upcoming))
+            .bind::<Nullable<Array<dUuid>>, _>(event_ids)
             .get_results(conn)
             .to_db_error(
                 ErrorCode::QueryError,
@@ -762,18 +792,18 @@ impl Event {
 
         #[derive(QueryableByName)]
         struct R {
-            #[sql_type = "sql_types::Date"]
+            #[sql_type = "Date"]
             date: NaiveDate,
-            #[sql_type = "sql_types::Nullable<sql_types::BigInt>"]
+            #[sql_type = "Nullable<BigInt>"]
             sales: Option<i64>,
-            #[sql_type = "sql_types::Nullable<sql_types::BigInt>"]
+            #[sql_type = "Nullable<BigInt>"]
             ticket_count: Option<i64>,
         }
 
         let summary: Vec<R> = diesel::sql_query(query)
-            .bind::<sql_types::Uuid, _>(self.id)
-            .bind::<sql_types::Timestamp, NaiveDateTime>(start_utc.and_hms(0, 0, 0))
-            .bind::<sql_types::Timestamp, NaiveDateTime>(end_utc.and_hms(23, 59, 59))
+            .bind::<dUuid, _>(self.id)
+            .bind::<Timestamp, NaiveDateTime>(start_utc.and_hms(0, 0, 0))
+            .bind::<Timestamp, NaiveDateTime>(end_utc.and_hms(23, 59, 59))
             .get_results(conn)
             .to_db_error(
                 ErrorCode::QueryError,
@@ -815,8 +845,8 @@ impl Event {
         let q = include_str!("../queries/retrieve_guest_list.sql");
 
         let tickets = diesel::sql_query(q)
-            .bind::<sql_types::Uuid, _>(self.id)
-            .bind::<sql_types::Text, _>(query)
+            .bind::<dUuid, _>(self.id)
+            .bind::<Text, _>(query)
             .load::<RedeemableTicket>(conn)
             .to_db_error(ErrorCode::QueryError, "Could not load guest list")?;
 
@@ -824,9 +854,9 @@ impl Event {
 
         #[derive(Debug, QueryableByName, Queryable)]
         struct R {
-            #[sql_type = "sql_types::Uuid"]
+            #[sql_type = "Uuid"]
             id: Uuid,
-            #[sql_type = "sql_types::Nullable<sql_types::Text>"]
+            #[sql_type = "Nullable<Text>"]
             provider: Option<String>,
         }
 
@@ -1064,8 +1094,6 @@ impl Event {
         sort_direction: Option<SortingDir>,
         conn: &PgConnection,
     ) -> Result<(Vec<DisplayFan>, u64), DatabaseError> {
-        use diesel::sql_types::{BigInt, Integer, Nullable, Text, Timestamp, Uuid as dUuid};
-
         let search_filter = query
             .map(|s| text::escape_control_chars(&s))
             .map(|q| format!("%{}%", q))
@@ -1256,27 +1284,27 @@ pub struct EventSummaryResult {
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize, QueryableByName)]
 pub struct EventSummaryResultTicketType {
-    #[sql_type = "sql_types::Uuid"]
+    #[sql_type = "dUuid"]
     pub(crate) event_id: Uuid,
-    #[sql_type = "sql_types::Text"]
+    #[sql_type = "Text"]
     pub name: String,
-    #[sql_type = "sql_types::BigInt"]
+    #[sql_type = "BigInt"]
     pub min_price: i64,
-    #[sql_type = "sql_types::BigInt"]
+    #[sql_type = "BigInt"]
     pub max_price: i64,
-    #[sql_type = "sql_types::BigInt"]
+    #[sql_type = "BigInt"]
     pub total: i64,
-    #[sql_type = "sql_types::BigInt"]
+    #[sql_type = "BigInt"]
     pub sold_unreserved: i64,
-    #[sql_type = "sql_types::BigInt"]
+    #[sql_type = "BigInt"]
     pub sold_held: i64,
-    #[sql_type = "sql_types::BigInt"]
+    #[sql_type = "BigInt"]
     pub open: i64,
-    #[sql_type = "sql_types::BigInt"]
+    #[sql_type = "BigInt"]
     pub held: i64,
-    #[sql_type = "sql_types::BigInt"]
+    #[sql_type = "BigInt"]
     pub redeemed: i64,
-    #[sql_type = "sql_types::Nullable<sql_types::BigInt>"]
+    #[sql_type = "Nullable<BigInt>"]
     pub sales_total_in_cents: Option<i64>,
 }
 

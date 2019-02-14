@@ -1,6 +1,6 @@
 use actix_web::{HttpResponse, Path, Query};
 use auth::user::User as AuthUser;
-use bigneon_db::models::{Organization, Report, Scopes};
+use bigneon_db::models::{Event, Organization, Report, Scopes};
 use chrono::prelude::*;
 use db::Connection;
 use errors::*;
@@ -48,10 +48,12 @@ pub fn transaction_detail_report(
     let connection = connection.get();
     //Check if they have org admin permissions
     let organization = Organization::find(path.id, connection)?;
-    if query.event_id.is_some() {
-        user.requires_scope_for_organization(
+    if let Some(event_id) = query.event_id {
+        let event = Event::find(event_id, connection)?;
+        user.requires_scope_for_organization_event(
             Scopes::EventFinancialReports,
             &organization,
+            &event,
             connection,
         )?;
     } else {
@@ -79,10 +81,12 @@ pub fn event_summary_report(
     let connection = connection.get();
     //Check if they have org admin permissions
     let organization = Organization::find(path.id, connection)?;
-    if query.event_id.is_some() {
-        user.requires_scope_for_organization(
+    if let Some(event_id) = query.event_id {
+        let event = Event::find(event_id, connection)?;
+        user.requires_scope_for_organization_event(
             Scopes::EventFinancialReports,
             &organization,
+            &event,
             connection,
         )?;
     } else {
@@ -111,10 +115,12 @@ pub fn audit_report(
     let connection = connection.get();
     //Check if they have org admin permissions
     let organization = Organization::find(path.id, connection)?;
-    if query.event_id.is_some() {
-        user.requires_scope_for_organization(
+    if let Some(event_id) = query.event_id {
+        let event = Event::find(event_id, connection)?;
+        user.requires_scope_for_organization_event(
             Scopes::EventFinancialReports,
             &organization,
+            &event,
             connection,
         )?;
     } else {
@@ -180,10 +186,12 @@ pub fn ticket_counts(
     let connection = connection.get();
     //Check if they have org admin permissions
     let organization = Organization::find(path.id, connection)?;
-    if query.event_id.is_some() {
-        user.requires_scope_for_organization(
+    if let Some(event_id) = query.event_id {
+        let event = Event::find(event_id, connection)?;
+        user.requires_scope_for_organization_event(
             Scopes::EventFinancialReports,
             &organization,
+            &event,
             connection,
         )?;
     } else {

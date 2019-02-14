@@ -35,6 +35,14 @@ mod show_tests {
         base::codes::show(Roles::DoorPerson, false);
     }
     #[test]
+    fn show_promoter() {
+        base::codes::show(Roles::Promoter, true);
+    }
+    #[test]
+    fn show_promoter_read_only() {
+        base::codes::show(Roles::PromoterReadOnly, true);
+    }
+    #[test]
     fn show_org_admin() {
         base::codes::show(Roles::OrgAdmin, true);
     }
@@ -66,6 +74,14 @@ mod create_tests {
     #[test]
     fn create_door_person() {
         base::codes::create(Roles::DoorPerson, false);
+    }
+    #[test]
+    fn create_promoter() {
+        base::codes::create(Roles::Promoter, true);
+    }
+    #[test]
+    fn create_promoter_read_only() {
+        base::codes::create(Roles::PromoterReadOnly, false);
     }
     #[test]
     fn create_org_admin() {
@@ -101,6 +117,14 @@ mod update_tests {
         base::codes::update(Roles::DoorPerson, false);
     }
     #[test]
+    fn update_promoter() {
+        base::codes::update(Roles::Promoter, true);
+    }
+    #[test]
+    fn update_promoter_read_only() {
+        base::codes::update(Roles::PromoterReadOnly, false);
+    }
+    #[test]
     fn update_org_admin() {
         base::codes::update(Roles::OrgAdmin, true);
     }
@@ -132,6 +156,14 @@ mod destroy_tests {
     #[test]
     fn destroy_door_person() {
         base::codes::destroy(Roles::DoorPerson, false);
+    }
+    #[test]
+    fn destroy_promoter() {
+        base::codes::destroy(Roles::Promoter, true);
+    }
+    #[test]
+    fn destroy_promoter_read_only() {
+        base::codes::destroy(Roles::PromoterReadOnly, false);
     }
     #[test]
     fn destroy_org_admin() {

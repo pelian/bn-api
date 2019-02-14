@@ -58,7 +58,12 @@ pub fn show(
 ) -> Result<HttpResponse, BigNeonError> {
     let conn = conn.get();
     let code = Code::find(path.id, conn)?;
-    user.requires_scope_for_organization(Scopes::CodeRead, &code.organization(conn)?, conn)?;
+    user.requires_scope_for_organization_event(
+        Scopes::CodeRead,
+        &code.organization(conn)?,
+        &code.event(conn)?,
+        conn,
+    )?;
 
     Ok(HttpResponse::Ok().json(code.for_display(conn)?))
 }
@@ -73,7 +78,12 @@ pub fn create(
 ) -> Result<HttpResponse, BigNeonError> {
     let conn = conn.get();
     let event = Event::find(path.id, conn)?;
-    user.requires_scope_for_organization(Scopes::CodeWrite, &event.organization(conn)?, conn)?;
+    user.requires_scope_for_organization_event(
+        Scopes::CodeWrite,
+        &event.organization(conn)?,
+        &event,
+        conn,
+    )?;
 
     let code = Code::create(
         req.name.clone(),
@@ -103,7 +113,12 @@ pub fn update(
     let conn = conn.get();
 
     let code = Code::find(path.id, conn)?;
-    user.requires_scope_for_organization(Scopes::CodeWrite, &code.organization(conn)?, conn)?;
+    user.requires_scope_for_organization_event(
+        Scopes::CodeWrite,
+        &code.organization(conn)?,
+        &code.event(conn)?,
+        conn,
+    )?;
 
     let code = code.update(req.clone().into(), conn)?;
 
@@ -119,7 +134,12 @@ pub fn destroy(
 ) -> Result<HttpResponse, BigNeonError> {
     let conn = conn.get();
     let code = Code::find(path.id, conn)?;
-    user.requires_scope_for_organization(Scopes::CodeWrite, &code.organization(conn)?, conn)?;
+    user.requires_scope_for_organization_event(
+        Scopes::CodeWrite,
+        &code.organization(conn)?,
+        &code.event(conn)?,
+        conn,
+    )?;
 
     code.destroy(&*conn)?;
     Ok(HttpResponse::Ok().json(json!({})))
