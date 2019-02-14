@@ -33,6 +33,8 @@ env: &env
   GLOBEE_API_KEY: "GDFOzMkPAw79a8TCAHKkiknJB6bEYgbb"
   GLOBEE_BASE_URL: "https://test.globee.com/payment-api/v1/"
   VALIDATE_IPNS: false
+  BRANCH_IO_BRANCH_KEY:
+      from_secret: BRANCH_IO_BRANCH_KEY
 
 kind: pipeline
 name: Build
@@ -280,5 +282,6 @@ services:
           branch: master
 ---
 kind: signature
-hmac: d0732805d654025709cd88d938bce443f5123763794ae6192774a39d23dc4068
+hmac: 4b55fa71764823d963811e8161456d6b49870d9ccdbf2bc98f177abe49909277
+
 ...

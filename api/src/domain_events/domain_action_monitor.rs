@@ -67,7 +67,7 @@ impl DomainActionMonitor {
                 let timeout = Timeout::new(f, Duration::from_secs(55));
 
                 runtime.block_on(timeout.or_else(|err| {
-                    jlog! {Error,"bigneon::domain_actions", "Action:  failed", {"error": err.to_string()}};
+                    jlog! {Error,"bigneon::domain_actions", "Action: failed", {"error": err.to_string()}};
                     Err(())
                 }))
                 .unwrap();

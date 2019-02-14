@@ -1,6 +1,6 @@
 [package]
 name = "bigneon_api"
-version = "0.2.180"
+version = "0.2.297"
 authors = ["CjS77"]
 license = "BSD-3"
 repository = "https://github.com/big-neon/bn-api/"
@@ -11,6 +11,7 @@ documentation = "https://github.com/big-neon/docs"
 actix = "0.7"
 actix-web = "0.7"
 bigneon_db = { path = "../db" }
+branch_rs = {path="../branch_rs"}
 chrono = {version = "0.4", features = ["serde"]}
 clap = "2.32"
 diesel = {version = "1.3", features = ["r2d2"]}

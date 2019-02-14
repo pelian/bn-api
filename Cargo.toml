@@ -2,6 +2,7 @@
 
 members = [
     "api",
+    "branch_rs",
     "db",
     "globee",
     "tari-client",

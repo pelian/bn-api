@@ -13,12 +13,14 @@ RUN rm src/*.rs
 
 # Add the actual source code
 ADD api ./api/
+ADD branch_rs ./branch_rs/
 ADD db ./db/
 ADD tari-client ./tari-client/
 ADD stripe ./stripe/
 ADD logging ./logging/
 ADD globee ./globee/
 ADD embed_dirs_derive ./embed_dirs_derive/
+ADD macros ./macros/
 ADD Cargo.lock Cargo.toml ./
 
 RUN cargo build --release

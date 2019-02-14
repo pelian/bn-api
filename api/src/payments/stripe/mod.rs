@@ -11,9 +11,30 @@ use stripe::StripeError;
 
 impl From<StripeError> for PaymentProcessorError {
     fn from(s: StripeError) -> PaymentProcessorError {
+        let validation_response = match s.error_code {
+            Some(ref error_code) => match error_code.as_ref() {
+                "card_declined" => Some("Card has been declined"),
+                "expired_card" => Some("Card expired"),
+                "incorrect_address" => Some("Incorrect address"),
+                "incorrect_cvc" => Some("Incorrect CVC"),
+                "incorrect_number" => Some("Incorrect number"),
+                "incorrect_zip" => Some("Incorrect ZIP"),
+                "invalid_card_type" => Some("Invalid card type"),
+                "invalid_cvc" => Some("Invalid CVC"),
+                "invalid_expiry_month" => Some("Invalid card expiry month"),
+                "invalid_expiry_year" => Some("Invalid card expiry year"),
+                "invalid_number" => Some("Invalid card number"),
+                "balance_insufficient" => Some("Balance insufficient"),
+                _ => None,
+            },
+            None => None,
+        }
+        .map(|s| s.to_string());
+
         PaymentProcessorError {
             description: s.description.clone(),
             cause: Some(Box::new(s)),
+            validation_response: validation_response,
         }
     }
 }

@@ -49,6 +49,8 @@ pub struct Config {
     pub twilio_api_key: String,
     pub api_keys_encryption_key: String,
     pub jwt_expiry_time: u64,
+    pub branch_io_base_url: String,
+    pub branch_io_branch_key: String,
 }
 
 const ALLOWED_ORIGINS: &str = "ALLOWED_ORIGINS";
@@ -99,6 +101,8 @@ const TWILIO_ACCOUNT_ID: &str = "TWILIO_ACCOUNT_ID";
 const API_KEYS_ENCRYPTION_KEY: &str = "API_KEYS_ENCRYPTION_KEY";
 
 const JWT_EXPIRY_TIME: &str = "JWT_EXPIRY_TIME";
+const BRANCH_IO_BASE_URL: &str = "BRANCH_IO_BASE_URL";
+const BRANCH_IO_BRANCH_KEY: &str = "BRANCH_IO_BRANCH_KEY";
 
 impl Config {
     pub fn new(environment: Environment) -> Self {
@@ -163,6 +167,12 @@ impl Config {
             Environment::Production => "https://globee.com/payment-api/v1/".to_string(),
             _ => "https://test.globee.com/payment-api/v1/".to_string(),
         });
+
+        let branch_io_base_url =
+            env::var(&BRANCH_IO_BASE_URL).unwrap_or("https://api2.branch.io/v1".to_string());
+        let branch_io_branch_key = env::var(&BRANCH_IO_BRANCH_KEY)
+            .expect(&format!("{} must be defined", BRANCH_IO_BRANCH_KEY));
+
         let api_base_url =
             env::var(&API_BASE_URL).expect(&format!("{} must be defined", API_BASE_URL));
 
@@ -247,6 +257,7 @@ impl Config {
             facebook_app_secret,
             globee_api_key,
             globee_base_url,
+            branch_io_base_url,
             validate_ipns,
             api_base_url,
             google_recaptcha_secret_key,
@@ -273,6 +284,7 @@ impl Config {
             twilio_account_id,
             api_keys_encryption_key,
             jwt_expiry_time,
+            branch_io_branch_key,
         }
     }
 }

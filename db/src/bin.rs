@@ -44,7 +44,18 @@ pub fn main() {
                         .takes_value(true)
                         .help("Connection string to the database"),
                 ),
-        ).subcommand(
+        )
+        .subcommand(
+        SubCommand::with_name("functions")
+            .about("Runs the functions.sql file")
+            .arg(
+                Arg::with_name("connection")
+                    .short("c")
+                    .takes_value(true)
+                    .help("Connection string to the database"),
+            ),
+    )
+        .subcommand(
             SubCommand::with_name("create")
                 .about("Creates a new instance of the database and inserts the system administrator user")
                 .arg(
@@ -111,6 +122,7 @@ pub fn main() {
         ("create", Some(matches)) => create_db_and_user(matches),
         ("drop", Some(matches)) => drop_db(matches),
         ("migrate", Some(matches)) => migrate_db(matches),
+        ("functions", Some(matches)) => run_function_migrations(matches),
         ("rollback", Some(matches)) => rollback_db(matches),
         ("new-migration", Some(matches)) => create_new_migration(matches),
         ("seed", Some(matches)) => seed_db(matches),
@@ -163,8 +175,23 @@ fn migrate_db(matches: &ArgMatches) {
 
     embedded_migrations::run_with_output(&connection, &mut std::io::stdout())
         .expect("Migration failed");
+
+    run_function_migrations(matches);
 }
 
+fn run_function_migrations(matches: &ArgMatches) {
+    let conn_string = matches
+        .value_of("connection")
+        .expect("Connection string was not provided");
+    println!("Running functions.sql");
+    let functions_query = include_str!("../functions/functions.sql");
+
+    let db_connection = get_connection(conn_string);
+
+    db_connection
+        .batch_execute(functions_query)
+        .expect("Functions query failed");
+}
 fn rollback_db(matches: &ArgMatches) {
     let conn_string = matches
         .value_of("connection")
@@ -198,6 +225,8 @@ fn create_db_and_user(matches: &ArgMatches) {
 
         embedded_migrations::run_with_output(&connection, &mut std::io::stdout())
             .expect("Migration failed");
+
+        run_function_migrations(matches);
     }
 
     let username = matches.value_of("email").expect("Email was not provided");

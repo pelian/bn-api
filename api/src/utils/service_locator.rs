@@ -4,19 +4,25 @@ use errors::*;
 use payments::globee::GlobeePaymentProcessor;
 use payments::stripe::StripePaymentProcessor;
 use payments::PaymentProcessor;
+use utils::deep_linker::BranchDeepLinker;
+use utils::deep_linker::DeepLinker;
 
 pub struct ServiceLocator {
     stripe_secret_key: String,
     globee_api_key: String,
     globee_base_url: String,
+    branch_io_base_url: String,
+    branch_io_branch_key: String,
 }
 
 impl ServiceLocator {
     pub fn new(config: &Config) -> ServiceLocator {
         ServiceLocator {
-            stripe_secret_key: config.stripe_secret_key.to_string(),
-            globee_api_key: config.globee_api_key.to_string(),
-            globee_base_url: config.globee_base_url.to_string(),
+            stripe_secret_key: config.stripe_secret_key.clone(),
+            globee_api_key: config.globee_api_key.clone(),
+            globee_base_url: config.globee_base_url.clone(),
+            branch_io_base_url: config.branch_io_base_url.clone(),
+            branch_io_branch_key: config.branch_io_branch_key.clone(),
         }
     }
 
@@ -37,6 +43,13 @@ impl ServiceLocator {
                 return Err(ApplicationError::new("Unknown payment provider".into()).into());
             }
         }
+    }
+
+    pub fn create_deep_linker(&self) -> Result<Box<DeepLinker>, BigNeonError> {
+        Ok(Box::new(BranchDeepLinker::new(
+            self.branch_io_base_url.clone(),
+            self.branch_io_branch_key.clone(),
+        )))
     }
 
     pub fn is_refund_supported(provider: String) -> bool {

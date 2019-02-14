@@ -1,6 +1,7 @@
 use actix_web::HttpResponse;
 use actix_web::ResponseError;
 use bigneon_db::utils::errors::*;
+use branch_rs::BranchError;
 use diesel::result::Error as DieselError;
 use errors::AuthError;
 use errors::*;
@@ -47,6 +48,7 @@ error_conversion!(SmtpError);
 error_conversion!(TariError);
 error_conversion!(UuidParseError);
 error_conversion!(GlobeeError);
+error_conversion!(BranchError);
 
 impl fmt::Display for BigNeonError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

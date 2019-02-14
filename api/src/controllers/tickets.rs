@@ -181,6 +181,7 @@ pub fn send_via_email_or_phone(
             &authorization.signature,
             &auth_user.user,
             connection,
+            &*state.service_locator.create_deep_linker()?,
         )?;
     } else {
         return application::unprocessable(

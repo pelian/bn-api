@@ -22,12 +22,16 @@ pub struct TicketSalesRow {
     pub ticket_type_id: Option<Uuid>,
     #[sql_type = "Nullable<dUuid>"]
     pub ticket_pricing_id: Option<Uuid>,
+    #[sql_type = "Nullable<dUuid>"]
+    pub hold_id: Option<Uuid>,
     #[sql_type = "Nullable<Text>"]
     pub ticket_name: Option<String>,
     #[sql_type = "Nullable<Text>"]
     pub ticket_status: Option<String>,
     #[sql_type = "Nullable<Text>"]
     pub event_name: Option<String>,
+    #[sql_type = "Nullable<Text>"]
+    pub hold_name: Option<String>,
     #[sql_type = "Nullable<Text>"]
     pub ticket_pricing_name: Option<String>,
     #[sql_type = "BigInt"]
@@ -345,6 +349,7 @@ impl TicketSalesRow {
         end: Option<NaiveDateTime>,
         group_by_ticket_type: Option<bool>,
         group_by_event_id: Option<bool>,
+        group_by_hold_id: Option<bool>,
         event_id: Option<Uuid>,
         organization_id: Option<Uuid>,
         conn: &PgConnection,
@@ -355,6 +360,7 @@ impl TicketSalesRow {
             .bind::<Nullable<Timestamp>, _>(end)
             .bind::<Nullable<Bool>, _>(group_by_ticket_type)
             .bind::<Nullable<Bool>, _>(group_by_event_id)
+            .bind::<Nullable<Bool>, _>(group_by_hold_id)
             .bind::<Nullable<dUuid>, _>(event_id)
             .bind::<Nullable<dUuid>, _>(organization_id);
 
@@ -529,7 +535,16 @@ impl Report {
         organization_id: Option<Uuid>,
         conn: &PgConnection,
     ) -> Result<TicketSalesAndCounts, DatabaseError> {
-        Report::ticket_sales_and_counts(event_id, organization_id, None, None, false, false, conn)
+        Report::ticket_sales_and_counts(
+            event_id,
+            organization_id,
+            None,
+            None,
+            false,
+            false,
+            false,
+            conn,
+        )
     }
 
     /// Fetches the generic ticket sales and counts data
@@ -552,6 +567,7 @@ impl Report {
         end: Option<NaiveDateTime>,
         per_ticket_type: bool,
         _per_ticket_pricing: bool,
+        per_hold: bool,
         conn: &PgConnection,
     ) -> Result<TicketSalesAndCounts, DatabaseError> {
         let sales = TicketSalesRow::fetch(
@@ -559,6 +575,7 @@ impl Report {
             end,
             Some(per_ticket_type),
             Some(false),
+            Some(per_hold),
             event_id,
             organization_id,
             conn,

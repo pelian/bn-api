@@ -1,5 +1,6 @@
 use reqwest;
 use serde_json;
+use std::collections::HashMap;
 use std::error::Error;
 use std::sync::Arc;
 
@@ -7,6 +8,7 @@ use std::sync::Arc;
 pub struct StripeError {
     pub description: String,
     pub cause: Option<Arc<dyn Error>>,
+    pub error_code: Option<String>,
 }
 
 impl Error for StripeError {
@@ -31,15 +33,31 @@ impl fmt::Display for StripeError {
 
 impl StripeError {
     pub fn from_response(response: &mut reqwest::Response) -> StripeError {
+        let response_text = response
+            .text()
+            .unwrap_or("<Error reading response body>".to_string());
+
+        #[derive(Deserialize)]
+        struct R {
+            error: HashMap<String, String>,
+        }
+        let deserialized_response: Result<R, _> = serde_json::from_str(&response_text);
+        let error_code = if let Ok(deserialized_response) = deserialized_response {
+            deserialized_response
+                .error
+                .get("code".into())
+                .map(|e| e.to_string())
+        } else {
+            None
+        };
         StripeError {
             description: format!(
                 "Error calling Stripe: HTTP Code {}: Body:{}",
                 response.status(),
-                response
-                    .text()
-                    .unwrap_or("<Error reading response body>".to_string())
+                response_text
             ),
             cause: None,
+            error_code,
         }
     }
 }
@@ -49,6 +67,7 @@ impl From<reqwest::Error> for StripeError {
         StripeError {
             description: format!("Error calling Stripe: reqwest error {}", r),
             cause: Some(Arc::new(r)),
+            error_code: None,
         }
     }
 }
@@ -58,6 +77,7 @@ impl From<serde_json::Error> for StripeError {
         StripeError {
             description: format!("Error deserializing response:{}", r),
             cause: Some(Arc::new(r)),
+            error_code: None,
         }
     }
 }

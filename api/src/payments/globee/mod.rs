@@ -30,6 +30,7 @@ impl PaymentProcessor for GlobeePaymentProcessor {
         Err(PaymentProcessorError {
             description: "Refunds are not supported by this gateway".to_string(),
             cause: None,
+            validation_response: None,
         })
     }
 
@@ -41,6 +42,7 @@ impl PaymentProcessor for GlobeePaymentProcessor {
         Err(PaymentProcessorError {
             description: "Refunds are not supported by this gateway".to_string(),
             cause: None,
+            validation_response: None,
         })
     }
 }
@@ -85,6 +87,7 @@ impl From<GlobeeError> for PaymentProcessorError {
         PaymentProcessorError {
             description: g.to_string(),
             cause: Some(Box::new(g)),
+            validation_response: None,
         }
     }
 }

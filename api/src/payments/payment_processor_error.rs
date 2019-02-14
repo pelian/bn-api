@@ -4,8 +4,8 @@ use std::fmt;
 #[derive(Debug)]
 pub struct PaymentProcessorError {
     pub description: String,
-
     pub cause: Option<Box<dyn Error>>,
+    pub validation_response: Option<String>,
 }
 
 unsafe impl Send for PaymentProcessorError {}
