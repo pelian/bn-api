@@ -560,7 +560,7 @@ pub fn show_from_organizations(
 ) -> Result<WebPayload<EventSummaryResult>, BigNeonError> {
     let conn = connection.get();
     let org = Organization::find(path.id, conn)?;
-    user.requires_scope_for_organization(Scopes::RedeemTicket, &org, conn)?;
+    user.requires_scope_for_organization(Scopes::OrgReadEvents, &org, conn)?;
 
     let user_roles = org.get_roles_for_user(&user.user, conn)?;
     let events = Event::find_all_events_for_organization(
