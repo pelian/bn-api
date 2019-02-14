@@ -81,7 +81,9 @@ steps:
       commands:
         - ./scripts/set-version.sh $APP_VERSION
       when:
-          event: push
+          event:
+            include: push
+            exclude: tag
           branch: master
 
     - name: compile
@@ -94,7 +96,7 @@ steps:
       - test -x target/release/server
       - test -x target/release/bndb_cli
       when:
-        event: [pull_request, push]
+        event: [pull_request, tag]
         branch: master
 
 #    - name: rebuild-cache
@@ -137,7 +139,7 @@ steps:
       commands:
         - ./scripts/run-other-tests-quick.sh
       when:
-        event: [pull_request, push]
+        event: [pull_request,tag]
         branch: master
 
     - name: api-tests
@@ -152,7 +154,7 @@ steps:
       commands:
         - ./scripts/run-api-tests-quick.sh
       when:
-          event: [pull_request, push]
+          event: [pull_request,tag]
           branch: master
 
     - name: integration-tests
@@ -168,7 +170,7 @@ steps:
       commands:
         - ./scripts/run-integration-tests-quick.sh
       when:
-          event: [pull_request, push]
+          event: [pull_request,tag]
           branch: master
 
 #    - name: publish
@@ -233,25 +235,25 @@ steps:
 #          branch: master
 #          event: push
 
-    - name: flush-cache
-      depends_on:
-#        - deploy-dev
-        - tag-commit
-      image: plugins/s3-cache
-      settings:
-        flush: true
-        flush_age: 30
-        endpoint: http://minio1:9000
-        access_key:
-            from_secret: minio_access_key_id
-        secret_key:
-            from_secret: minio_secret_access_key
-        mount:
-            - ./target
-        root: drone
-      when:
-          event: [pull_request, push]
-          branch: master
+#    - name: flush-cache
+#      depends_on:
+##        - deploy-dev
+#        - tag-commit
+#      image: plugins/s3-cache
+#      settings:
+#        flush: true
+#        flush_age: 30
+#        endpoint: http://minio1:9000
+#        access_key:
+#            from_secret: minio_access_key_id
+#        secret_key:
+#            from_secret: minio_secret_access_key
+#        mount:
+#            - ./target
+#        root: drone
+#      when:
+#          event: [pull_request, push]
+#          branch: master
 
 #    - name: notify-fail
 #      image: plugins/drone-irc
@@ -282,6 +284,6 @@ services:
           branch: master
 ---
 kind: signature
-hmac: ff51cb30b2c23e98f73685123e9d2c38ab487699ba374bcf3d2affb523fb8050
+hmac: 6198f134888b6efb6b5b01a6d0e53bbd83382083e1eea0a62c1397368809dc1f
 
 ...
