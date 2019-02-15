@@ -328,11 +328,11 @@ fn users() {
     .unwrap();
 
     // Owner is included in the user results for organization2 but not organization2
-    let user_results = organization.users(project.get_connection()).unwrap();
+    let user_results = organization.users(None, project.get_connection()).unwrap();
     assert_eq!(user_results.len(), 1);
     assert_eq!(user.id, user_results[0].1.id);
 
-    let user_results = organization2.users(project.get_connection()).unwrap();
+    let user_results = organization2.users(None, project.get_connection()).unwrap();
     assert_eq!(
         vec![user2.id, user3.id],
         user_results.iter().map(|u| u.1.id).collect::<Vec<Uuid>>()
@@ -342,10 +342,10 @@ fn users() {
     OrganizationUser::create(organization.id, user.id, vec![Roles::OrgMember], Vec::new())
         .commit(project.get_connection())
         .unwrap();
-    let user_results = organization.users(project.get_connection()).unwrap();
+    let user_results = organization.users(None, project.get_connection()).unwrap();
     assert_eq!(user_results.len(), 1);
     assert_eq!(user.id, user_results[0].1.id);
-    let user_results2 = organization2.users(project.get_connection()).unwrap();
+    let user_results2 = organization2.users(None, project.get_connection()).unwrap();
     assert_eq!(user_results2.len(), 2);
     assert_eq!(user2.id, user_results2[0].1.id);
     assert_eq!(user3.id, user_results2[1].1.id);
@@ -359,11 +359,11 @@ fn users() {
     )
     .commit(project.get_connection())
     .unwrap();
-    let user_results = organization.users(project.get_connection()).unwrap();
+    let user_results = organization.users(None, project.get_connection()).unwrap();
     assert_eq!(user_results.len(), 2);
     assert_eq!(user.id, user_results[0].1.id);
     assert_eq!(user2.id, user_results[1].1.id);
-    let user_results2 = organization2.users(project.get_connection()).unwrap();
+    let user_results2 = organization2.users(None, project.get_connection()).unwrap();
     assert_eq!(user_results2.len(), 2);
     assert_eq!(user2.id, user_results2[0].1.id);
     assert_eq!(user3.id, user_results2[1].1.id);
@@ -515,7 +515,7 @@ fn remove_users() {
     .unwrap();
     let user2_id = user2.id;
 
-    let mut user_results = organization.users(project.get_connection()).unwrap();
+    let mut user_results = organization.users(None, project.get_connection()).unwrap();
 
     user_results.sort_by_key(|k| k.1.last_name.clone());
     let mut users_before_delete = vec![user.clone(), user2, user3.clone()];
@@ -532,7 +532,7 @@ fn remove_users() {
         .unwrap();
     assert_eq!(result, 1);
     let user_results2: Vec<User> = organization
-        .users(project.get_connection())
+        .users(None, project.get_connection())
         .unwrap()
         .into_iter()
         .map(|u| u.1)
@@ -600,7 +600,7 @@ pub fn get_scopes_for_user() {
     let mut admin = project.create_user().finish();
     admin = admin.add_role(Roles::Admin, connection).unwrap();
 
-    assert_eq!(
+    assert_equiv!(
         organization
             .get_scopes_for_user(&owner, connection)
             .unwrap()
@@ -632,6 +632,7 @@ pub fn get_scopes_for_user() {
             "org:admin-users",
             "org:fans",
             "org:read",
+            "org:read-events",
             "org:reports",
             "org:users",
             "org:write",
@@ -646,7 +647,7 @@ pub fn get_scopes_for_user() {
         ]
     );
 
-    assert_eq!(
+    assert_equiv!(
         organization
             .get_scopes_for_user(&org_admin, connection)
             .unwrap()
@@ -677,6 +678,7 @@ pub fn get_scopes_for_user() {
             "order:refund",
             "org:fans",
             "org:read",
+            "org:read-events",
             "org:reports",
             "org:users",
             "org:write",
@@ -691,7 +693,7 @@ pub fn get_scopes_for_user() {
         ]
     );
 
-    assert_eq!(
+    assert_equiv!(
         organization
             .get_scopes_for_user(&box_office, connection)
             .unwrap()
@@ -705,22 +707,29 @@ pub fn get_scopes_for_user() {
             "event:view-guests",
             "hold:read",
             "order:make-external-payment",
+            "org:read-events",
             "redeem:ticket",
             "ticket:read",
         ]
     );
 
-    assert_eq!(
+    assert_equiv!(
         organization
             .get_scopes_for_user(&door_person, connection)
             .unwrap()
             .iter()
             .map(|i| i.to_string())
             .collect::<Vec<String>>(),
-        vec!["event:scan", "hold:read", "redeem:ticket", "ticket:read",]
+        vec![
+            "event:scan",
+            "hold:read",
+            "org:read-events",
+            "redeem:ticket",
+            "ticket:read",
+        ]
     );
 
-    assert_eq!(
+    assert_equiv!(
         organization
             .get_scopes_for_user(&promoter, connection)
             .unwrap()
@@ -742,12 +751,13 @@ pub fn get_scopes_for_user() {
             "hold:write",
             "order:read",
             "order:refund",
+            "org:read-events",
             "ticket:read",
             "ticket-type:read"
         ]
     );
 
-    assert_eq!(
+    assert_equiv!(
         organization
             .get_scopes_for_user(&promoter_read_only, connection)
             .unwrap()
@@ -762,12 +772,13 @@ pub fn get_scopes_for_user() {
             "event:view-guests",
             "hold:read",
             "order:read",
+            "org:read-events",
             "ticket:read",
             "ticket-type:read"
         ]
     );
 
-    assert_eq!(
+    assert_equiv!(
         organization
             .get_scopes_for_user(&member, connection)
             .unwrap()
@@ -795,6 +806,7 @@ pub fn get_scopes_for_user() {
             "order:refund",
             "org:fans",
             "org:read",
+            "org:read-events",
             "redeem:ticket",
             "ticket:admin",
             "ticket:read",
@@ -805,7 +817,7 @@ pub fn get_scopes_for_user() {
         ]
     );
 
-    assert_eq!(
+    assert_equiv!(
         organization
             .get_scopes_for_user(&admin, connection)
             .unwrap()
@@ -837,6 +849,7 @@ pub fn get_scopes_for_user() {
             "org:admin-users",
             "org:fans",
             "org:read",
+            "org:read-events",
             "org:reports",
             "org:users",
             "org:write",

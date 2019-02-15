@@ -283,7 +283,7 @@ impl Organization {
 
         let query = match event_id {
             Some(id) => query.filter(organization_users::event_ids.contains(vec![id])),
-            None => query.filter(organization_users::event_ids.is_null()),
+            None => query.filter(organization_users::event_ids.eq(Vec::<Uuid>::new())),
         };
 
         let users = query

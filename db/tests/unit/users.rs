@@ -1173,6 +1173,7 @@ fn get_scopes_by_organization() {
             Scopes::OrgAdminUsers,
             Scopes::OrgFans,
             Scopes::OrgRead,
+            Scopes::OrgReadEvents,
             Scopes::OrgReports,
             Scopes::OrgUsers,
             Scopes::OrgWrite,
@@ -1209,6 +1210,7 @@ fn get_scopes_by_organization() {
             Scopes::OrderRefund,
             Scopes::OrgFans,
             Scopes::OrgRead,
+            Scopes::OrgReadEvents,
             Scopes::RedeemTicket,
             Scopes::TicketAdmin,
             Scopes::TicketRead,
@@ -1254,7 +1256,7 @@ fn get_global_scopes() {
             .collect::<Vec<String>>(),
         vec!["event:interest", "order:read-own", "ticket:transfer"]
     );
-    assert_eq!(
+    assert_equiv!(
         user3
             .get_global_scopes()
             .into_iter()
@@ -1287,6 +1289,7 @@ fn get_global_scopes() {
             "org:fans",
             "org:financial-reports",
             "org:read",
+            "org:read-events",
             "org:reports",
             "org:users",
             "org:write",

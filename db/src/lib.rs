@@ -24,6 +24,12 @@ extern crate itertools;
 extern crate log;
 #[macro_use]
 extern crate logging;
+
+// This crate is only used in tests at the moment
+#[allow(unused_extern_crates)]
+#[cfg_attr(test, macro_use)]
+extern crate macros;
+
 extern crate rand;
 extern crate ring;
 #[macro_use]
