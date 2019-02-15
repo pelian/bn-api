@@ -348,7 +348,7 @@ pub fn list_organization_members(
         })
         .collect();
 
-    for inv in organization.pending_invites(connection)? {
+    for inv in organization.pending_invites(None, connection)? {
         members.push(DisplayOrganizationUser {
             user_id: inv.user_id,
             first_name: None,

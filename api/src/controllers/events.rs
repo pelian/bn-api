@@ -1038,7 +1038,7 @@ pub fn users(
         })
         .collect();
 
-    for inv in organization.pending_invites(connection)? {
+    for inv in organization.pending_invites(Some(event.id), connection)? {
         members.push(DisplayOrganizationUser {
             user_id: inv.user_id,
             first_name: None,

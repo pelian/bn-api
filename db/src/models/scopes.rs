@@ -220,11 +220,12 @@ fn get_scopes_for_role(role: Roles) -> Vec<Scopes> {
             let mut roles = vec![
                 Scopes::CodeWrite,
                 Scopes::CompWrite,
-                Scopes::EventFinancialReports,
-                Scopes::EventReports,
-                Scopes::EventWrite,
+                // Scopes::EventFinancialReports,
+                // Scopes::EventReports,
+                // To be updated later
+                //   Scopes::EventWrite,
                 Scopes::HoldWrite,
-                Scopes::OrderRefund,
+                // Scopes::OrderRefund,
             ];
             roles.extend(get_scopes_for_role(Roles::PromoterReadOnly));
             roles

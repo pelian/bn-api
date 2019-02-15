@@ -308,9 +308,10 @@ impl Organization {
 
     pub fn pending_invites(
         &self,
+        event_id: Option<Uuid>,
         conn: &PgConnection,
     ) -> Result<Vec<OrganizationInvite>, DatabaseError> {
-        OrganizationInvite::find_pending_by_organization(self.id, conn)
+        OrganizationInvite::find_pending_by_organization(self.id, event_id, conn)
     }
 
     pub fn events(&self, conn: &PgConnection) -> Result<Vec<Event>, DatabaseError> {
