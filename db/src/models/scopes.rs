@@ -223,7 +223,9 @@ fn get_scopes_for_role(role: Roles) -> Vec<Scopes> {
                 // Scopes::EventFinancialReports,
                 // Scopes::EventReports,
                 // To be updated later
-                //   Scopes::EventWrite,
+                Scopes::EventWrite,
+                Scopes::TicketTypeRead,
+                Scopes::TicketTypeWrite,
                 Scopes::HoldWrite,
                 // Scopes::OrderRefund,
             ];

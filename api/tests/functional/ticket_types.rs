@@ -37,7 +37,7 @@ mod create_tests {
     }
     #[test]
     fn create_promoter() {
-        base::ticket_types::create(Roles::Promoter, false);
+        base::ticket_types::create(Roles::Promoter, true);
     }
     #[test]
     fn create_promoter_read_only() {
@@ -78,7 +78,7 @@ mod update_tests {
     }
     #[test]
     fn update_promoter() {
-        base::ticket_types::update(Roles::Promoter, false);
+        base::ticket_types::update(Roles::Promoter, true);
     }
     #[test]
     fn update_promoter_read_only() {
@@ -119,7 +119,7 @@ mod cancel_tests {
     }
     #[test]
     fn cancel_promoter() {
-        base::ticket_types::cancel(Roles::Promoter, false);
+        base::ticket_types::cancel(Roles::Promoter, true);
     }
     #[test]
     fn cancel_promoter_read_only() {

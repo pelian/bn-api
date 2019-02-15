@@ -744,12 +744,14 @@ pub fn get_scopes_for_user() {
             "dashboard:read",
             "event:interest",
             "event:view-guests",
+            "event:write",
             "hold:read",
             "hold:write",
             "order:read",
             "org:read-events",
             "ticket:read",
-            "ticket-type:read"
+            "ticket-type:read",
+            "ticket-type:write"
         ]
     );
 
