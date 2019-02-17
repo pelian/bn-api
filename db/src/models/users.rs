@@ -4,7 +4,7 @@ use diesel;
 use diesel::expression::dsl;
 use diesel::expression::sql_literal::sql;
 use diesel::prelude::*;
-use diesel::sql_types::BigInt;
+use diesel::sql_types::{BigInt, Nullable, Text, Timestamp, Uuid as dUuid};
 use models::*;
 use schema::{events, organization_users, organizations, users};
 use std::collections::HashMap;
@@ -96,6 +96,17 @@ pub struct FanProfile {
     pub thumb_profile_pic_url: Option<String>,
     pub cover_photo_url: Option<String>,
     pub created_at: NaiveDateTime,
+    pub attendance_information: Vec<AttendanceInformation>,
+}
+
+#[derive(Debug, Deserialize, PartialEq, Queryable, QueryableByName, Serialize)]
+pub struct AttendanceInformation {
+    #[sql_type = "dUuid"]
+    pub event_id: Uuid,
+    #[sql_type = "Text"]
+    pub event_name: String,
+    #[sql_type = "Nullable<Timestamp>"]
+    pub event_start: Option<NaiveDateTime>,
 }
 
 impl NewUser {
@@ -314,7 +325,34 @@ impl User {
             thumb_profile_pic_url: self.thumb_profile_pic_url.clone(),
             cover_photo_url: self.cover_photo_url.clone(),
             created_at: self.created_at,
+            attendance_information: self.attendance_information(conn)?,
         })
+    }
+
+    pub fn attendance_information(
+        &self,
+        conn: &PgConnection,
+    ) -> Result<Vec<AttendanceInformation>, DatabaseError> {
+        use schema::*;
+        ticket_instances::table
+            .inner_join(assets::table.on(ticket_instances::asset_id.eq(assets::id)))
+            .inner_join(wallets::table.on(ticket_instances::wallet_id.eq(wallets::id)))
+            .inner_join(ticket_types::table.on(assets::ticket_type_id.eq(ticket_types::id)))
+            .inner_join(events::table.on(ticket_types::event_id.eq(events::id)))
+            .filter(ticket_instances::status.eq(TicketInstanceStatus::Redeemed))
+            .filter(wallets::user_id.eq(self.id))
+            .order_by(events::event_start)
+            .select((
+                ticket_types::event_id,
+                sql::<Text>("events.name as event_name"),
+                events::event_start,
+            ))
+            .distinct()
+            .get_results(conn)
+            .to_db_error(
+                ErrorCode::QueryError,
+                "Could not load attendance info for organization fan",
+            )
     }
 
     pub fn find(id: Uuid, conn: &PgConnection) -> Result<User, DatabaseError> {

@@ -15,6 +15,7 @@ use schema::{
 };
 use serde_with::rust::double_option;
 use std::borrow::Cow;
+use std::cmp::Ordering;
 use std::collections::HashMap;
 use time::Duration;
 use utils::errors::*;
@@ -58,6 +59,12 @@ pub struct Event {
     pub sendgrid_list_id: Option<i64>,
     pub event_type: EventTypes,
     pub cover_image_url: Option<String>,
+}
+
+impl PartialOrd for Event {
+    fn partial_cmp(&self, other: &Event) -> Option<Ordering> {
+        Some(self.id.cmp(&other.id))
+    }
 }
 
 #[derive(Default, Insertable, Serialize, Deserialize, Validate, Clone)]
@@ -776,6 +783,7 @@ impl Event {
             ));
         }
 
+        //Gets the face value
         let query = r#"
                 SELECT CAST(o.paid_at as Date) as date,
                 cast(COALESCE(sum(oi.unit_price_in_cents * (oi.quantity - oi.refunded_quantity)), 0) AS bigint) as sales,
@@ -783,6 +791,7 @@ impl Event {
                 FROM order_items oi
                 INNER JOIN orders o ON oi.order_id = o.id
                 WHERE oi.event_id = $1
+                AND oi.item_type = 'Tickets'
                 AND o.status = 'Paid'
                 AND o.paid_at >= $2
                 AND o.paid_at <= $3

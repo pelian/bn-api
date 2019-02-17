@@ -273,11 +273,20 @@ impl Organization {
 
     pub fn users(
         &self,
+        event_id: Option<Uuid>,
         conn: &PgConnection,
     ) -> Result<Vec<(OrganizationUser, User)>, DatabaseError> {
-        let users = organization_users::table
+        let query = organization_users::table
             .inner_join(users::table)
             .filter(organization_users::organization_id.eq(self.id))
+            .into_boxed();
+
+        let query = match event_id {
+            Some(id) => query.filter(organization_users::event_ids.contains(vec![id])),
+            None => query.filter(organization_users::event_ids.eq(Vec::<Uuid>::new())),
+        };
+
+        let users = query
             .select(organization_users::all_columns)
             .order_by(users::last_name.asc())
             .then_order_by(users::first_name.asc())
@@ -299,9 +308,10 @@ impl Organization {
 
     pub fn pending_invites(
         &self,
+        event_id: Option<Uuid>,
         conn: &PgConnection,
     ) -> Result<Vec<OrganizationInvite>, DatabaseError> {
-        OrganizationInvite::find_pending_by_organization(self.id, conn)
+        OrganizationInvite::find_pending_by_organization(self.id, event_id, conn)
     }
 
     pub fn events(&self, conn: &PgConnection) -> Result<Vec<Event>, DatabaseError> {

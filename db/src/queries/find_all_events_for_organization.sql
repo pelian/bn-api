@@ -47,6 +47,7 @@ SELECT e.id,
         FROM order_items oi
                INNER JOIN orders o ON oi.order_id = o.id
         WHERE oi.event_id = e.id
+          AND oi.item_type = 'Tickets'
           AND o.status = 'Paid') AS sales_total_in_cents
 FROM events e
        LEFT JOIN venues v ON e.venue_id = v.id

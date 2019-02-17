@@ -452,7 +452,7 @@ pub fn dashboard(role: Roles, should_test_succeed: bool) {
                 },
                 DayStats {
                     date: end_utc,
-                    revenue_in_cents: 1700,
+                    revenue_in_cents: 1500,
                     ticket_sales: 10,
                 }
             ]

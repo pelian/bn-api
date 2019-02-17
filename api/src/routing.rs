@@ -103,6 +103,13 @@ pub fn routes(app: &mut CorsBuilder<AppState>) -> App<AppState> {
         r.method(Method::PATCH).with(ticket_types::update);
         r.method(Method::DELETE).with(ticket_types::cancel);
     })
+    .resource("/events/{id}/users", |r| {
+        r.method(Method::GET).with(events::users);
+    })
+    .resource("/events/{id}/users/invites", |r| {
+        r.method(Method::POST)
+            .with(organization_invites::create_for_event);
+    })
     .resource("/external/facebook/web_login", |r| {
         r.method(Method::POST).with(external::facebook::web_login)
     })

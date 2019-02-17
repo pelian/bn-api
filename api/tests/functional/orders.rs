@@ -261,7 +261,7 @@ mod refund_tests {
     }
     #[test]
     fn refund_promoter() {
-        base::orders::refund(Roles::Promoter, true);
+        base::orders::refund(Roles::Promoter, false)
     }
     #[test]
     fn refund_promoter_read_only() {

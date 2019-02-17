@@ -483,7 +483,7 @@ fn send_to_existing_user() {
     let sender_tickets = TicketInstance::find_for_user(sender.id, conn).unwrap();
     let receiver_tickets = TicketInstance::find_for_user(receiver.id, conn).unwrap();
     assert_eq!(sender_tickets, vec![]);
-    assert_eq!(
+    assert_equiv!(
         receiver_tickets
             .into_iter()
             .map(|t| t.id)

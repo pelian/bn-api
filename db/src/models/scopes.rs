@@ -33,6 +33,7 @@ pub enum Scopes {
     OrgFans,
     OrgFinancialReports,
     OrgRead,
+    OrgReadEvents,
     OrgReports,
     OrgUsers,
     OrgWrite,
@@ -82,6 +83,7 @@ impl fmt::Display for Scopes {
             Scopes::OrderRefund => "order:refund",
             Scopes::OrgAdmin => "org:admin",
             Scopes::OrgRead => "org:read",
+            Scopes::OrgReadEvents => "org:read-events",
             Scopes::OrgReports => "org:reports",
             Scopes::OrgFans => "org:fans",
             Scopes::OrgFinancialReports => "org:financial-reports",
@@ -130,6 +132,7 @@ impl FromStr for Scopes {
             "order:refund" => Scopes::OrderRefund,
             "org:admin" => Scopes::OrgAdmin,
             "org:read" => Scopes::OrgRead,
+            "org:read-events" => Scopes::OrgReadEvents,
             "org:reports" => Scopes::OrgReports,
             "org:fans" => Scopes::OrgFans,
             "org:financial-reports" => Scopes::OrgFinancialReports,
@@ -181,6 +184,7 @@ fn get_scopes_for_role(role: Roles) -> Vec<Scopes> {
         DoorPerson => {
             let mut roles = vec![
                 Scopes::RedeemTicket,
+                Scopes::OrgReadEvents,
                 Scopes::HoldRead,
                 Scopes::EventScan,
                 Scopes::TicketRead,
@@ -206,6 +210,7 @@ fn get_scopes_for_role(role: Roles) -> Vec<Scopes> {
                 Scopes::EventInterest,
                 Scopes::HoldRead,
                 Scopes::OrderRead,
+                Scopes::OrgReadEvents,
                 Scopes::TicketRead,
                 Scopes::TicketTypeRead,
             ];
@@ -215,11 +220,14 @@ fn get_scopes_for_role(role: Roles) -> Vec<Scopes> {
             let mut roles = vec![
                 Scopes::CodeWrite,
                 Scopes::CompWrite,
-                Scopes::EventFinancialReports,
-                Scopes::EventReports,
+                // Scopes::EventFinancialReports,
+                // Scopes::EventReports,
+                // To be updated later
                 Scopes::EventWrite,
+                Scopes::TicketTypeRead,
+                Scopes::TicketTypeWrite,
                 Scopes::HoldWrite,
-                Scopes::OrderRefund,
+                // Scopes::OrderRefund,
             ];
             roles.extend(get_scopes_for_role(Roles::PromoterReadOnly));
             roles
@@ -243,6 +251,7 @@ fn get_scopes_for_role(role: Roles) -> Vec<Scopes> {
                 Scopes::OrderRead,
                 Scopes::OrderRefund,
                 Scopes::OrgRead,
+                Scopes::OrgReadEvents,
                 Scopes::OrgFans,
                 Scopes::RedeemTicket,
                 Scopes::TicketAdmin,
@@ -291,7 +300,7 @@ fn get_scopes_for_role(role: Roles) -> Vec<Scopes> {
 #[test]
 fn get_scopes_for_role_test() {
     let res = get_scopes_for_role(Roles::OrgOwner);
-    assert_eq!(
+    assert_equiv!(
         vec![
             Scopes::ArtistWrite,
             Scopes::BoxOfficeTicketRead,
@@ -328,6 +337,7 @@ fn get_scopes_for_role_test() {
             Scopes::TicketTypeWrite,
             Scopes::UserRead,
             Scopes::VenueWrite,
+            Scopes::OrgReadEvents
         ],
         res
     );
@@ -345,7 +355,7 @@ fn get_scopes_test() {
         .map(|i| i.to_string())
         .collect::<Vec<String>>();
     res.sort();
-    assert_eq!(
+    assert_equiv!(
         vec![
             "artist:write",
             "box-office-ticket:read",
@@ -371,6 +381,7 @@ fn get_scopes_test() {
             "org:admin-users",
             "org:fans",
             "org:read",
+            "org:read-events",
             "org:reports",
             "org:users",
             "org:write",
@@ -390,7 +401,7 @@ fn get_scopes_test() {
         .map(|i| i.to_string())
         .collect::<Vec<String>>();
     res.sort();
-    assert_eq!(
+    assert_equiv!(
         vec![
             "artist:write",
             "box-office-ticket:read",
@@ -418,6 +429,7 @@ fn get_scopes_test() {
             "org:fans",
             "org:financial-reports",
             "org:read",
+            "org:read-events",
             "org:reports",
             "org:users",
             "org:write",
@@ -438,7 +450,7 @@ fn get_scopes_test() {
         .iter()
         .map(|i| i.to_string())
         .collect::<Vec<String>>();
-    assert_eq!(
+    assert_equiv!(
         vec![
             "artist:write",
             "box-office-ticket:read",
@@ -466,6 +478,7 @@ fn get_scopes_test() {
             "org:fans",
             "org:financial-reports",
             "org:read",
+            "org:read-events",
             "org:reports",
             "org:users",
             "org:write",

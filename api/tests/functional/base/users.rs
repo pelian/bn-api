@@ -50,6 +50,21 @@ pub fn profile(role: Roles, should_test_true: bool) {
     let auth_user =
         support::create_auth_user_from_user(&user, role, Some(&organization), &database);
 
+    let items = cart.items(&connection).unwrap();
+    let order_item = items
+        .iter()
+        .find(|i| i.ticket_type_id == Some(ticket_type.id))
+        .unwrap();
+    let tickets = TicketInstance::find_for_order_item(order_item.id, connection).unwrap();
+    let ticket = &tickets[0];
+    TicketInstance::redeem_ticket(
+        ticket.id,
+        ticket.redeem_key.clone().unwrap(),
+        user.id,
+        connection,
+    )
+    .unwrap();
+
     let test_request = TestRequest::create_with_uri_custom_params("/", vec!["id", "user_id"]);
     let mut path = Path::<OrganizationFanPathParameters>::extract(&test_request.request).unwrap();
     path.id = organization.id;
@@ -75,6 +90,11 @@ pub fn profile(role: Roles, should_test_true: bool) {
                 thumb_profile_pic_url: user2.thumb_profile_pic_url.clone(),
                 cover_photo_url: user2.cover_photo_url.clone(),
                 created_at: user2.created_at,
+                attendance_information: vec![AttendanceInformation {
+                    event_name: event.name,
+                    event_id: event.id,
+                    event_start: event.event_start
+                }],
             }
         );
     } else {

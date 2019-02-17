@@ -48,6 +48,9 @@ impl SendOrderCompleteExecutor {
 
         for oi in order.items(conn)? {
             let tickets = TicketInstance::find_for_order_item(oi.id, conn)?;
+            let event = Event::find(oi.event_id.unwrap(), conn)?;
+
+            let wallet = Wallet::find_default_for_organization(event.organization_id, conn)?;
             for ticket in tickets {
                 tokens_per_asset
                     .entry(ticket.asset_id)
@@ -55,7 +58,7 @@ impl SendOrderCompleteExecutor {
                     .push(ticket.token_id as u64);
                 wallet_id_per_asset
                     .entry(ticket.asset_id)
-                    .or_insert(ticket.wallet_id);
+                    .or_insert(wallet.id);
             }
         }
 

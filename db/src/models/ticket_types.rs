@@ -8,6 +8,7 @@ use schema::{
     assets, events, fee_schedules, organizations, ticket_instances, ticket_pricing,
     ticket_type_codes, ticket_types,
 };
+use std::cmp::Ordering;
 use utils::errors::*;
 use uuid::Uuid;
 use validator::*;
@@ -30,6 +31,11 @@ pub struct TicketType {
     updated_at: NaiveDateTime,
     pub price_in_cents: i64,
     pub cancelled_at: Option<NaiveDateTime>,
+}
+impl PartialOrd for TicketType {
+    fn partial_cmp(&self, other: &TicketType) -> Option<Ordering> {
+        Some(self.id.cmp(&other.id))
+    }
 }
 
 #[derive(AsChangeset, Default, Deserialize)]

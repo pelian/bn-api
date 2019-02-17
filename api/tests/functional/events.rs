@@ -791,7 +791,7 @@ mod add_artist_tests {
     }
     #[test]
     fn add_artist_promoter() {
-        base::events::add_artist(Roles::Promoter, true);
+        base::events::add_artist(Roles::Promoter, true)
     }
     #[test]
     fn add_artist_promoter_read_only() {
@@ -1198,7 +1198,7 @@ fn dashboard_with_default_range() {
         dashboard_result.day_stats[29],
         DayStats {
             date: Utc::now().naive_utc().date(),
-            revenue_in_cents: 1700,
+            revenue_in_cents: 1500,
             ticket_sales: 10,
         }
     );

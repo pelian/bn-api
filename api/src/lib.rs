@@ -24,6 +24,7 @@ extern crate lettre_email;
 extern crate log;
 #[macro_use]
 extern crate logging;
+
 extern crate r2d2;
 extern crate regex;
 extern crate reqwest;

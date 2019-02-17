@@ -16,6 +16,7 @@ SELECT t2.event_id,
         FROM order_items oi
                INNER JOIN orders o ON oi.order_id = o.id
         WHERE oi.ticket_type_id = t2.id
+          AND oi.item_type = 'Tickets'
           AND o.status = 'Paid')                                                                                      as sales_total_in_cents
 FROM ticket_instances ti
        INNER JOIN assets a

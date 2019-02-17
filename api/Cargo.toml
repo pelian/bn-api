@@ -1,6 +1,6 @@
 [package]
 name = "bigneon_api"
-version = "0.2.307"
+version = "0.2.384"
 authors = ["CjS77"]
 license = "BSD-3"
 repository = "https://github.com/big-neon/bn-api/"
@@ -25,6 +25,7 @@ lettre_email = "0.8"
 lazy_static = "1.2.0"
 log = { version = "0.4", features = ["max_level_debug"]}
 logging = {path="../logging"}
+macros = {path="../macros"}
 r2d2 = "0.8"
 regex = "1"
 reqwest="0.9"

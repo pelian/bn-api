@@ -314,11 +314,19 @@ impl OrganizationInvite {
 
     pub fn find_pending_by_organization(
         organization_id: Uuid,
+        event_id: Option<Uuid>,
         conn: &PgConnection,
     ) -> Result<Vec<OrganizationInvite>, DatabaseError> {
-        organization_invites::table
+        let mut query = organization_invites::table
             .filter(organization_invites::organization_id.eq(organization_id))
             .filter(organization_invites::accepted.is_null())
+            .into_boxed();
+
+        query = match event_id {
+            Some(id) => query.filter(organization_invites::event_ids.contains(vec![id])),
+            None => query.filter(organization_invites::event_ids.eq(Vec::<Uuid>::new())),
+        };
+        query
             .order_by(organization_invites::user_email.asc())
             .load(conn)
             .to_db_error(

@@ -11,6 +11,8 @@ extern crate bigneon_db;
 extern crate chrono;
 extern crate diesel;
 #[macro_use]
+extern crate macros;
+#[macro_use]
 extern crate serde_json;
 #[macro_use]
 extern crate serde_derive;
