@@ -213,6 +213,7 @@ pub fn create_with_validation_errors() {
         increment: None,
         limit_per_person: 0,
         price_in_cents: 10000,
+        sold_out_behavior: SoldOutBehavior::ShowSoldOut,
     };
     let response: HttpResponse = ticket_types::create((
         database.connection.into(),
@@ -275,6 +276,7 @@ pub fn create_with_validation_errors_on_ticket_pricing() {
         increment: None,
         limit_per_person: 0,
         price_in_cents: 10000,
+        sold_out_behavior: SoldOutBehavior::ShowSoldOut,
     };
     let response: HttpResponse = ticket_types::create((
         database.connection.into(),
@@ -346,6 +348,7 @@ pub fn create_with_overlapping_periods() {
         increment: None,
         limit_per_person: 0,
         price_in_cents: 20000,
+        sold_out_behavior: SoldOutBehavior::ShowSoldOut,
     };
     let response: HttpResponse = ticket_types::create((
         database.connection.into(),

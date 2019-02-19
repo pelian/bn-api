@@ -54,6 +54,7 @@ pub fn create(role: Roles, should_test_succeed: bool) {
         increment: None,
         limit_per_person: 0,
         price_in_cents: 20000,
+        sold_out_behavior: SoldOutBehavior::ShowSoldOut,
     };
     let response: HttpResponse = ticket_types::create((
         database.connection.into(),
