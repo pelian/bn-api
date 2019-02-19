@@ -2,7 +2,7 @@ use actix_web::{http::StatusCode, HttpResponse};
 use bigneon_api::auth::TokenResponse;
 use bigneon_api::controllers::users;
 use bigneon_api::extractors::*;
-use bigneon_api::models::{RegisterRequest, UserProfileAttributes};
+use bigneon_api::models::{RegisterRequest, RequestInfo, UserProfileAttributes};
 use bigneon_db::prelude::*;
 use functional::base;
 use serde_json;
@@ -413,8 +413,13 @@ fn register_succeeds_with_login() {
         None,
     ));
 
-    let response: HttpResponse =
-        users::register_and_login((request.request, database.connection.into(), json)).into();
+    let response: HttpResponse = users::register_and_login((
+        request.request,
+        database.connection.into(),
+        json,
+        RequestInfo { user_agent: None },
+    ))
+    .into();
     assert_eq!(response.status(), StatusCode::CREATED);
     let body = support::unwrap_body_to_string(&response).unwrap();
     let token_response: TokenResponse = serde_json::from_str(&body).unwrap();

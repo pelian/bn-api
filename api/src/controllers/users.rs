@@ -257,10 +257,11 @@ pub fn register(
 }
 
 pub fn register_and_login(
-    (http_request, connection, parameters): (
+    (http_request, connection, parameters, request_info): (
         HttpRequest<AppState>,
         Connection,
         Json<RegisterRequest>,
+        RequestInfo,
     ),
 ) -> Result<HttpResponse, BigNeonError> {
     let state = http_request.state();
@@ -296,7 +297,8 @@ pub fn register_and_login(
         },
     };
     let json = Json(LoginRequest::new(&email, &password));
-    let token_response = auth::token((http_request.clone(), connection.clone(), json))?;
+    let token_response =
+        auth::token((http_request.clone(), connection.clone(), json, request_info))?;
 
     if let (Some(first_name), Some(email)) = (new_user.first_name, new_user.email) {
         mailers::user::user_registered(first_name, email, &state.config, connection.get())?;

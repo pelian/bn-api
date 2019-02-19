@@ -17,6 +17,7 @@ pub struct UserDisplayTicketType {
     pub limit_per_person: u32,
     pub ticket_pricing: Option<DisplayTicketPricing>,
     pub redemption_code: Option<String>,
+    pub event_id: Uuid,
 }
 
 impl UserDisplayTicketType {
@@ -27,7 +28,7 @@ impl UserDisplayTicketType {
         redemption_code: Option<String>,
         conn: &PgConnection,
     ) -> Result<UserDisplayTicketType, DatabaseError> {
-        let mut status = ticket_type.status;
+        let status = ticket_type.status;
         let available = ticket_type.valid_available_ticket_count(conn)?;
 
         let ticket_pricing = match ticket_type
@@ -44,16 +45,9 @@ impl UserDisplayTicketType {
             None => None,
         };
 
-        if ticket_type.status == TicketTypeStatus::Published {
-            if available == 0 {
-                status = TicketTypeStatus::SoldOut;
-            } else if ticket_pricing.is_none() {
-                status = TicketTypeStatus::NoActivePricing;
-            }
-        }
-
         let mut result = UserDisplayTicketType {
             id: ticket_type.id,
+            event_id: ticket_type.event_id,
             name: ticket_type.name.clone(),
             description: ticket_type.description.clone(),
             status,
@@ -87,6 +81,15 @@ impl UserDisplayTicketType {
                 }
             }
         }
+
+        if ticket_type.status == TicketTypeStatus::Published {
+            if result.available == 0 {
+                result.status = TicketTypeStatus::SoldOut;
+            } else if result.ticket_pricing.is_none() {
+                result.status = TicketTypeStatus::NoActivePricing;
+            }
+        }
+
         Ok(result)
     }
 }

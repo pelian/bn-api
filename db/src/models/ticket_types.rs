@@ -32,7 +32,9 @@ pub struct TicketType {
     updated_at: NaiveDateTime,
     pub price_in_cents: i64,
     pub cancelled_at: Option<NaiveDateTime>,
+    pub sold_out_behavior: SoldOutBehavior,
 }
+
 impl PartialOrd for TicketType {
     fn partial_cmp(&self, other: &TicketType) -> Option<Ordering> {
         Some(self.id.cmp(&other.id))
@@ -49,6 +51,7 @@ pub struct TicketTypeEditableAttributes {
     pub increment: Option<i32>,
     pub limit_per_person: Option<i32>,
     pub price_in_cents: Option<i64>,
+    pub sold_out_behavior: Option<SoldOutBehavior>,
 }
 
 impl TicketType {

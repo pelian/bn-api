@@ -1,6 +1,7 @@
 use actix_web::{http::StatusCode, HttpResponse};
 use bigneon_api::controllers::cart;
 use bigneon_api::extractors::*;
+use bigneon_api::models::*;
 use bigneon_db::models::*;
 use chrono::prelude::*;
 use support;
@@ -44,8 +45,13 @@ pub fn update_box_office_pricing(role: Roles, should_test_succeed: bool) {
         }],
     });
 
-    let response: HttpResponse =
-        cart::update_cart((database.connection.clone().into(), input, auth_user)).into();
+    let response: HttpResponse = cart::update_cart((
+        database.connection.clone().into(),
+        input,
+        auth_user,
+        RequestInfo { user_agent: None },
+    ))
+    .into();
 
     if should_test_succeed {
         assert_eq!(response.status(), StatusCode::OK);
@@ -140,8 +146,13 @@ pub fn replace_box_office_pricing(role: Roles, should_test_succeed: bool) {
         }],
     });
 
-    let response: HttpResponse =
-        cart::replace_cart((database.connection.clone().into(), input, auth_user)).into();
+    let response: HttpResponse = cart::replace_cart((
+        database.connection.clone().into(),
+        input,
+        auth_user,
+        RequestInfo { user_agent: None },
+    ))
+    .into();
 
     if should_test_succeed {
         assert_eq!(response.status(), StatusCode::OK);

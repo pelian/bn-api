@@ -15,6 +15,7 @@ use helpers::application;
 use itertools::Itertools;
 use log::Level::Debug;
 use log::Level::Info;
+use models::RequestInfo;
 use payments::AuthThenCompletePaymentBehavior;
 use payments::PaymentProcessor;
 use payments::PaymentProcessorBehavior;
@@ -39,7 +40,12 @@ pub struct UpdateCartRequest {
 }
 
 pub fn update_cart(
-    (connection, json, user): (Connection, Json<UpdateCartRequest>, User),
+    (connection, json, user, request_info): (
+        Connection,
+        Json<UpdateCartRequest>,
+        User,
+        RequestInfo,
+    ),
 ) -> Result<HttpResponse, BigNeonError> {
     let json = json.into_inner();
     jlog!(Debug, "Update Cart", {"cart": json, "user_id": user.id()});
@@ -83,6 +89,7 @@ pub fn update_cart(
                 .json(json!({"error": "Event has not been published.".to_string()})));
         }
     }
+
     cart.update_quantities(
         user.id(),
         &order_items,
@@ -91,6 +98,7 @@ pub fn update_cart(
         connection,
     )?;
 
+    cart.set_user_agent(request_info.user_agent.clone(), false, connection)?;
     Ok(
         HttpResponse::Ok().json(Order::find(cart.id, connection)?.for_display(
             None,
@@ -117,7 +125,12 @@ pub fn destroy((connection, user): (Connection, User)) -> Result<HttpResponse, B
 }
 
 pub fn replace_cart(
-    (connection, json, user): (Connection, Json<UpdateCartRequest>, User),
+    (connection, json, user, request_info): (
+        Connection,
+        Json<UpdateCartRequest>,
+        User,
+        RequestInfo,
+    ),
 ) -> Result<HttpResponse, BigNeonError> {
     let json = json.into_inner();
     jlog!(Debug, "Replace Cart", {"cart": json, "user_id": user.id() });
@@ -171,6 +184,7 @@ pub fn replace_cart(
         connection,
     )?;
 
+    cart.set_user_agent(request_info.user_agent.clone(), false, connection)?;
     Ok(
         HttpResponse::Ok().json(Order::find(cart.id, connection)?.for_display(
             None,
@@ -247,7 +261,13 @@ pub fn clear_invalid_items(
 }
 
 pub fn checkout(
-    (connection, json, user, state): (Connection, Json<CheckoutCartRequest>, User, State<AppState>),
+    (connection, json, user, state, request_info): (
+        Connection,
+        Json<CheckoutCartRequest>,
+        User,
+        State<AppState>,
+        RequestInfo,
+    ),
 ) -> Result<HttpResponse, BigNeonError> {
     // TODO: Change application::unprocesable's in this method to validation errors.
     let req = json.into_inner();
@@ -302,7 +322,7 @@ pub fn checkout(
                     "Could not use free payment method this cart because it has a total greater than zero",
                 );
             }
-            checkout_free(&connection, order, &user)?
+            checkout_free(&connection, order, &user, &request_info)?
         }
         PaymentRequest::External {
             reference,
@@ -323,6 +343,7 @@ pub fn checkout(
                 phone.clone(),
                 note.clone(),
                 &user,
+                &request_info,
             )?
         }
         PaymentRequest::PaymentMethod { provider } => {
@@ -355,6 +376,7 @@ pub fn checkout(
                 false,
                 &state.service_locator,
                 &state.config,
+                &request_info,
             )?
         }
         PaymentRequest::Provider { provider } => checkout_payment_processor(
@@ -369,6 +391,7 @@ pub fn checkout(
             false,
             &state.service_locator,
             &state.config,
+            &request_info,
         )?,
         PaymentRequest::Card {
             token,
@@ -387,6 +410,7 @@ pub fn checkout(
             *set_default,
             &state.service_locator,
             &state.config,
+            &request_info,
         )?,
     };
     Ok(payment_response)
@@ -396,6 +420,7 @@ fn checkout_free(
     conn: &Connection,
     order: Order,
     user: &User,
+    request_info: &RequestInfo,
 ) -> Result<HttpResponse, BigNeonError> {
     let conn = conn.get();
     if order.status != OrderStatus::Draft {
@@ -406,7 +431,8 @@ fn checkout_free(
     let mut order = order;
     order.add_external_payment(Some("Free Checkout".to_string()), user.id(), 0, conn)?;
 
-    let order = Order::find(order.id, conn)?;
+    let mut order = Order::find(order.id, conn)?;
+    order.set_user_agent(request_info.user_agent.clone(), true, conn)?;
     Ok(HttpResponse::Ok().json(json!(order.for_display(None, user.id(), conn)?)))
 }
 
@@ -422,6 +448,7 @@ fn checkout_external(
     phone: Option<String>,
     note: Option<String>,
     user: &User,
+    request_info: &RequestInfo,
 ) -> Result<HttpResponse, BigNeonError> {
     let conn = conn.get();
 
@@ -464,6 +491,7 @@ fn checkout_external(
     let total = order.calculate_total(conn)?;
 
     order.add_external_payment(reference, user.id(), total, conn)?;
+    order.set_user_agent(request_info.user_agent.clone(), true, conn)?;
 
     let order = Order::find(order.id, conn)?;
     Ok(HttpResponse::Ok().json(json!(order.for_display(None, user.id(), conn)?)))
@@ -481,6 +509,7 @@ fn checkout_payment_processor(
     set_default: bool,
     service_locator: &ServiceLocator,
     config: &Config,
+    request_info: &RequestInfo,
 ) -> Result<HttpResponse, BigNeonError> {
     info!("CART: Executing provider payment");
     let connection = conn.get();
@@ -580,7 +609,14 @@ fn checkout_payment_processor(
             };
 
             return auth_then_complete(
-                &*behavior, token, currency, order, auth_user, conn, &*client,
+                &*behavior,
+                token,
+                currency,
+                order,
+                auth_user,
+                conn,
+                &*client,
+                request_info,
             );
         }
     };
@@ -594,6 +630,7 @@ fn auth_then_complete(
     auth_user: &User,
     conn: &Connection,
     payment_processor: &PaymentProcessor,
+    request_info: &RequestInfo,
 ) -> Result<HttpResponse, BigNeonError> {
     let connection = conn.get();
     info!("CART: Auth'ing to payment provider");
@@ -633,7 +670,8 @@ fn auth_then_complete(
     info!("charge_result:{:?}", charge_result);
     match payment.mark_complete(charge_result.to_json()?, Some(auth_user.id()), connection) {
         Ok(_) => {
-            let order = Order::find(order.id, connection)?;
+            let mut order = Order::find(order.id, connection)?;
+            order.set_user_agent(request_info.user_agent.clone(), true, connection)?;
             Ok(HttpResponse::Ok().json(json!(order.for_display(
                 None,
                 auth_user.id(),

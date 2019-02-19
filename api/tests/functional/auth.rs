@@ -3,6 +3,7 @@ use bigneon_api::auth::{claims::AccessToken, claims::RefreshToken, TokenResponse
 use bigneon_api::controllers::auth;
 use bigneon_api::controllers::auth::{LoginRequest, RefreshRequest};
 use bigneon_api::extractors::*;
+use bigneon_api::models::*;
 use jwt::{decode, encode, Header, Validation};
 use serde_json;
 use support;
@@ -25,8 +26,13 @@ fn token() {
     let state = test_request.extract_state();
     let json = Json(LoginRequest::new("fake@localhost", "strong_password"));
 
-    let response: TokenResponse =
-        auth::token((test_request.request, database.connection.into(), json)).unwrap();
+    let response: TokenResponse = auth::token((
+        test_request.request,
+        database.connection.into(),
+        json,
+        RequestInfo { user_agent: None },
+    ))
+    .unwrap();
 
     let access_token = decode::<AccessToken>(
         &response.access_token,
@@ -56,7 +62,12 @@ fn token_invalid_email() {
     let test_request = TestRequest::create();
     let json = Json(LoginRequest::new("incorrect@localhost", "strong_password"));
 
-    let response = auth::token((test_request.request, database.connection.into(), json));
+    let response = auth::token((
+        test_request.request,
+        database.connection.into(),
+        json,
+        RequestInfo { user_agent: None },
+    ));
 
     assert!(response.is_err());
     assert_eq!(
@@ -76,7 +87,12 @@ fn token_incorrect_password() {
     let test_request = TestRequest::create();
     let json = Json(LoginRequest::new(&user.email.unwrap(), "incorrect"));
 
-    let response = auth::token((test_request.request, database.connection.into(), json));
+    let response = auth::token((
+        test_request.request,
+        database.connection.into(),
+        json,
+        RequestInfo { user_agent: None },
+    ));
 
     assert!(response.is_err());
     assert_eq!(

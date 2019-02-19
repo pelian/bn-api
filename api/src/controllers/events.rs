@@ -347,6 +347,12 @@ pub fn show(
                 connection,
             )?;
 
+            if display_ticket_type.status == TicketTypeStatus::SoldOut
+                && ticket_type.sold_out_behavior == SoldOutBehavior::Hide
+            {
+                continue;
+            };
+
             display_ticket_types.push(display_ticket_type);
         }
     }
@@ -1072,4 +1078,46 @@ pub fn users(
 
     let payload = Payload::from_data(members, query_parameters.page(), query_parameters.limit());
     Ok(WebPayload::new(StatusCode::OK, payload))
+}
+
+#[derive(Deserialize)]
+pub struct EventUserPathParams {
+    id: Uuid,
+    user_id: Uuid,
+}
+
+pub fn remove_user(
+    (connection, path, user): (Connection, Path<EventUserPathParams>, User),
+) -> Result<HttpResponse, BigNeonError> {
+    let connection = connection.get();
+    let event = Event::find(path.id, connection)?;
+    let organization = event.organization(connection)?;
+    user.requires_scope_for_organization_event(
+        Scopes::OrgUsers,
+        &organization,
+        &event,
+        connection,
+    )?;
+
+    let mut external_user =
+        OrganizationUser::find_by_user_id(path.user_id, organization.id, connection)?;
+    if !external_user.event_ids.contains(&event.id) {
+        return Ok(HttpResponse::Ok().finish());
+    }
+    external_user.event_ids = external_user
+        .event_ids
+        .into_iter()
+        .filter(|id| *id != event.id)
+        .collect();
+    organization.remove_user(path.user_id, connection)?;
+
+    if external_user.event_ids.len() != 0 {
+        organization.add_user(
+            external_user.user_id,
+            external_user.role,
+            external_user.event_ids,
+            connection,
+        )?;
+    };
+    Ok(HttpResponse::Ok().json(&organization))
 }

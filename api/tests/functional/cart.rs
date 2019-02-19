@@ -6,6 +6,7 @@ use bigneon_api::controllers::cart;
 use bigneon_api::controllers::cart::*;
 use bigneon_api::domain_events;
 use bigneon_api::extractors::*;
+use bigneon_api::models::*;
 use bigneon_db::models::*;
 use bigneon_db::schema::{orders, ticket_instances};
 use chrono::prelude::*;
@@ -192,8 +193,13 @@ fn update() {
     });
 
     let auth_user = support::create_auth_user_from_user(&user, Roles::User, None, &database);
-    let response =
-        cart::update_cart((database.connection.clone().into(), input, auth_user)).unwrap();
+    let response = cart::update_cart((
+        database.connection.clone().into(),
+        input,
+        auth_user,
+        RequestInfo { user_agent: None },
+    ))
+    .unwrap();
     assert_eq!(response.status(), StatusCode::OK);
 
     let cart = Order::find_cart_for_user(user.id, &connection)
@@ -246,8 +252,13 @@ fn update_with_draft_event() {
     });
 
     let auth_user = support::create_auth_user_from_user(&user, Roles::User, None, &database);
-    let response =
-        cart::update_cart((database.connection.clone().into(), input, auth_user)).unwrap();
+    let response = cart::update_cart((
+        database.connection.clone().into(),
+        input,
+        auth_user,
+        RequestInfo { user_agent: None },
+    ))
+    .unwrap();
     assert_eq!(response.status(), StatusCode::BAD_REQUEST);
 }
 
@@ -282,8 +293,13 @@ fn update_multiple() {
         ],
     });
     let auth_user = support::create_auth_user_from_user(&user, Roles::User, None, &database);
-    let response =
-        cart::update_cart((database.connection.clone().into(), input, auth_user)).unwrap();
+    let response = cart::update_cart((
+        database.connection.clone().into(),
+        input,
+        auth_user,
+        RequestInfo { user_agent: None },
+    ))
+    .unwrap();
     assert_eq!(response.status(), StatusCode::OK);
     let cart = Order::find_cart_for_user(user.id, connection)
         .unwrap()
@@ -363,7 +379,13 @@ fn add_with_increment() {
     });
 
     let auth_user = support::create_auth_user_from_user(&user, Roles::User, None, &database);
-    let response = cart::update_cart((database.connection.clone(), input, auth_user)).unwrap();
+    let response = cart::update_cart((
+        database.connection.clone(),
+        input,
+        auth_user,
+        RequestInfo { user_agent: None },
+    ))
+    .unwrap();
     assert_eq!(response.status(), StatusCode::OK);
 
     let cart = Order::find_cart_for_user(user.id, connection)
@@ -421,8 +443,13 @@ fn update_with_increment_failure_invalid_quantity() {
     });
 
     let auth_user = support::create_auth_user_from_user(&user, Roles::User, None, &database);
-    let response: HttpResponse =
-        cart::update_cart((database.connection.clone().into(), input, auth_user)).into();
+    let response: HttpResponse = cart::update_cart((
+        database.connection.clone().into(),
+        input,
+        auth_user,
+        RequestInfo { user_agent: None },
+    ))
+    .into();
     assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
 
     let validation_response = support::validation_response_from_response(&response).unwrap();
@@ -458,8 +485,13 @@ fn update_with_existing_cart() {
     });
 
     let auth_user = support::create_auth_user_from_user(&user, Roles::User, None, &database);
-    let response =
-        cart::update_cart((database.connection.clone().into(), input, auth_user)).unwrap();
+    let response = cart::update_cart((
+        database.connection.clone().into(),
+        input,
+        auth_user,
+        RequestInfo { user_agent: None },
+    ))
+    .unwrap();
     assert_eq!(response.status(), StatusCode::OK);
     let items = cart.items(connection).unwrap();
     let order_item = items
@@ -539,8 +571,13 @@ fn reduce() {
     });
 
     let auth_user = support::create_auth_user_from_user(&user, Roles::User, None, &database);
-    let response =
-        cart::update_cart((database.connection.clone().into(), input, auth_user)).unwrap();
+    let response = cart::update_cart((
+        database.connection.clone().into(),
+        input,
+        auth_user,
+        RequestInfo { user_agent: None },
+    ))
+    .unwrap();
     assert_eq!(response.status(), StatusCode::OK);
 
     // Contains additional item quantity so cart response still includes cart object
@@ -622,8 +659,13 @@ fn remove() {
     });
 
     let auth_user = support::create_auth_user_from_user(&user, Roles::User, None, &database);
-    let response =
-        cart::update_cart((database.connection.clone().into(), input, auth_user)).unwrap();
+    let response = cart::update_cart((
+        database.connection.clone().into(),
+        input,
+        auth_user,
+        RequestInfo { user_agent: None },
+    ))
+    .unwrap();
     assert_eq!(response.status(), StatusCode::OK);
 
     // Contains additional item quantity so cart response still includes cart object
@@ -701,8 +743,13 @@ fn remove_with_increment() {
     });
 
     let auth_user = support::create_auth_user_from_user(&user, Roles::User, None, &database);
-    let response =
-        cart::update_cart((database.connection.clone().into(), input, auth_user)).unwrap();
+    let response = cart::update_cart((
+        database.connection.clone().into(),
+        input,
+        auth_user,
+        RequestInfo { user_agent: None },
+    ))
+    .unwrap();
     assert_eq!(response.status(), StatusCode::OK);
 
     // Contains additional item quantity so cart response still includes cart object
@@ -792,8 +839,13 @@ fn remove_with_increment_failure_invalid_quantity() {
     });
 
     let auth_user = support::create_auth_user_from_user(&user, Roles::User, None, &database);
-    let response: HttpResponse =
-        cart::update_cart((database.connection.clone().into(), input, auth_user)).into();
+    let response: HttpResponse = cart::update_cart((
+        database.connection.clone().into(),
+        input,
+        auth_user,
+        RequestInfo { user_agent: None },
+    ))
+    .into();
     assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
     let validation_response = support::validation_response_from_response(&response).unwrap();
     let quantity = validation_response.fields.get("quantity").unwrap();
@@ -841,6 +893,7 @@ fn checkout_external() {
         input,
         user,
         request.extract_state(),
+        RequestInfo { user_agent: None },
     ))
     .unwrap();
     assert_eq!(response.status(), StatusCode::OK);
@@ -877,6 +930,7 @@ fn checkout_free() {
         input,
         user,
         request.extract_state(),
+        RequestInfo { user_agent: None },
     ))
     .unwrap();
     assert_eq!(response.status(), StatusCode::OK);
@@ -916,6 +970,7 @@ fn checkout_free_for_paid_items() {
         input,
         user,
         request.extract_state(),
+        RequestInfo { user_agent: None },
     ))
     .into();
     assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
@@ -1053,6 +1108,7 @@ fn checkout_fails_for_invalid_items() {
         input,
         user,
         request.extract_state(),
+        RequestInfo { user_agent: None },
     ))
     .into();
     assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
@@ -1103,6 +1159,7 @@ fn checkout_provider_globee() {
         input,
         user.clone(),
         request.extract_state(),
+        RequestInfo { user_agent: None },
     ))
     .unwrap();
 

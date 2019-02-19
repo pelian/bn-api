@@ -7,6 +7,7 @@ use diesel::prelude::*;
 use diesel::sql_types::{BigInt, Nullable, Text, Timestamp, Uuid as dUuid};
 use models::*;
 use schema::{events, organization_users, organizations, users};
+use serde_json::Value;
 use std::collections::HashMap;
 use time::Duration;
 use utils::errors::{ConvertToDatabaseError, DatabaseError, ErrorCode};
@@ -182,6 +183,23 @@ impl User {
             user.add_external_login(external_user_id, site, access_token, conn)?;
             Ok(user)
         })
+    }
+
+    pub fn login_domain_event(
+        &self,
+        json: Value,
+        conn: &PgConnection,
+    ) -> Result<(), DatabaseError> {
+        DomainEvent::create(
+            DomainEventTypes::UserLogin,
+            "User login".to_string(),
+            Tables::Users,
+            Some(self.id),
+            Some(self.id),
+            Some(json),
+        )
+        .commit(conn)?;
+        Ok(())
     }
 
     pub fn create_stub(

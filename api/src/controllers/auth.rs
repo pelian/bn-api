@@ -7,6 +7,7 @@ use extractors::*;
 use helpers::application;
 use jwt::{decode, Validation};
 use log::Level::Info;
+use models::*;
 use server::AppState;
 use std::collections::HashMap;
 use utils::google_recaptcha;
@@ -44,10 +45,11 @@ impl RefreshRequest {
 }
 
 pub fn token(
-    (http_request, connection, login_request): (
+    (http_request, connection, login_request, request_info): (
         HttpRequest<AppState>,
         Connection,
         Json<LoginRequest>,
+        RequestInfo,
     ),
 ) -> Result<TokenResponse, BigNeonError> {
     let state = http_request.state();
@@ -104,6 +106,7 @@ pub fn token(
         );
     }
 
+    user.login_domain_event(json!(request_info), connection.get())?;
     jlog!(Info, "User logged in via email and password", {"id": user.id, "email": user.email.clone()});
     let response = TokenResponse::create_from_user(
         &state.config.token_secret,

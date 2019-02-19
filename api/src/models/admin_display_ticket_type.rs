@@ -18,6 +18,7 @@ pub struct AdminDisplayTicketType {
     pub limit_per_person: u32,
     pub ticket_pricing: Vec<DisplayTicketPricing>,
     pub price_in_cents: i64,
+    pub sold_out_behavior: SoldOutBehavior,
 }
 
 impl AdminDisplayTicketType {
@@ -52,6 +53,7 @@ impl AdminDisplayTicketType {
             increment: ticket_type.increment as u32,
             limit_per_person: ticket_type.limit_per_person as u32,
             price_in_cents: ticket_type.price_in_cents,
+            sold_out_behavior: ticket_type.sold_out_behavior,
         })
     }
 }

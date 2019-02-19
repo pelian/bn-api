@@ -6,6 +6,7 @@ pub use self::facebook_web_login_token::*;
 pub use self::path_parameters::*;
 pub use self::payload::*;
 pub use self::register_request::*;
+pub use self::request_info::*;
 pub use self::user_display_ticket_type::*;
 pub use self::user_profile_attributes::*;
 
@@ -17,5 +18,6 @@ mod facebook_web_login_token;
 mod path_parameters;
 mod payload;
 mod register_request;
+mod request_info;
 mod user_display_ticket_type;
 mod user_profile_attributes;

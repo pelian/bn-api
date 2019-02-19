@@ -59,6 +59,7 @@ pub struct UpdateTicketTypeRequest {
     pub increment: Option<i32>,
     pub limit_per_person: Option<i32>,
     pub price_in_cents: Option<i64>,
+    pub sold_out_behavior: Option<SoldOutBehavior>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -296,6 +297,7 @@ pub fn update(
         increment: data.increment,
         limit_per_person: data.limit_per_person,
         price_in_cents: data.price_in_cents,
+        sold_out_behavior: data.sold_out_behavior,
     };
     let updated_ticket_type = ticket_type.update(update_parameters, connection)?;
 

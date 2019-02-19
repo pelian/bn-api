@@ -110,6 +110,12 @@ pub fn routes(app: &mut CorsBuilder<AppState>) -> App<AppState> {
         r.method(Method::POST)
             .with(organization_invites::create_for_event);
     })
+    .resource("/events/{id}/users/invites/{invite_id}", |r| {
+        r.method(Method::DELETE).with(organization_invites::destroy);
+    })
+    .resource("/events/{id}/users/{user_id}", |r| {
+        r.method(Method::DELETE).with(events::remove_user);
+    })
     .resource("/external/facebook/web_login", |r| {
         r.method(Method::POST).with(external::facebook::web_login)
     })

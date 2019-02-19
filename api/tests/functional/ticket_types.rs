@@ -435,6 +435,7 @@ pub fn update_with_invalid_id() {
         increment: None,
         limit_per_person: Some(0),
         price_in_cents: Some(20000),
+        sold_out_behavior: None,
     };
 
     //Send update request
@@ -501,6 +502,7 @@ pub fn update_with_validation_errors() {
         increment: None,
         limit_per_person: Some(0),
         price_in_cents: Some(20000),
+        sold_out_behavior: None,
     };
 
     //Send update request
@@ -578,6 +580,7 @@ pub fn update_with_validation_errors_on_ticket_pricing() {
         increment: None,
         limit_per_person: Some(0),
         price_in_cents: Some(20000),
+        sold_out_behavior: None,
     };
 
     //Send update request
@@ -667,6 +670,7 @@ pub fn update_with_overlapping_periods() {
         increment: None,
         limit_per_person: Some(0),
         price_in_cents: Some(20000),
+        sold_out_behavior: None,
     };
 
     //Send update request

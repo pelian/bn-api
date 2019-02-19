@@ -44,6 +44,8 @@ pub struct Order {
     pub box_office_pricing: bool,
     pub checkout_url: Option<String>,
     pub checkout_url_expires: Option<NaiveDateTime>,
+    pub create_user_agent: Option<String>,
+    pub purchase_user_agent: Option<String>,
 }
 
 #[derive(Insertable)]
@@ -53,6 +55,7 @@ pub struct NewOrder {
     status: OrderStatus,
     expires_at: Option<NaiveDateTime>,
     order_type: String,
+    create_user_agent: Option<String>,
 }
 
 impl NewOrder {
@@ -317,6 +320,37 @@ impl Order {
             .filter(payments::order_id.eq(self.id))
             .load(conn)
             .to_db_error(ErrorCode::QueryError, "Error loading payments")
+    }
+
+    pub fn set_user_agent(
+        &mut self,
+        user_agent: Option<String>,
+        purchase_completed: bool,
+        conn: &PgConnection,
+    ) -> Result<(), DatabaseError> {
+        self.lock_version(conn)?;
+        self.updated_at = Utc::now().naive_utc();
+        if purchase_completed {
+            self.purchase_user_agent = user_agent;
+        } else {
+            self.create_user_agent = user_agent;
+        }
+
+        let affected_rows = diesel::update(
+            orders::table.filter(orders::id.eq(self.id).and(orders::version.eq(self.version))),
+        )
+        .set((
+            orders::purchase_user_agent.eq(self.purchase_user_agent.clone()),
+            orders::create_user_agent.eq(self.create_user_agent.clone()),
+            orders::updated_at.eq(self.updated_at),
+        ))
+        .execute(conn)
+        .to_db_error(ErrorCode::UpdateError, "Could not update user agent")?;
+        if affected_rows != 1 {
+            return DatabaseError::concurrency_error("Could not update user agent.");
+        }
+
+        Ok(())
     }
 
     pub fn find_or_create_cart(user: &User, conn: &PgConnection) -> Result<Order, DatabaseError> {
