@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "7ba0e7dd-c877-4bde-afa6-b6962725f264",
+		"_postman_id": "e4884344-f6e8-4d7d-9956-bc7c9adc3f6d",
 		"name": "bigneon-tests",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
@@ -4923,7 +4923,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n\t\"name\":\"Default_Pricing_{{$timestamp}}\",\n\t\"capacity\": 100,\n\t\"start_date\":\"1982-02-01T02:22:00\",\n\t\"end_date\": \"9999-01-10T02:22:00\",\n\t\"price_in_cents\": 2500,\n\t\"limit_per_person\": 0,\n\t\"ticket_pricing\":[]\n}"
+							"raw": "{\n\t\"name\":\"Default_Pricing_{{$timestamp}}\",\n\t\"capacity\": 100,\n\t\"start_date\":\"1982-02-01T02:22:00\",\n\t\"end_date\": \"9999-01-10T02:22:00\",\n\t\"price_in_cents\": 2500,\n\t\"limit_per_person\": 0,\n\t\"sold_out_behavior\": \"ShowSoldOut\",\n\t\"ticket_pricing\":[]\n}"
 						},
 						"url": {
 							"raw": "http://{{server}}/events/{{last_event_id}}/ticket_types",
@@ -4977,7 +4977,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n\t\"start_date\":\"1999-02-01T02:22:00\",\n\t\"end_date\": \"8999-01-10T02:22:00\",\n\t\"price_in_cents\": 3000\n}"
+							"raw": "{\n\t\"start_date\":\"1999-02-01T02:22:00\",\n\t\"end_date\": \"8999-01-10T02:22:00\",\n\t\"sold_out_behavior\": \"ShowSoldOut\",\n\t\"price_in_cents\": 3000\n}"
 						},
 						"url": {
 							"raw": "http://{{server}}/events/{{last_event_id}}/ticket_types/{{default_ticket_type_id}}",
@@ -5035,7 +5035,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n\t\"name\":\"VIP_{{$timestamp}}\",\n\t\"capacity\": 100,\n\t\"start_date\":\"1982-02-01T02:22:00\",\n\t\"end_date\": \"9999-01-10T02:22:00\",\n\t\"price_in_cents\": 2500,\n\t\"limit_per_person\": 0,\n\t\"ticket_pricing\":[{\n\t\t\t\"name\": \"Test_{{$timestamp}}\",\n\t\"price_in_cents\": 3000,\n\t\"start_date\":\"1982-02-01T02:22:00\",\n\t\"end_date\": \"2022-02-01T02:22:00\"\n\n\t}, {\n\t\t\t\"name\": \"Test_{{$timestamp}}_late_bird\",\n\t\"price_in_cents\": 4000,\n\t\"start_date\":\"2022-02-01T02:22:00\",\n\t\"end_date\": \"9999-01-10T02:22:00\"\n\n\t}\n\t]\n}"
+							"raw": "{\n\t\"name\":\"VIP_{{$timestamp}}\",\n\t\"capacity\": 100,\n\t\"start_date\":\"1982-02-01T02:22:00\",\n\t\"end_date\": \"9999-01-10T02:22:00\",\n\t\"price_in_cents\": 2500,\n\t\"limit_per_person\": 0,\n\t\"sold_out_behavior\": \"ShowSoldOut\",\n\t\"ticket_pricing\":[{\n\t\t\t\"name\": \"Test_{{$timestamp}}\",\n\t\"price_in_cents\": 3000,\n\t\"start_date\":\"1982-02-01T02:22:00\",\n\t\"end_date\": \"2022-02-01T02:22:00\"\n\n\t}, {\n\t\t\t\"name\": \"Test_{{$timestamp}}_late_bird\",\n\t\"price_in_cents\": 4000,\n\t\"start_date\":\"2022-02-01T02:22:00\",\n\t\"end_date\": \"9999-01-10T02:22:00\"\n\n\t}\n\t]\n}"
 						},
 						"url": {
 							"raw": "http://{{server}}/events/{{last_event_id}}/ticket_types",
@@ -5098,7 +5098,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n\t\"name\":\"VIP_{{$timestamp}}_{{$randomInt}}\",\n\t\"capacity\": 100,\n\t\"start_date\":\"1982-02-01T02:22:00\",\n\t\"end_date\": \"9999-01-10T02:22:00\",\n\t\"price_in_cents\": -3000,\n\t\"limit_per_person\": 0,\n\t\"ticket_pricing\":[{\n\t\t\t\"name\": \"Test_{{$timestamp}}\",\n\t\"price_in_cents\": -3000,\n\t\"start_date\":\"1982-02-01T02:22:00\",\n\t\"end_date\": \"2022-02-01T02:22:00\"\n\n\t}, {\n\t\t\t\"name\": \"Test_{{$timestamp}}_late_bird\",\n\t\"price_in_cents\": -4000,\n\t\"start_date\":\"2022-02-01T02:22:00\",\n\t\"end_date\": \"9999-01-10T02:22:00\"\n\n\t}\n\t]\n}"
+							"raw": "{\n\t\"name\":\"VIP_{{$timestamp}}_{{$randomInt}}\",\n\t\"capacity\": 100,\n\t\"start_date\":\"1982-02-01T02:22:00\",\n\t\"end_date\": \"9999-01-10T02:22:00\",\n\t\"price_in_cents\": -3000,\n\t\"limit_per_person\": 0,\n\t\"sold_out_behavior\": \"ShowSoldOut\",\n\t\"ticket_pricing\":[{\n\t\t\t\"name\": \"Test_{{$timestamp}}\",\n\t\"price_in_cents\": -3000,\n\t\"start_date\":\"1982-02-01T02:22:00\",\n\t\"end_date\": \"2022-02-01T02:22:00\"\n\n\t}, {\n\t\t\t\"name\": \"Test_{{$timestamp}}_late_bird\",\n\t\"price_in_cents\": -4000,\n\t\"start_date\":\"2022-02-01T02:22:00\",\n\t\"end_date\": \"9999-01-10T02:22:00\"\n\n\t}\n\t]\n}"
 						},
 						"url": {
 							"raw": "http://{{server}}/events/{{last_event_id}}/ticket_types",
@@ -5153,7 +5153,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n\t\"name\":\"VIP_{{$timestamp}}_With_Box_Office\",\n\t\"capacity\": 100,\n\t\"start_date\":\"1982-02-01T02:22:00\",\n\t\"end_date\": \"9999-01-10T02:22:00\",\n\t\"price_in_cents\": 2500,\n\t\"limit_per_person\": 0,\n\t\"ticket_pricing\":[{\n\t\t\t\"name\": \"Test_{{$timestamp}}\",\n\t\"price_in_cents\": 3000,\n\t\"start_date\":\"1982-02-01T02:22:00\",\n\t\"end_date\": \"2022-02-01T02:22:00\"\n\n\t}, {\n\t\t\t\"name\": \"Test_{{$timestamp}}_late_bird\",\n\t\"price_in_cents\": 4000,\n\t\"start_date\":\"2022-02-01T02:22:00\",\n\t\"end_date\": \"9999-01-10T02:22:00\"\n\n\t},\n\t{\n\t\t\t\"name\": \"Test_{{$timestamp}}_box_office_only\",\n\t\"price_in_cents\": 8000,\n\t\"is_box_office_only\": true,\n\t\"start_date\":\"2022-02-01T02:22:00\",\n\t\"end_date\": \"9999-01-10T02:22:00\"\n\n\t}\n\t]\n}"
+							"raw": "{\n\t\"name\":\"VIP_{{$timestamp}}_With_Box_Office\",\n\t\"capacity\": 100,\n\t\"start_date\":\"1982-02-01T02:22:00\",\n\t\"end_date\": \"9999-01-10T02:22:00\",\n\t\"price_in_cents\": 2500,\n\t\"limit_per_person\": 0,\n\t\"sold_out_behavior\": \"ShowSoldOut\",\n\t\"ticket_pricing\":[{\n\t\t\t\"name\": \"Test_{{$timestamp}}\",\n\t\"price_in_cents\": 3000,\n\t\"start_date\":\"1982-02-01T02:22:00\",\n\t\"end_date\": \"2022-02-01T02:22:00\"\n\n\t}, {\n\t\t\t\"name\": \"Test_{{$timestamp}}_late_bird\",\n\t\"price_in_cents\": 4000,\n\t\"start_date\":\"2022-02-01T02:22:00\",\n\t\"end_date\": \"9999-01-10T02:22:00\"\n\n\t},\n\t{\n\t\t\t\"name\": \"Test_{{$timestamp}}_box_office_only\",\n\t\"price_in_cents\": 8000,\n\t\"is_box_office_only\": true,\n\t\"start_date\":\"2022-02-01T02:22:00\",\n\t\"end_date\": \"9999-01-10T02:22:00\"\n\n\t}\n\t]\n}"
 						},
 						"url": {
 							"raw": "http://{{server}}/events/{{last_event_id}}/ticket_types",
@@ -5222,7 +5222,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n\t\"name\":\"General Admission_{{$timestamp}}\",\n\t\"capacity\": 1000,\n\t\"start_date\":\"1982-02-01T02:22:00\",\n\t\"end_date\": \"2021-01-10T02:22:00\",\n\t\"price_in_cents\": 3000,\n\t\"limit_per_person\": 50,\n\t\"ticket_pricing\":[\n\t\t{\n\t\t\t\"name\": \"Standard\",\n\t\t\t\"price_in_cents\": 3000,\n\t\t\t\"start_date\":\"1981-02-01T02:22:00\",\n\t\t\t\"end_date\": \"2022-02-01T02:22:00\"\n\n\t\t}\n\t]\n}"
+							"raw": "{\n\t\"name\":\"General Admission_{{$timestamp}}\",\n\t\"capacity\": 1000,\n\t\"start_date\":\"1982-02-01T02:22:00\",\n\t\"end_date\": \"2021-01-10T02:22:00\",\n\t\"price_in_cents\": 3000,\n\t\"limit_per_person\": 50,\n\t\"sold_out_behavior\": \"ShowSoldOut\",\n\t\"ticket_pricing\":[\n\t\t{\n\t\t\t\"name\": \"Standard\",\n\t\t\t\"price_in_cents\": 3000,\n\t\t\t\"start_date\":\"1981-02-01T02:22:00\",\n\t\t\t\"end_date\": \"2022-02-01T02:22:00\"\n\n\t\t}\n\t]\n}"
 						},
 						"url": {
 							"raw": "http://{{server}}/events/{{last_event_id}}/ticket_types",
@@ -5280,7 +5280,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n\t\"name\":\"General Admission_{{$timestamp}}\",\n\t\"capacity\": 1000,\n\t\"start_date\":\"1982-02-01T02:22:00\",\n\t\"end_date\": \"9999-01-10T02:22:00\",\n\t\"price_in_cents\": 2500,\n\t\"limit_per_person\": 50,\n\t\"ticket_pricing\":[{\n\t\t\"name\": \"Standard\",\n\t\t\"price_in_cents\": 3000,\n\t\t\"start_date\":\"1982-02-01T02:22:00\",\n\t\t\"end_date\": \"2022-02-01T02:22:00\"\n\t},\n\t{\n\t\t\"name\": \"Test_{{$timestamp}}_box_office_only\",\n\t\t\"price_in_cents\": 4000,\n\t\t\"is_box_office_only\": true,\n\t\t\"start_date\":\"1982-02-01T02:22:00\",\n\t\t\"end_date\": \"9999-01-10T02:22:00\"\n\t}\n\t]\n}"
+							"raw": "{\n\t\"name\":\"General Admission_{{$timestamp}}\",\n\t\"capacity\": 1000,\n\t\"start_date\":\"1982-02-01T02:22:00\",\n\t\"end_date\": \"9999-01-10T02:22:00\",\n\t\"price_in_cents\": 2500,\n\t\"limit_per_person\": 50,\n\t\"sold_out_behavior\": \"ShowSoldOut\",\n\t\"ticket_pricing\":[{\n\t\t\"name\": \"Standard\",\n\t\t\"price_in_cents\": 3000,\n\t\t\"start_date\":\"1982-02-01T02:22:00\",\n\t\t\"end_date\": \"2022-02-01T02:22:00\"\n\t},\n\t{\n\t\t\"name\": \"Test_{{$timestamp}}_box_office_only\",\n\t\t\"price_in_cents\": 4000,\n\t\t\"is_box_office_only\": true,\n\t\t\"start_date\":\"1982-02-01T02:22:00\",\n\t\t\"end_date\": \"9999-01-10T02:22:00\"\n\t}\n\t]\n}"
 						},
 						"url": {
 							"raw": "http://{{server}}/events/{{last_event_id}}/ticket_types",
@@ -5336,7 +5336,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n\t\"name\":\"General Admission2_{{$timestamp}}\",\n\t\"capacity\": 1000,\n\t\"start_date\":\"1982-02-01T02:22:00\",\n\t\"end_date\": \"9999-01-10T02:22:00\",\n\t\"price_in_cents\": 2500,\n\t\"limit_per_person\": 50,\n\t\"ticket_pricing\":[{\n\t\t\"name\": \"Standard\",\n\t\t\"price_in_cents\": 3000,\n\t\t\"start_date\":\"1982-02-01T02:22:00\",\n\t\t\"end_date\": \"2022-02-01T02:22:00\"\n\t},\n\t{\n\t\t\"name\": \"Test_{{$timestamp}}_box_office_only\",\n\t\t\"price_in_cents\": 4000,\n\t\t\"is_box_office_only\": true,\n\t\t\"start_date\":\"1982-02-01T02:22:00\",\n\t\t\"end_date\": \"9999-01-10T02:22:00\"\n\t}\n\t]\n}"
+							"raw": "{\n\t\"name\":\"General Admission2_{{$timestamp}}\",\n\t\"capacity\": 1000,\n\t\"start_date\":\"1982-02-01T02:22:00\",\n\t\"end_date\": \"9999-01-10T02:22:00\",\n\t\"price_in_cents\": 2500,\n\t\"sold_out_behavior\": \"ShowSoldOut\",\n\t\"limit_per_person\": 50,\n\t\"ticket_pricing\":[{\n\t\t\"name\": \"Standard\",\n\t\t\"price_in_cents\": 3000,\n\t\t\"start_date\":\"1982-02-01T02:22:00\",\n\t\t\"end_date\": \"2022-02-01T02:22:00\"\n\t},\n\t{\n\t\t\"name\": \"Test_{{$timestamp}}_box_office_only\",\n\t\t\"price_in_cents\": 4000,\n\t\t\"is_box_office_only\": true,\n\t\t\"start_date\":\"1982-02-01T02:22:00\",\n\t\t\"end_date\": \"9999-01-10T02:22:00\"\n\t}\n\t]\n}"
 						},
 						"url": {
 							"raw": "http://{{server}}/events/{{last_event_id}}/ticket_types",
