@@ -25,6 +25,7 @@ fn create() {
             None,
             0,
             100,
+            SoldOutBehavior::ShowSoldOut,
             conn,
         )
         .unwrap();
@@ -51,6 +52,7 @@ pub fn create_with_validation_errors() {
         None,
         0,
         100,
+        SoldOutBehavior::ShowSoldOut,
         connection,
     );
     match result {
@@ -370,6 +372,7 @@ fn create_large_amount() {
             None,
             0,
             100,
+            SoldOutBehavior::ShowSoldOut,
             conn,
         )
         .unwrap();
@@ -395,6 +398,7 @@ pub fn create_with_same_date_validation_errors() {
         None,
         0,
         100,
+        SoldOutBehavior::ShowSoldOut,
         connection,
     );
     match result {

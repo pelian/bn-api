@@ -1,5 +1,5 @@
 use bigneon_db::dev::TestProject;
-use bigneon_db::models::Asset;
+use bigneon_db::prelude::*;
 use chrono::NaiveDate;
 use uuid::Uuid;
 
@@ -22,6 +22,7 @@ fn update_asset_blockchain_id() {
             None,
             0,
             100,
+            SoldOutBehavior::ShowSoldOut,
             conn,
         )
         .unwrap();

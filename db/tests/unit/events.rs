@@ -1498,6 +1498,7 @@ fn add_ticket_type() {
             None,
             0,
             100,
+            SoldOutBehavior::ShowSoldOut,
             conn,
         )
         .unwrap();
@@ -1525,6 +1526,7 @@ fn ticket_types() {
             None,
             0,
             100,
+            SoldOutBehavior::ShowSoldOut,
             conn,
         )
         .unwrap();
@@ -1539,6 +1541,7 @@ fn ticket_types() {
             None,
             0,
             100,
+            SoldOutBehavior::ShowSoldOut,
             conn,
         )
         .unwrap();
