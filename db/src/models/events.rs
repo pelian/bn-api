@@ -1069,6 +1069,7 @@ impl Event {
         increment: Option<i32>,
         limit_per_person: i32,
         price_in_cents: i64,
+        sold_out_behavior: SoldOutBehavior,
         conn: &PgConnection,
     ) -> Result<TicketType, DatabaseError> {
         let asset_name = format!("{}.{}", self.name, &name);
@@ -1081,6 +1082,7 @@ impl Event {
             increment,
             limit_per_person,
             price_in_cents,
+            sold_out_behavior,
         )
         .commit(conn)?;
         let asset = Asset::create(ticket_type.id, asset_name).commit(conn)?;

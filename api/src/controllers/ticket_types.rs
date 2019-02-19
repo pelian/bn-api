@@ -34,6 +34,7 @@ pub struct CreateTicketTypeRequest {
     pub increment: Option<i32>,
     pub limit_per_person: i32,
     pub price_in_cents: i64,
+    pub sold_out_behavior: SoldOutBehavior,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -97,6 +98,7 @@ pub fn create(
         data.increment,
         data.limit_per_person,
         data.price_in_cents,
+        data.sold_out_behavior,
         connection,
     )?;
     //Add each ticket pricing entry for newly created ticket type

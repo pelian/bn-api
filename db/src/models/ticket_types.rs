@@ -78,6 +78,7 @@ impl TicketType {
         increment: Option<i32>,
         limit_per_person: i32,
         price_in_cents: i64,
+        sold_out_behavior: SoldOutBehavior,
     ) -> NewTicketType {
         NewTicketType {
             event_id,
@@ -89,6 +90,7 @@ impl TicketType {
             increment,
             limit_per_person,
             price_in_cents,
+            sold_out_behavior,
         }
     }
 
@@ -425,6 +427,7 @@ pub struct NewTicketType {
     increment: Option<i32>,
     limit_per_person: i32,
     price_in_cents: i64,
+    sold_out_behavior: SoldOutBehavior,
 }
 
 impl NewTicketType {
