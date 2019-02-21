@@ -607,7 +607,7 @@ pub fn holds(role: Roles, should_test_succeed: bool) {
         pub ticket_type_id: Uuid,
         pub available: u32,
         pub quantity: u32,
-        pub parent_hold_id: Option<Uuid>
+        pub parent_hold_id: Option<Uuid>,
     }
 
     let all_holds = vec![
@@ -623,7 +623,7 @@ pub fn holds(role: Roles, should_test_succeed: bool) {
             ticket_type_id: hold.ticket_type_id,
             available: 10,
             quantity: 10,
-            parent_hold_id: None
+            parent_hold_id: None,
         },
         R {
             id: hold2.id,
@@ -637,7 +637,7 @@ pub fn holds(role: Roles, should_test_succeed: bool) {
             ticket_type_id: hold2.ticket_type_id,
             available: 10,
             quantity: 10,
-            parent_hold_id: None
+            parent_hold_id: None,
         },
     ];
 
