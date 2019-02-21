@@ -194,7 +194,6 @@ steps:
           GITHUB_SSH_KEY:
               from_secret: github_deploy_key
       commands:
-        - ./scripts/init-github-ssh.sh
         - ./scripts/bump-version.sh --tag-commit
       when:
           event: push
@@ -267,8 +266,10 @@ services:
       when:
           event: [pull_request, push]
           branch: master
+
+
 ---
 kind: signature
-hmac: 718d595f4aa6d4570f007fb9dafa87f39b8d48596ec87a3cb9d704e861bf6a30
+hmac: 10746eebc0260d157d70e4496f8cc50c37cd9334f752ce3c378882eb3331231a
 
 ...

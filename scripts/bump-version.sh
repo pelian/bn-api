@@ -26,6 +26,19 @@ for target in "${FILES[@]}"; do
 done
 
 if [[ $1 == "--tag-commit" ]]; then
+    mkdir -p $HOME/.ssh/
+
+    ssh-keyscan github.com > ~/.ssh/known_hosts
+    eval $(ssh-agent -s)
+    ssh-add <(echo "$GITHUB_SSH_KEY")
+
+    git config --global user.email "$GH_USER_EMAIL"
+    git config --global user.name "$GH_USER_NAME"
+
+    git checkout master
+
+    git remote add sshremote git@github.com:$DRONE_REPO.git
+
     git commit -m  "Version bump to ${new_version} [skip ci]"
     git tag ${new_version}
     git push sshremote master
