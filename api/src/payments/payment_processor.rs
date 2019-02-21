@@ -1,9 +1,6 @@
 use bigneon_db::models::PaymentProviders;
 use chrono::NaiveDateTime;
-use payments::charge_auth_result::ChargeAuthResult;
-use payments::charge_result::ChargeResult;
-use payments::payment_processor_error::PaymentProcessorError;
-use payments::repeat_charge_token::RepeatChargeToken;
+use payments::*;
 use uuid::Uuid;
 
 pub enum PaymentProcessorBehavior {
@@ -65,6 +62,12 @@ pub trait PaymentProcessor {
         auth_token: &str,
         amount: u32,
     ) -> Result<ChargeAuthResult, PaymentProcessorError>;
+
+    fn update_metadata(
+        &self,
+        charge_id: &str,
+        metadata: Vec<(String, String)>,
+    ) -> Result<UpdateMetadataResult, PaymentProcessorError>;
 }
 
 #[derive(Serialize, Clone)]

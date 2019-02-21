@@ -1,11 +1,6 @@
 use bigneon_db::models::PaymentProviders;
 use globee::*;
-use payments::charge_auth_result::ChargeAuthResult;
-use payments::payment_processor::PaymentProcessor;
-use payments::payment_processor::PaymentProcessorBehavior;
-use payments::payment_processor::RedirectInfo;
-use payments::payment_processor::RedirectToPaymentPageBehavior;
-use payments::payment_processor_error::PaymentProcessorError;
+use payments::*;
 use uuid::Uuid;
 
 pub struct GlobeePaymentProcessor {
@@ -29,6 +24,18 @@ impl PaymentProcessor for GlobeePaymentProcessor {
     fn refund(&self, _auth_token: &str) -> Result<ChargeAuthResult, PaymentProcessorError> {
         Err(PaymentProcessorError {
             description: "Refunds are not supported by this gateway".to_string(),
+            cause: None,
+            validation_response: None,
+        })
+    }
+
+    fn update_metadata(
+        &self,
+        _charge_id: &str,
+        _metadata: Vec<(String, String)>,
+    ) -> Result<UpdateMetadataResult, PaymentProcessorError> {
+        Err(PaymentProcessorError {
+            description: "Updating metadata is not supported by this gateway".to_string(),
             cause: None,
             validation_response: None,
         })

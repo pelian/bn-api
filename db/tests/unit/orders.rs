@@ -176,6 +176,153 @@ fn add_tickets_below_min_fee() {
 }
 
 #[test]
+fn events() {
+    let project = TestProject::new();
+    let connection = project.get_connection();
+    let organization = project.create_organization().finish();
+    let event = project
+        .create_event()
+        .with_name("Event1".into())
+        .with_organization(&organization)
+        .with_tickets()
+        .with_ticket_type_count(2)
+        .with_ticket_pricing()
+        .finish();
+    let event2 = project
+        .create_event()
+        .with_name("Event2".into())
+        .with_organization(&organization)
+        .with_tickets()
+        .with_ticket_type_count(1)
+        .with_ticket_pricing()
+        .finish();
+    let mut ticket_types = event.ticket_types(true, None, connection).unwrap();
+    let ticket_type = ticket_types.remove(0);
+    let ticket_type2 = ticket_types.remove(0);
+    let ticket_type3 = event2
+        .ticket_types(true, None, connection)
+        .unwrap()
+        .remove(0);
+    let user = project.create_user().finish();
+    let mut cart = Order::find_or_create_cart(&user, connection).unwrap();
+    cart.update_quantities(
+        user.id,
+        &[
+            UpdateOrderItem {
+                ticket_type_id: ticket_type.id,
+                quantity: 2,
+                redemption_code: None,
+            },
+            UpdateOrderItem {
+                ticket_type_id: ticket_type2.id,
+                quantity: 2,
+                redemption_code: None,
+            },
+            UpdateOrderItem {
+                ticket_type_id: ticket_type3.id,
+                quantity: 1,
+                redemption_code: None,
+            },
+        ],
+        false,
+        false,
+        connection,
+    )
+    .unwrap();
+
+    assert_eq!(vec![event, event2], cart.events(connection).unwrap());
+}
+
+#[test]
+fn purchase_metadata() {
+    let project = TestProject::new();
+    let connection = project.get_connection();
+    let creator = project.create_user().finish();
+    let fee_schedule = project.create_fee_schedule().finish(creator.id);
+    let organization = project
+        .create_organization()
+        .with_event_fee()
+        .with_fee_schedule(&fee_schedule)
+        .finish();
+    let event = project
+        .create_event()
+        .with_name("EventName".into())
+        .with_organization(&organization)
+        .with_tickets()
+        .with_ticket_pricing()
+        .finish();
+    let event2 = project
+        .create_event()
+        .with_name("EventName2".into())
+        .with_organization(&organization)
+        .with_tickets()
+        .with_ticket_pricing()
+        .finish();
+    let ticket_type = event
+        .ticket_types(true, None, connection)
+        .unwrap()
+        .remove(0);
+    let ticket_type2 = event2
+        .ticket_types(true, None, connection)
+        .unwrap()
+        .remove(0);
+    let user = project.create_user().finish();
+    let mut cart = Order::find_or_create_cart(&user, connection).unwrap();
+    cart.update_quantities(
+        user.id,
+        &[
+            UpdateOrderItem {
+                ticket_type_id: ticket_type.id,
+                quantity: 2,
+                redemption_code: None,
+            },
+            UpdateOrderItem {
+                ticket_type_id: ticket_type2.id,
+                quantity: 1,
+                redemption_code: None,
+            },
+        ],
+        false,
+        false,
+        connection,
+    )
+    .unwrap();
+
+    let cost_per_ticket = 150;
+    let fee_in_cents = fee_schedule
+        .get_range(cost_per_ticket, connection)
+        .unwrap()
+        .fee_in_cents;
+    let items = cart.items(connection).unwrap();
+    let event_fee_item = items
+        .iter()
+        .find(|i| i.item_type == OrderItemTypes::EventFees)
+        .unwrap();
+    let event_fee = event_fee_item.unit_price_in_cents;
+
+    let mut expected: Vec<(String, String)> = Vec::new();
+    expected.push(("order_id".to_string(), cart.id.to_string()));
+    expected.push((
+        "event_names".to_string(),
+        "EventName, EventName2".to_string(),
+    ));
+    expected.push(("event_dates".to_string(), "2016-07-08".to_string()));
+    expected.push(("venue_names".to_string(), "".to_string()));
+    expected.push(("user_id".to_string(), user.id.to_string()));
+    expected.push(("user_name".to_string(), user.full_name()));
+    expected.push(("ticket_quantity".to_string(), 3.to_string()));
+    expected.push((
+        "unit_price_in_cents".to_string(),
+        (cost_per_ticket * 3).to_string(),
+    ));
+    expected.push((
+        "fees_in_cents".to_string(),
+        (event_fee * 2 + fee_in_cents * 3).to_string(),
+    ));
+    assert_eq!(expected, cart.purchase_metadata(connection).unwrap());
+}
+
+#[test]
 fn items_valid_for_purchase() {
     let project = TestProject::new();
     let connection = project.get_connection();

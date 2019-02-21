@@ -1074,6 +1074,123 @@ impl Order {
         Ok(result)
     }
 
+    pub fn events(&self, conn: &PgConnection) -> Result<Vec<Event>, DatabaseError> {
+        let mut unique_events: Vec<Uuid> = self
+            .items(conn)?
+            .iter()
+            .filter_map(|i| i.event_id)
+            .collect();
+        unique_events.sort();
+        unique_events.dedup();
+
+        Event::find_by_ids(unique_events, conn)
+    }
+
+    pub fn purchase_metadata(
+        &self,
+        conn: &PgConnection,
+    ) -> Result<Vec<(String, String)>, DatabaseError> {
+        let query = r#"
+            SELECT
+                o.id as order_id,
+                COALESCE(string_agg(distinct e.name, ', '), '') as event_names,
+                COALESCE(string_agg(distinct e.event_start::date::character varying, ', '), '') as event_dates,
+                COALESCE(string_agg(distinct v.name, ', '), '') as venue_names,
+                o.user_id,
+                CONCAT(u.first_name, ' ', u.last_name) as user_name,
+                CAST(
+                    SUM(COALESCE(oi.quantity, 0)) FILTER (WHERE oi.item_type = 'Tickets')
+                AS BIGINT) as ticket_quantity,
+                CAST(
+                    SUM(
+                        CASE WHEN oi.item_type = 'Tickets'
+                        THEN
+                            COALESCE(oi.unit_price_in_cents * (oi.quantity - oi.refunded_quantity), 0)
+                        ELSE
+                            0
+                        END
+                    )
+                AS BIGINT) as unit_price_in_cents,
+                CAST(
+                    SUM(
+                        CASE WHEN fi.id IS NOT NULL
+                        THEN (fi.quantity - fi.refunded_quantity)
+                            * COALESCE(fi.unit_price_in_cents, 0)
+                        ELSE (oi.quantity - oi.refunded_quantity)
+                            * (COALESCE(oi.company_fee_in_cents, 0) + COALESCE(oi.client_fee_in_cents, 0))
+                        END
+                    )
+                AS BIGINT) as fees_in_cents
+            FROM orders o
+            JOIN users u on u.id = COALESCE(o.on_behalf_of_user_id, o.user_id)
+            LEFT JOIN order_items oi ON o.id = oi.order_id
+            LEFT JOIN order_items fi on fi.parent_id = oi.id and fi.item_type = 'PerUnitFees'
+            LEFT JOIN events e ON e.id = oi.event_id
+            LEFT JOIN venues v ON v.id = e.venue_id
+            WHERE o.id = $1
+            AND (oi.item_type = 'Tickets' OR oi.item_type = 'EventFees')
+            GROUP BY o.id, o.user_id, u.first_name, u.last_name
+            ;
+        "#;
+
+        #[derive(QueryableByName)]
+        struct R {
+            #[sql_type = "dUuid"]
+            order_id: Uuid,
+            #[sql_type = "Text"]
+            event_names: String,
+            #[sql_type = "Text"]
+            event_dates: String,
+            #[sql_type = "Text"]
+            venue_names: String,
+            #[sql_type = "dUuid"]
+            user_id: Uuid,
+            #[sql_type = "Text"]
+            user_name: String,
+            #[sql_type = "BigInt"]
+            ticket_quantity: i64,
+            #[sql_type = "BigInt"]
+            unit_price_in_cents: i64,
+            #[sql_type = "BigInt"]
+            fees_in_cents: i64,
+        }
+
+        let order_metadata: R = diesel::sql_query(query)
+            .bind::<sql_types::Uuid, _>(self.id)
+            .get_result(conn)
+            .to_db_error(ErrorCode::QueryError, "Could not find order metadata")?;
+
+        Ok(vec![
+            ("order_id".to_string(), order_metadata.order_id.to_string()),
+            (
+                "event_names".to_string(),
+                order_metadata.event_names.clone(),
+            ),
+            (
+                "event_dates".to_string(),
+                order_metadata.event_dates.clone(),
+            ),
+            (
+                "venue_names".to_string(),
+                order_metadata.venue_names.clone(),
+            ),
+            ("user_id".to_string(), order_metadata.user_id.to_string()),
+            ("user_name".to_string(), order_metadata.user_name.clone()),
+            (
+                "ticket_quantity".to_string(),
+                order_metadata.ticket_quantity.to_string(),
+            ),
+            (
+                "unit_price_in_cents".to_string(),
+                order_metadata.unit_price_in_cents.to_string(),
+            ),
+            (
+                "fees_in_cents".to_string(),
+                order_metadata.fees_in_cents.to_string(),
+            ),
+        ])
+    }
+
     pub fn for_display(
         &self,
         organization_ids: Option<Vec<Uuid>>,
@@ -1090,14 +1207,8 @@ impl Order {
             }
         });
 
-        let items = self.items(conn)?; //Would be nice to use the items_for_display call below but it doesnt include the event_id
-        let mut unique_events: Vec<Uuid> = items.iter().filter_map(|i| i.event_id).collect();
-
-        unique_events.sort();
-        unique_events.dedup(); //Compiler doesnt like chaining these...
-
         let mut limited_tickets_remaining: Vec<TicketsRemaining> = Vec::new();
-        for e in Event::find_by_ids(unique_events, conn)? {
+        for e in self.events(conn)? {
             if let Some(ref organization_ids) = organization_ids {
                 if !organization_ids.contains(&e.organization_id) {
                     continue;
