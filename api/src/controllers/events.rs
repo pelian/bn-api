@@ -970,6 +970,7 @@ pub fn holds(
         pub ticket_type_id: Uuid,
         pub available: u32,
         pub quantity: u32,
+        pub parent_hold_id: Option<Uuid>,
     }
 
     let mut list = Vec::<R>::new();
@@ -988,6 +989,7 @@ pub fn holds(
             ticket_type_id: hold.ticket_type_id,
             available,
             quantity,
+            parent_hold_id: hold.parent_hold_id,
         };
 
         list.push(r);
