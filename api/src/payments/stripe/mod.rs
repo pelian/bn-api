@@ -1,11 +1,5 @@
 use bigneon_db::models::PaymentProviders;
-use payments::charge_auth_result::ChargeAuthResult;
-use payments::charge_result::ChargeResult;
-use payments::payment_processor::AuthThenCompletePaymentBehavior;
-use payments::payment_processor::PaymentProcessor;
-use payments::payment_processor::PaymentProcessorBehavior;
-use payments::payment_processor_error::PaymentProcessorError;
-use payments::repeat_charge_token::RepeatChargeToken;
+use payments::*;
 use stripe::StripeClient;
 use stripe::StripeError;
 
@@ -60,6 +54,20 @@ impl PaymentProcessor for StripePaymentProcessor {
         PaymentProcessorBehavior::AuthThenComplete(Box::new(StripePaymentBehavior {
             client: self.client.clone(),
         }))
+    }
+
+    fn update_metadata(
+        &self,
+        charge_id: &str,
+        metadata: Vec<(String, String)>,
+    ) -> Result<UpdateMetadataResult, PaymentProcessorError> {
+        Ok(self
+            .client
+            .update_metadata(charge_id, metadata)
+            .map(|r| UpdateMetadataResult {
+                id: r.id,
+                raw: r.raw_data,
+            })?)
     }
 
     fn refund(&self, auth_token: &str) -> Result<ChargeAuthResult, PaymentProcessorError> {

@@ -5,7 +5,7 @@ use diesel::expression::dsl;
 use diesel::pg::PgConnection;
 use diesel::prelude::*;
 use models::*;
-use schema::payments;
+use schema::{orders, payments};
 use serde_json;
 use time::Duration;
 use utils::errors::*;
@@ -51,6 +51,23 @@ impl Payment {
             raw_data,
             url_nonce,
         }
+    }
+
+    pub fn find_all_with_orders_paginated_by_provider(
+        provider: PaymentProviders,
+        page: i64,
+        limit: i64,
+        conn: &PgConnection,
+    ) -> Result<Vec<(Payment, Order)>, DatabaseError> {
+        payments::table
+            .inner_join(orders::table.on(orders::id.eq(payments::order_id)))
+            .filter(payments::provider.eq(provider))
+            .filter(payments::status.eq(PaymentStatus::Completed))
+            .limit(limit)
+            .offset(page * limit)
+            .select((payments::all_columns, orders::all_columns))
+            .load(conn)
+            .to_db_error(ErrorCode::QueryError, "Could not load payments")
     }
 
     pub fn find(id: Uuid, conn: &PgConnection) -> Result<Payment, DatabaseError> {

@@ -635,13 +635,12 @@ fn auth_then_complete(
     let connection = conn.get();
     info!("CART: Auth'ing to payment provider");
     let amount = order.calculate_total(connection)?;
-
     let auth_result = client.auth(
         &token,
         amount,
         currency,
         "Big Neon Tickets",
-        vec![("order_id".to_string(), order.id.to_string())],
+        order.purchase_metadata(connection)?,
     )?;
 
     info!("CART: Saving payment to order");

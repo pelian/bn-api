@@ -36,6 +36,30 @@ impl StripeClient {
         self.create_charge(token, amount, currency, description, false, metadata)
     }
 
+    pub fn update_metadata(
+        &self,
+        charge_id: &str,
+        metadata: Vec<(String, String)>,
+    ) -> Result<ChargeResult, StripeError> {
+        let mut params = Vec::new();
+        for key_value in metadata {
+            params.push((format!("metadata[{}]", key_value.0), key_value.1));
+        }
+
+        let client = reqwest::Client::new();
+        let mut resp = client
+            .post(&format!("https://api.stripe.com/v1/charges/{}", charge_id))
+            .basic_auth(&self.api_key, Some(""))
+            .form(&params)
+            .send()?;
+        match resp.status() {
+            reqwest::StatusCode::OK => {
+                return ChargeResult::from_response(resp);
+            }
+            _ => return Err(StripeError::from_response(&mut resp)),
+        }
+    }
+
     fn create_charge(
         &self,
         token: &str,
