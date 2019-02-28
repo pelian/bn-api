@@ -319,6 +319,17 @@ impl Event {
             )
             where tt.event_id = ANY($1)
             and tt.is_private = false
+            and tt.status = 'Published'
+            and (tt.sold_out_behavior != 'Hide'
+                or exists (
+                    select 8
+                    from ticket_instances ti
+                        inner join assets a
+                            on a.id = ti.asset_id
+                    where a.ticket_type_id = tt.id
+                    and (ti.status = 'Available' or (ti.status = 'Reserved' and ti.reserved_until < now()))
+                    and (ti.hold_id is null)
+                ))
             GROUP BY tt.event_id;
         "#;
 
