@@ -269,9 +269,15 @@ pub fn refund(
             let amount_to_refund = cmp::min(refund_due - amount_refunded, remaining_balance as u32);
             let mut refund_data = None;
             if payment.payment_method == PaymentMethods::CreditCard {
+
+                let mut organizations = order.organizations(connection)?;
+                if organizations.len() != 1 {
+                    return Err(application::internal_server_error::<HttpResponse>("Cannot process refunds for orders that contain more than one event").unwrap_err());
+                }
+                let organization = organizations.remove(0);
                 let client = &state
                     .service_locator
-                    .create_payment_processor(payment.provider)?;
+                    .create_payment_processor(payment.provider, &organization)?;
 
                 refund_data = match payment.external_reference {
                     Some(ref external_reference) => Some(

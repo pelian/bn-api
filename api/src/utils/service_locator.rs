@@ -1,4 +1,4 @@
-use bigneon_db::models::PaymentProviders;
+use bigneon_db::prelude::*;
 use config::Config;
 use errors::*;
 use payments::globee::GlobeePaymentProcessor;
@@ -13,6 +13,7 @@ pub struct ServiceLocator {
     globee_base_url: String,
     branch_io_base_url: String,
     branch_io_branch_key: String,
+    api_keys_encryption_key: String,
 }
 
 impl ServiceLocator {
@@ -23,21 +24,29 @@ impl ServiceLocator {
             globee_base_url: config.globee_base_url.clone(),
             branch_io_base_url: config.branch_io_base_url.clone(),
             branch_io_branch_key: config.branch_io_branch_key.clone(),
+            api_keys_encryption_key: config.api_keys_encryption_key.clone(),
         }
     }
 
     pub fn create_payment_processor(
         &self,
         provider: PaymentProviders,
+        organization: &Organization,
     ) -> Result<Box<PaymentProcessor>, BigNeonError> {
         match provider {
             PaymentProviders::Stripe => Ok(Box::new(StripePaymentProcessor::new(
                 self.stripe_secret_key.clone(),
             ))),
-            PaymentProviders::Globee => Ok(Box::new(GlobeePaymentProcessor::new(
-                self.globee_api_key.clone(),
-                self.globee_base_url.clone(),
-            ))),
+            PaymentProviders::Globee => {
+                let mut org = organization.clone();
+                org.decrypt(&self.api_keys_encryption_key)?;
+
+                let api_key = org.globee_api_key.as_ref().unwrap_or(&self.globee_api_key);
+                Ok(Box::new(GlobeePaymentProcessor::new(
+                    api_key.to_string(),
+                    self.globee_base_url.clone(),
+                )))
+            }
             // External is not valid for service locator
             PaymentProviders::External => {
                 return Err(ApplicationError::new("Unknown payment provider".into()).into());

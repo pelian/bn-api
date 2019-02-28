@@ -51,6 +51,7 @@ pub struct Organization {
     pub allowed_payment_providers: Vec<PaymentProviders>,
     pub timezone: Option<String>,
     pub cc_fee_percent: f32,
+    pub globee_api_key: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -82,6 +83,8 @@ pub struct NewOrganization {
     pub allowed_payment_providers: Option<Vec<PaymentProviders>>,
     #[serde(default, deserialize_with = "deserialize_unless_blank")]
     pub timezone: Option<String>,
+    #[serde(default, deserialize_with = "deserialize_unless_blank")]
+    pub globee_api_key: Option<String>,
 }
 
 #[derive(Default, Serialize, Clone)]
@@ -107,6 +110,9 @@ impl NewOrganization {
             }
             if let Some(key) = updated_organisation.facebook_pixel_key.clone() {
                 updated_organisation.facebook_pixel_key = Some(encrypt(&key, encryption_key)?);
+            }
+            if let Some(key) = updated_organisation.globee_api_key.clone() {
+                updated_organisation.globee_api_key = Some(encrypt(&key, encryption_key)?);
             }
         }
 
@@ -173,6 +179,8 @@ pub struct OrganizationEditableAttributes {
     #[serde(default, deserialize_with = "deserialize_unless_blank")]
     pub timezone: Option<String>,
     pub cc_fee_percent: Option<f32>,
+    #[serde(default, deserialize_with = "double_option_deserialize_unless_blank")]
+    pub globee_api_key: Option<Option<String>>,
 }
 
 impl Organization {
@@ -199,6 +207,9 @@ impl Organization {
             }
             if let Some(Some(key)) = attributes.facebook_pixel_key {
                 attributes.facebook_pixel_key = Some(Some(encrypt(&key, encryption_key)?));
+            }
+            if let Some(Some(key)) = attributes.globee_api_key {
+                attributes.globee_api_key = Some(Some(encrypt(&key, encryption_key)?));
             }
         }
 
@@ -447,6 +458,7 @@ impl Organization {
             if let Some(key) = facebook_pixel_key.clone() {
                 facebook_pixel_key = Some(decrypt(&key, &encryption_key)?);
             }
+
             result.insert(
                 org.id,
                 TrackingKeys {
@@ -699,7 +711,7 @@ impl Organization {
         Ok(p)
     }
 
-    pub fn decrypt(&mut self, encryption_key: &String) -> Result<(), DatabaseError> {
+    pub fn decrypt(&mut self, encryption_key: &str) -> Result<(), DatabaseError> {
         if encryption_key.len() > 0 {
             if let Some(key) = self.sendgrid_api_key.clone() {
                 self.sendgrid_api_key = Some(decrypt(&key, &encryption_key)?);
@@ -709,6 +721,9 @@ impl Organization {
             }
             if let Some(key) = self.facebook_pixel_key.clone() {
                 self.facebook_pixel_key = Some(decrypt(&key, &encryption_key)?);
+            }
+            if let Some(key) = self.globee_api_key.clone() {
+                self.globee_api_key = Some(decrypt(&key, &encryption_key)?);
             }
         }
 

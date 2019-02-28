@@ -521,8 +521,19 @@ fn checkout_payment_processor(
             "Could not complete this cart because it is not in the correct status",
         );
     }
+    // Can only have one event at a time because there are potentially different
+    // payment gateway settings
+    let mut events = order.events(connection)?;
+    if events.len() != 1 {
+        return application::unprocessable(
+            "Can't currently handle more than one event at the moment",
+        );
+    };
 
-    let client = service_locator.create_payment_processor(provider)?;
+    let event = events.remove(0);
+
+    let client =
+        service_locator.create_payment_processor(provider, &event.organization(connection)?)?;
     match client.behavior() {
         PaymentProcessorBehavior::RedirectToPaymentPage(behavior) => {
             return redirect_to_payment_page(&*behavior, &auth_user.user, order, conn.get(), config);

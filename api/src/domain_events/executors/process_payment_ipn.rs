@@ -15,6 +15,7 @@ pub struct ProcessPaymentIPNExecutor {
     globee_api_key: String,
     globee_base_url: String,
     validate_ipn: bool,
+    api_keys_encryption_key: String,
 }
 
 impl DomainActionExecutor for ProcessPaymentIPNExecutor {
@@ -35,6 +36,7 @@ impl ProcessPaymentIPNExecutor {
             globee_api_key: config.globee_api_key.clone(),
             globee_base_url: config.globee_base_url.clone(),
             validate_ipn: config.validate_ipns,
+            api_keys_encryption_key: config.api_keys_encryption_key.clone(),
         }
     }
 
@@ -50,21 +52,46 @@ impl ProcessPaymentIPNExecutor {
             )
             .into());
         }
-        let client = GlobeeClient::new(self.globee_api_key.clone(), self.globee_base_url.clone());
-
-        if self.validate_ipn {
-            ipn = client.get_payment_request(&ipn.id)?;
-        }
 
         let order_id =
             Uuid::parse_str(ipn.custom_payment_id.as_ref().ok_or(ApplicationError::new(
                 "Globee response did not include a custom_payment_id".to_string(),
             ))?)?;
 
-        jlog!(Debug, "Found IPN", {"ipn_id": ipn.id, "order_id": order_id});
-
         let connection = conn.get();
         let mut order = Order::find(order_id, connection)?;
+        let mut organizations = order.organizations(connection)?;
+        if organizations.len() != 1 {
+            return Err(ApplicationError::new(
+                "Orders containing more than one organization are not supported".to_string(),
+            )
+            .into());
+        };
+        let mut organization = organizations.remove(0);
+        organization.decrypt(&self.api_keys_encryption_key)?;
+        let api_key = organization
+            .globee_api_key
+            .unwrap_or(self.globee_api_key.clone());
+
+        let client = GlobeeClient::new(api_key.clone(), self.globee_base_url.clone());
+
+        if self.validate_ipn {
+            ipn = client.get_payment_request(&ipn.id)?;
+        }
+
+        if ipn
+            .custom_payment_id
+            .as_ref()
+            .map(|r| Uuid::parse_str(r).unwrap_or(Uuid::nil()))
+            != Some(order_id)
+        {
+            return Err(ApplicationError::new(
+                "Invalid IPN, the custom_payment_id has changed".to_string(),
+            )
+            .into());
+        }
+
+        jlog!(Debug, "Found IPN", {"ipn_id": ipn.id, "order_id": order_id});
 
         let external_reference = format!("globee-{}", ipn.id);
         let status = match ipn

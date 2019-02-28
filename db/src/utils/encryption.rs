@@ -37,8 +37,8 @@ pub fn encrypt(plaintext: &str, encryption_key: &str) -> Result<String, Database
     Ok(nonce_data)
 }
 
-pub fn decrypt(ciphertext: &String, encryption_key: &String) -> Result<String, DatabaseError> {
-    let mut key = encryption_key.clone().into_bytes();
+pub fn decrypt(ciphertext: &str, encryption_key: &str) -> Result<String, DatabaseError> {
+    let mut key = encryption_key.to_string().into_bytes();
     if key.len() > 32 {
         key.truncate(32);
     }

@@ -283,6 +283,7 @@ table! {
         allowed_payment_providers -> Array<Text>,
         timezone -> Nullable<Text>,
         cc_fee_percent -> Float4,
+        globee_api_key -> Nullable<Text>,
     }
 }
 
