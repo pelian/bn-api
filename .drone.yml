@@ -45,9 +45,7 @@ steps:
       commands:
         - rustup component add rustfmt-preview
         - cargo fmt --all -- --check
-      when:
-          event:
-            exclude: [pull_request]
+
 #
 #    - name: restore-cache
 #      depends_on:
@@ -239,23 +237,26 @@ steps:
           event: [pull_request, push]
           branch: master
 
-#    - name: notify-fail
-#      image: plugins/drone-irc
-#      depends_on:
-#        - cargo-audit
-#        - api-tests
-#        - integration-tests
-#        - other-tests
-#      settings:
-#        prefix: build
-#        nick: drone
-#        channel: bigneon-dev
-#        host: chat.freenode.net
-#        port: 6667
-#        template: |-
-#          *{{build.status}}* <{{build.link}}|{{repo.owner}}/{{repo.name}}#{{truncate build.commit 8}} ({{build.branch}}) by {{build.author}}
-#      when:
-#          status: failure
+    - name: notify
+      image: plugins/slack
+      depends_on:
+        - other-tests
+        - api-tests
+        - integration-tests
+      settings:
+        webhook:
+          from_secret: nomatter_webhook
+        username: drone
+        icon_emoji: drone
+        channel: tari-natterbot
+      when:
+        status: [ success, failure ]
+      template: >
+        {{#success build.status}}
+          {{repo.name}} ({{build.branch}}) <{{ build.link }}|{{ repo.owner }}/{{ repo.name }}#{{truncate build.commit 8}}> build succeeded on {{uppercasefirst build.event}}. Good job {{ build.author }}.
+        {{else}}
+          {{repo.name}} ({{build.branch}}) <{{ build.link }}|{{ repo.owner }}/{{ repo.name }}#{{truncate build.commit 8}}> build failed on {{uppercasefirst build.event}}. Fix me please {{ build.author }}.
+        {{/success}}
 
 services:
     - name: database
@@ -270,6 +271,6 @@ services:
 
 ---
 kind: signature
-hmac: 10746eebc0260d157d70e4496f8cc50c37cd9334f752ce3c378882eb3331231a
+hmac: 9af3615d5f94049026458a3334454442bd29a9a5ebab38662b6f4be8f9b5beb9
 
 ...
