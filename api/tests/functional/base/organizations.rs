@@ -182,6 +182,7 @@ pub fn create(role: Roles, should_test_succeed: bool) {
         company_event_fee_in_cents: None,
         allowed_payment_providers: None,
         timezone: None,
+        globee_api_key: None,
     });
 
     let test_request = TestRequest::create_with_uri("/organizations");
@@ -229,6 +230,7 @@ pub fn update(role: Roles, should_succeed: bool) {
         allowed_payment_providers: Some(vec![PaymentProviders::Globee]),
         timezone: Some("Los Angeles".to_string()),
         cc_fee_percent: Some(5.5),
+        globee_api_key: Some(Some("Itsasecret".to_string())),
     });
 
     let response: HttpResponse = organizations::update((

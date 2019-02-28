@@ -51,10 +51,6 @@ fn sync_purchase_metadata(database: Database, service_locator: ServiceLocator) {
     let mut i = 0;
     let mut exit = false;
 
-    let stripe = service_locator
-        .create_payment_processor(PaymentProviders::Stripe)
-        .expect("Expected Stripe processor");
-
     loop {
         if exit {
             break;
@@ -74,6 +70,12 @@ fn sync_purchase_metadata(database: Database, service_locator: ServiceLocator) {
         }
 
         for (payment, order) in payments {
+            let organizations = order.organizations(connection.get()).unwrap();
+
+            let stripe = service_locator
+                .create_payment_processor(PaymentProviders::Stripe, &organizations[0])
+                .expect("Expected Stripe processor");
+
             if let Some(external_reference) = payment.external_reference {
                 let purchase_metadata = order
                     .purchase_metadata(connection.get())
