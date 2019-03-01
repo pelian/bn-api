@@ -37,6 +37,22 @@ kind: pipeline
 name: Build
 
 steps:
+  - name: db-ping
+    image: postgres:10.4
+    commands:
+      # wait for postgres service to become available
+      - |
+        until psql -U \
+         -c "SELECT 1;" >/dev/null 2>&1; do sleep 1; done
+      # query the database
+      - |
+        psql -U app \
+          -c "SELECT * FROM pg_catalog.pg_tables;"
+      # max connections
+      - |
+        psql -U app \
+          -c "show max_connections;"
+
     # This check is done on another build for event:push
     - name: rust-fmt-check
       depends_on:
@@ -261,9 +277,11 @@ steps:
 services:
     - name: database
       image: postgres:10.4
+      command: postgres -c 'max_connections=500'
       environment:
           POSTGRES_USER: app
           POSTGRES_PASSWORD: password
+#          POSTGRES_INITDB_ARGS: "-N 500"
       when:
           event: [pull_request, push]
           branch: master
