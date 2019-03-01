@@ -261,7 +261,7 @@ steps:
 services:
     - name: database
       image: postgres:10.4
-      args: [ "-N 5000"]
+      args: [ "postgres -N 5000"]
       environment:
           POSTGRES_USER: app
           POSTGRES_PASSWORD: password
@@ -272,6 +272,6 @@ services:
 
 ---
 kind: signature
-hmac: 0e6ea872732c9ad9e50163bbd9fd73dce2bc8e0e809499f22185e8404c81a4e0
+hmac: ab990c5e793556c9237bc7c525be1ded62c9d7e74bb31f3a759f3ead03981e1e
 
 ...
