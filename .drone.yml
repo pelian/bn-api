@@ -261,9 +261,8 @@ steps:
 services:
     - name: database
       image: postgres:10.4
-      user: postgres
-      commands:
-        - postgres -c 'max_connections=500'
+      entrypoint: [ postgres ]
+      command: [ "-c 'max_connections=500'" ]
       environment:
           POSTGRES_USER: app
           POSTGRES_PASSWORD: password
@@ -274,6 +273,6 @@ services:
 
 ---
 kind: signature
-hmac: 824afac266f12c2bfdd32f56c0caffae82d7c5c200c2428b8b866324fef843e0
+hmac: 301a51402d815c039a41f36aca3fba79d21d80bfa726d64a72c5cff9c32f8e30
 
 ...
