@@ -278,12 +278,9 @@ steps:
 services:
     - name: database
       image: postgres:10.4
-#      command:
-#        - postgres -c 'max_connections=500'
       environment:
           POSTGRES_USER: app
           POSTGRES_PASSWORD: password
-#          POSTGRES_INITDB_ARGS: "-N 500"
       when:
           event: [pull_request, push]
           branch: master
@@ -291,6 +288,6 @@ services:
 
 ---
 kind: signature
-hmac: 1feb2c59f64246439acaacf4adbe6728537d8a1586d3f4aefa49a0a527b440e1
+hmac: 3c07d5f7208e825e9c3daa6ae39e9b8f5368a6cf4930291f9fbe906d8fb54423
 
 ...
