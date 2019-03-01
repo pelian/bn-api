@@ -261,7 +261,7 @@ steps:
 services:
     - name: database
       image: postgres:10.4
-      args: [ "-c 'max_connections=5000'"]
+      args: [ "-N 5000"]
       environment:
           POSTGRES_USER: app
           POSTGRES_PASSWORD: password
@@ -272,6 +272,6 @@ services:
 
 ---
 kind: signature
-hmac: 77cd05404f300dfdccb83f45e2bd93b68d9b88a3421dead35777871e0a305831
+hmac: 0e6ea872732c9ad9e50163bbd9fd73dce2bc8e0e809499f22185e8404c81a4e0
 
 ...
