@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "7a32c35b-79a5-4ca6-8eb3-38d03046358e",
+		"_postman_id": "c0bfabca-309b-4c22-85df-ff516b0bff16",
 		"name": "bigneon-tests",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
@@ -3984,6 +3984,113 @@
 				{
 					"name": "Events",
 					"item": [
+						{
+							"name": "OrgMember  - Create Event - Private",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "91fe0a26-e6a0-437a-a7e7-834185ecf193",
+										"exec": [
+											"pm.test(\"should be 201\", function() {",
+											"    pm.response.to.have.status(201);",
+											"})",
+											"",
+											"pm.environment.set(\"last_event_id\", JSON.parse(responseBody).id);"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{org_member_token}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"name\": \"It's my party\",\n    \"organization_id\": \"{{last_org_id}}\",\n    \"venue_id\": \"{{last_venue_id}}\",\n    \"event_start\": \"2020-11-13T12:00:00\",\n    \"event_end\": \"2020-11-14T12:00:00\",\n    \"event_type\": \"Music\",\n    \"private_access_code\": \"TABLE91\"\n}"
+								},
+								"url": {
+									"raw": "http://{{server}}/events",
+									"protocol": "http",
+									"host": [
+										"{{server}}"
+									],
+									"path": [
+										"events"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Guest - search for event - private event hidden",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"id": "f40a2996-aa1a-4be7-925f-1e55828eb494",
+										"exec": [
+											"pm.test(\"should be 200\", function() {",
+											"    pm.response.to.have.status(200);",
+											"})",
+											"",
+											"",
+											"let json = JSON.parse(responseBody);",
+											"pm.test(\"private event should not be present\", function() {",
+											"    let found = false;",
+											"    for (let i=0;i< json.length;i++) {",
+											"        if (json[i].id===pm.environment.get(\"last_event_id\")) {",
+											"            found = true;",
+											"        }",
+											"    }",
+											"    pm.expect(found).to.be.false;",
+											"});"
+										],
+										"type": "text/javascript"
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": ""
+								},
+								"url": {
+									"raw": "http://{{server}}/events?past_or_upcoming=upcoming",
+									"protocol": "http",
+									"host": [
+										"{{server}}"
+									],
+									"path": [
+										"events"
+									],
+									"query": [
+										{
+											"key": "past_or_upcoming",
+											"value": "upcoming"
+										}
+									]
+								}
+							},
+							"response": []
+						},
 						{
 							"name": "OrgMember  - Create Event",
 							"event": [

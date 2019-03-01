@@ -107,6 +107,8 @@ pub struct NewEvent {
     pub override_status: Option<EventOverrideStatus>,
     pub event_end: Option<NaiveDateTime>,
     pub event_type: EventTypes,
+    #[serde(default, deserialize_with = "deserialize_unless_blank")]
+    pub private_access_code: Option<String>,
 }
 
 impl NewEvent {
