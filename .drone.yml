@@ -261,8 +261,8 @@ steps:
 services:
     - name: database
       image: postgres:10.4
-      entrypoint: [ postgres ]
-      command: [ "-c 'max_connections=500'" ]
+      entrypoint: [ "docker-entrypoint.sh" ]
+      command: [ "postgres -c 'max_connections=500'" ]
       environment:
           POSTGRES_USER: app
           POSTGRES_PASSWORD: password
@@ -273,6 +273,6 @@ services:
 
 ---
 kind: signature
-hmac: 301a51402d815c039a41f36aca3fba79d21d80bfa726d64a72c5cff9c32f8e30
+hmac: cd5ce65c72d158c47fc16a9c8e5a772d67ee92db2fa8ae00ba221d07206c96d4
 
 ...
