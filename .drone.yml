@@ -262,7 +262,7 @@ services:
     - name: database
       image: postgres:10.4
       commands:
-        - postgres -c 'max_connections=500'
+        - sudo -u postgres postgres -c 'max_connections=500'
       environment:
           POSTGRES_USER: app
           POSTGRES_PASSWORD: password
@@ -273,6 +273,6 @@ services:
 
 ---
 kind: signature
-hmac: c382fba497e64951ab8d1380256b3f5320512823807f800c28b42dbc7f5991e0
+hmac: 0be5c475dafbaa746e3f2567bbb50a39f12d7d585d63b6059286ac2d1ef38bbf
 
 ...
