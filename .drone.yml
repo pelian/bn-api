@@ -37,31 +37,31 @@ kind: pipeline
 name: Build
 
 steps:
-    - name: db-ping
-      image: postgres:10.4
-      commands:
-        # wait for postgres service to become available
-        - |
-          until psql -U \
-           -c "SELECT 1;" >/dev/null 2>&1; do sleep 1; done
-        # query the database
-        - |
-          psql -U app \
-            -c "SELECT * FROM pg_catalog.pg_tables;"
-        # max connections
-        - |
-          psql -U app \
-            -c "show max_connections;"
-
     # This check is done on another build for event:push
     - name: rust-fmt-check
       depends_on:
         - clone
-        - db-ping
       image: rust:1.31.1
       commands:
         - rustup component add rustfmt-preview
         - cargo fmt --all -- --check
+
+#    - name: db-ping
+#      image: postgres:10.4
+#      commands:
+#        # wait for postgres service to become available
+#        - |
+#          until psql -U \
+#           -c "SELECT 1;" >/dev/null 2>&1; do sleep 1; done
+#        # query the database
+#        - |
+#          psql -U app \
+#            -c "SELECT * FROM pg_catalog.pg_tables;"
+#        # max connections
+#        - |
+#          psql -U app \
+#            -c "show max_connections;"
+
 
 #
 #    - name: restore-cache
@@ -291,6 +291,6 @@ services:
 
 ---
 kind: signature
-hmac: c5eb1ff182c10e24c51ca274d12a58fa9af6dff6f8aac2bf07cb96a97a082d4c
+hmac: 1feb2c59f64246439acaacf4adbe6728537d8a1586d3f4aefa49a0a527b440e1
 
 ...
