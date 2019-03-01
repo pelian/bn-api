@@ -37,21 +37,21 @@ kind: pipeline
 name: Build
 
 steps:
-  - name: db-ping
-    image: postgres:10.4
-    commands:
-      # wait for postgres service to become available
-      - |
-        until psql -U \
-         -c "SELECT 1;" >/dev/null 2>&1; do sleep 1; done
-      # query the database
-      - |
-        psql -U app \
-          -c "SELECT * FROM pg_catalog.pg_tables;"
-      # max connections
-      - |
-        psql -U app \
-          -c "show max_connections;"
+    - name: db-ping
+      image: postgres:10.4
+      commands:
+        # wait for postgres service to become available
+        - |
+          until psql -U \
+           -c "SELECT 1;" >/dev/null 2>&1; do sleep 1; done
+        # query the database
+        - |
+          psql -U app \
+            -c "SELECT * FROM pg_catalog.pg_tables;"
+        # max connections
+        - |
+          psql -U app \
+            -c "show max_connections;"
 
     # This check is done on another build for event:push
     - name: rust-fmt-check
@@ -289,6 +289,6 @@ services:
 
 ---
 kind: signature
-hmac: 9af3615d5f94049026458a3334454442bd29a9a5ebab38662b6f4be8f9b5beb9
+hmac: 136c8851c54bbfd0384556800e58e6738f76a647e831547bf02b1d60538fd6ba
 
 ...
