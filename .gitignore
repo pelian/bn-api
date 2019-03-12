@@ -16,3 +16,8 @@ log/
 
 # Ignore OS files
 .DS_Store
+
+# Ignore Code Coverage Report folders
+report/
+db/report/
+

@@ -70,6 +70,98 @@ fn new_artist_validate() {
 }
 
 #[test]
+fn artist_search() {
+    let project = TestProject::new();
+    let connection = project.get_connection();
+    let owner = project.create_user().finish();
+    let member = project.create_user().finish();
+    let organization = project
+        .create_organization()
+        .with_member(&owner, Roles::OrgOwner)
+        .with_member(&member, Roles::OrgMember)
+        .finish();
+
+    let mut artists = vec![];
+    artists.push(
+        project
+            .create_artist()
+            .with_name("The artists".to_string())
+            .with_organization(&organization)
+            .finish(),
+    );
+
+    let sample_artists = vec!["More artists", "Too many artists"];
+
+    for name in &sample_artists {
+        artists.push(project.create_artist().with_name(name.to_string()).finish());
+    }
+
+    artists.push(
+        project
+            .create_artist()
+            .with_name("Hidden artists".to_string())
+            .with_organization(&organization)
+            .make_private()
+            .finish(),
+    );
+
+    // Logged out search
+    let found_artists =
+        Artist::search(&None, Some("many".to_string()), connection).expect("No artists found");
+    assert_eq!(1, found_artists.len());
+    assert!(found_artists.iter().any(|a| a.name == sample_artists[1]));
+
+    //  Logged out search, no filter query
+    let found_artists = Artist::search(&None, None, connection).expect("No artists found");
+    assert_eq!(3, found_artists.len());
+    for name in &sample_artists {
+        assert!(found_artists.iter().any(|a| a.name == *name));
+    }
+
+    // Owner search, with filter query
+    let found_artists = Artist::search(&Some(owner), Some("artist".to_string()), connection)
+        .expect("No artists found");
+    assert_eq!(4, found_artists.len());
+    for name in &sample_artists {
+        assert!(found_artists.iter().any(|a| a.name == *name));
+    }
+
+    // Member search, no filter query
+    let found_artists = Artist::search(&Some(member), None, connection).expect("No artists found");
+    assert_eq!(4, found_artists.len());
+    for name in &sample_artists {
+        assert!(found_artists.iter().any(|a| a.name == *name));
+    }
+}
+
+#[test]
+fn new_artist_merge() {
+    let mut artist1: NewArtist = Default::default();
+    let bio = "Artist formally known as Default::default()";
+    let test_url = "http://test.test".to_string();
+    let artist2 = NewArtist {
+        name: "Override".to_string(),
+        bio: bio.to_string(),
+        website_url: Some(test_url.clone()),
+        image_url: Some(test_url.clone()),
+        thumb_image_url: Some(test_url.clone()),
+        youtube_video_urls: Some(vec![test_url.clone()]),
+        facebook_username: Some("fbusername".to_string()),
+        spotify_id: Some("fakespotify".to_string()),
+        ..Default::default()
+    };
+
+    artist1.merge(artist2);
+    assert_eq!(bio, artist1.bio);
+    assert_eq!(test_url, artist1.website_url.unwrap());
+    assert_eq!(test_url, artist1.image_url.unwrap());
+    assert_eq!(test_url, artist1.thumb_image_url.unwrap());
+    assert_eq!(test_url, artist1.youtube_video_urls.unwrap()[0]);
+    assert_eq!("fbusername", artist1.facebook_username.unwrap());
+    assert_eq!("fakespotify", artist1.spotify_id.unwrap());
+}
+
+#[test]
 fn artist_editable_attributes_validate() {
     let mut artist_parameters = ArtistEditableAttributes::new();
     artist_parameters.name = Some("New Name".into());

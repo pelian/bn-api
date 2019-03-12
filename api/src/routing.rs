@@ -5,7 +5,15 @@ use server::AppState;
 
 pub fn routes(app: &mut CorsBuilder<AppState>) -> App<AppState> {
     // Please try to keep in alphabetical order
-    app.resource("/artists/search", |r| {
+
+    app.resource("/admin/stuck_domain_actions", |r| {
+        r.method(Method::GET)
+            .with(admin::admin_stuck_domain_actions);
+    })
+    .resource("/admin/ticket_count", |r| {
+        r.method(Method::GET).with(admin::admin_ticket_count);
+    })
+    .resource("/artists/search", |r| {
         r.method(Method::GET).with(artists::search);
     })
     .resource("/artists/{id}/toggle_privacy", |r| {

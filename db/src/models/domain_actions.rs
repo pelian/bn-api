@@ -9,7 +9,8 @@ use utils::dates;
 use utils::errors::*;
 use uuid::Uuid;
 
-#[derive(Clone, Debug, PartialEq, Identifiable, Queryable)]
+#[derive(Clone, Debug, Serialize, PartialEq, Identifiable, Queryable, QueryableByName)]
+#[table_name = "domain_actions"]
 pub struct DomainAction {
     pub id: Uuid,
     pub domain_event_id: Option<Uuid>,
@@ -63,6 +64,19 @@ impl DomainAction {
             status: DomainActionStatus::Pending,
             blocked_until: dates::now().add_seconds(-30).finish(),
         }
+    }
+
+    pub fn find_stuck(conn: &PgConnection) -> Result<Vec<DomainAction>, DatabaseError> {
+        let sql = r#"
+            select *
+            from domain_actions
+            where status = 'Pending'
+            and blocked_until + interval '1 minute' < current_timestamp
+            order by created_at desc;"#;
+        let result: Vec<DomainAction> = diesel::sql_query(sql)
+            .get_results(conn)
+            .to_db_error(ErrorCode::QueryError, "Could not find stuck domain actions")?;
+        Ok(result)
     }
 
     pub fn find_pending(
