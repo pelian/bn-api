@@ -4,7 +4,7 @@ use config::Config;
 use db::Connection;
 use domain_events::errors::DomainActionError;
 use domain_events::executor_future::ExecutorFuture;
-use domain_events::executors::broadcast_push_notification_executor::BroadcastPushNotificationExecutor;
+use domain_events::executors::broadcast_push_notification::BroadcastPushNotificationExecutor;
 use domain_events::executors::marketing_contacts::{
     BulkEventFanListImportExecutor, CreateEventListExecutor,
 };
