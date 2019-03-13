@@ -254,12 +254,12 @@ dependencies = [
 
 [[package]]
 name = "bigneon_api"
-version = "1.0.13"
+version = "1.0.28"
 dependencies = [
  "actix 0.7.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "actix-web 0.7.15 (registry+https://github.com/rust-lang/crates.io-index)",
  "bigneon_caching_derive 0.1.0",
- "bigneon_db 1.0.13",
+ "bigneon_db 1.0.28",
  "bigneon_http 0.1.0",
  "branch_rs 0.1.0",
  "chrono 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -311,7 +311,7 @@ dependencies = [
 
 [[package]]
 name = "bigneon_db"
-version = "1.0.13"
+version = "1.0.28"
 dependencies = [
  "argon2rs 0.2.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "backtrace 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",

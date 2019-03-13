@@ -1,5 +1,6 @@
 pub mod artists;
 pub mod assets;
+pub mod broadcasts;
 pub mod codes;
 pub mod comps;
 pub mod concerns;

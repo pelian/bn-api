@@ -65,6 +65,10 @@ impl TestProject {
         ArtistBuilder::new(&self.connection)
     }
 
+    pub fn create_broadcast(&self) -> BroadcastBuilder {
+        BroadcastBuilder::new(&self.connection)
+    }
+
     pub fn create_code(&self) -> CodeBuilder {
         CodeBuilder::new(&self.connection)
     }
