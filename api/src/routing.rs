@@ -81,6 +81,9 @@ pub fn routes(app: &mut CorsBuilder<AppState>) -> App<AppState> {
     .resource("/events/{id}/dashboard", |r| {
         r.method(Method::GET).with(events::dashboard);
     })
+    .resource("/events/{id}/external", |r| {
+        r.method(Method::POST).with(events::external_publish);
+    })
     .resource("/events/{id}/guests", |r| {
         r.method(Method::GET).with(events::guest_list);
     })

@@ -15,6 +15,7 @@ RUN rm src/*.rs
 ADD api ./api/
 ADD branch_rs ./branch_rs/
 ADD db ./db/
+ADD facebook ./facebook/
 ADD http ./http/
 ADD tari-client ./tari-client/
 ADD stripe ./stripe/

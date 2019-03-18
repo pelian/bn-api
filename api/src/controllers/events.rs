@@ -812,6 +812,18 @@ impl From<GuestListQueryParameters> for Paging {
     }
 }
 
+pub fn external_publish(
+    (connection, path, user, state): (Connection, Path<PathParameters>, AuthUser, State<AppState>),
+) -> Result<HttpResponse, BigNeonError> {
+    let conn = connection.get();
+    let event = Event::find(path.id, conn)?;
+    let mut organization = event.organization(conn)?;
+    user.requires_scope_for_organization_event(Scope::EventWrite, &organization, &event, conn)?;
+
+    organization.decrypt(&state.config.api_keys_encryption_key)?;
+    let client = FacebookClient::new();
+}
+
 pub fn guest_list(
     (connection, query, path, user): (
         Connection,

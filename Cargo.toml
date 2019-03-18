@@ -4,6 +4,7 @@ members = [
     "api",
     "branch_rs",
     "db",
+    "facebook",
     "globee",
     "http",
     "tari-client",
