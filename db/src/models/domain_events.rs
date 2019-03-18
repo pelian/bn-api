@@ -23,11 +23,13 @@ pub struct DomainEvent {
     pub updated_at: NaiveDateTime,
     pub user_id: Option<Uuid>,
 }
+
 impl PartialOrd for DomainEvent {
     fn partial_cmp(&self, other: &DomainEvent) -> Option<Ordering> {
         Some(self.id.cmp(&other.id))
     }
 }
+
 impl DomainEvent {
     pub fn create(
         event_type: DomainEventTypes,
