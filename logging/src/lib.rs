@@ -8,10 +8,10 @@ extern crate serde_derive;
 #[cfg_attr(test, macro_use)]
 extern crate serde_json;
 
-use env_logger::{Builder, Env};
 use std::io::Write;
 
 use chrono::{DateTime, Utc};
+use env_logger::{Builder, Env};
 
 const DATETIME_FORMAT: &'static str = "[%Y-%m-%d][%H:%M:%S]";
 
@@ -20,7 +20,7 @@ struct LogEntry {
     level: String,
     #[serde(serialize_with = "custom_datetime_serializer")]
     time: DateTime<Utc>,
-    target: String,
+    target: Option<String>,
     message: String,
     #[serde(flatten)]
     meta: Option<serde_json::Value>,
@@ -74,9 +74,9 @@ pub fn transform_message(
     msg: &str,
     meta: Option<serde_json::Value>,
 ) {
-    let inner = LogEntry {
+    let mut inner = LogEntry {
         level: format!("{}", level),
-        target: target.unwrap_or("none").to_string(),
+        target: target.map(|t| t.to_string()),
         time: chrono::Utc::now(),
         message: msg.trim().to_string(),
         meta,
@@ -88,7 +88,23 @@ pub fn transform_message(
             "{}",
             serde_json::to_string(&inner).unwrap()
         ),
-        None => log!(level, "{}", serde_json::to_string(&inner).unwrap()),
+        None => {
+            let t = std::env::current_exe()
+                .map(|p| {
+                    p.file_name()
+                        .map(|s| s.to_str().unwrap_or("none").to_string())
+                })
+                .unwrap_or(Some("none".to_string()))
+                .unwrap();
+            inner.target = Some(t);
+            let t = inner.target.as_ref().unwrap().as_str();
+            log!(
+                target: t,
+                level,
+                "{}",
+                serde_json::to_string(&inner).unwrap()
+            )
+        }
     }
 }
 
@@ -104,7 +120,7 @@ pub fn setup_logger() {
                 let entry = LogEntry {
                     level: record.level().to_string(),
                     time: chrono::Utc::now(),
-                    target: record.target().to_string(),
+                    target: Some(record.target().to_string()),
                     message: msg,
                     meta: None,
                 };

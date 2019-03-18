@@ -785,10 +785,19 @@ impl TicketInstance {
     pub fn direct_transfer(
         from_user_id: Uuid,
         ticket_ids: &[Uuid],
+        address: &str,
+        sent_via: &str,
         to_user_id: Uuid,
         conn: &PgConnection,
     ) -> Result<(), DatabaseError> {
-        let auth = TicketInstance::authorize_ticket_transfer(from_user_id, ticket_ids, 3600, conn)?;
+        let auth = TicketInstance::authorize_ticket_transfer(
+            from_user_id,
+            ticket_ids,
+            3600,
+            Some(address),
+            Some(sent_via),
+            conn,
+        )?;
         let wallet = Wallet::find_default_for_user(from_user_id, conn)?;
         let receiver_wallet = Wallet::find_default_for_user(to_user_id, conn)?;
         TicketInstance::receive_ticket_transfer(auth, &wallet, receiver_wallet.id, conn)?;
@@ -799,7 +808,7 @@ impl TicketInstance {
         user_id: Uuid,
         ticket_ids: &[Uuid],
         conn: &PgConnection,
-    ) -> Result<(WalletId, Vec<(Uuid, NaiveDateTime)>), DatabaseError> {
+    ) -> Result<(WalletId, Vec<(Uuid, NaiveDateTime, Option<Uuid>)>), DatabaseError> {
         let tickets = TicketInstance::find_for_user(user_id, conn)?;
         let mut ticket_ids_and_updated_at = vec![];
         let mut all_tickets_valid = true;
@@ -810,7 +819,14 @@ impl TicketInstance {
             for t in &tickets {
                 if t.id == *ti && t.status == TicketInstanceStatus::Purchased {
                     found_and_purchased = true;
-                    ticket_ids_and_updated_at.push((*ti, t.updated_at));
+                    let existing_transfer_key = if t.transfer_expiry_date.is_some()
+                        && t.transfer_expiry_date.as_ref().unwrap() < &Utc::now().naive_utc()
+                    {
+                        t.transfer_key
+                    } else {
+                        None
+                    };
+                    ticket_ids_and_updated_at.push((*ti, t.updated_at, existing_transfer_key));
                     wallet_id = t.wallet_id;
                     break;
                 }
@@ -835,6 +851,8 @@ impl TicketInstance {
         user_id: Uuid,
         ticket_ids: &[Uuid],
         validity_period_in_seconds: u32,
+        address: Option<&str>,
+        sent_via: Option<&str>,
         conn: &PgConnection,
     ) -> Result<TransferAuthorization, DatabaseError> {
         //Confirm that tickets are purchased and owned by user
@@ -847,7 +865,7 @@ impl TicketInstance {
             Utc::now().naive_utc() + Duration::seconds(validity_period_in_seconds as i64);
 
         let mut update_count = 0;
-        for (t_id, t_updated_at) in ticket_ids_and_updated_at {
+        for (t_id, t_updated_at, existing_transfer) in ticket_ids_and_updated_at {
             update_count += diesel::update(
                 ticket_instances::table
                     .filter(ticket_instances::id.eq(t_id))
@@ -861,13 +879,31 @@ impl TicketInstance {
             ))
             .execute(conn)
             .to_db_error(ErrorCode::UpdateError, "Could not update ticket instance")?;
+
+            if existing_transfer.is_some() {
+                DomainEvent::create(
+                    DomainEventTypes::TransferTicketCancelled,
+                    "Ticket transfer was cancelled".to_string(),
+                    Tables::TicketInstances,
+                    Some(t_id),
+                    Some(user_id),
+                    Some(json!({"old_transfer_key": existing_transfer.as_ref().unwrap(), "new_transfer_key": &transfer_key })),
+                )
+                .commit(conn)?;
+            }
+
             DomainEvent::create(
                 DomainEventTypes::TransferTicketStarted,
                 "Transfer ticket started".to_string(),
                 Tables::TicketInstances,
-                Some(t_id.clone()),
-                Some(user_id.clone()),
-                None,
+                Some(t_id),
+                Some(user_id),
+                Some(json!({
+                "sent_via": sent_via,
+                "address": address,
+                "sender_wallet_id": wallet_id,
+                "transfer_key": &transfer_key
+                           })),
             )
             .commit(conn)?;
         }
@@ -965,12 +1001,12 @@ impl TicketInstance {
             .execute(conn)
             .to_db_error(ErrorCode::UpdateError, "Could not update ticket instance")?;
             DomainEvent::create(
-                DomainEventTypes::TransferTicketStarted,
+                DomainEventTypes::TransferTicketCompleted,
                 "Transfer ticket completed".to_string(),
                 Tables::TicketInstances,
                 Some(t_id.clone()),
                 None,
-                Some(json!({"receiver_wallet_id": receiver_wallet_id.clone()})),
+                Some(json!({"receiver_wallet_id": receiver_wallet_id, "sender_wallet_id": sender_wallet.id, "num_tickets": transfer_authorization.num_tickets, "transfer_key": transfer_authorization.transfer_key})),
             )
             .commit(conn)?;
         }

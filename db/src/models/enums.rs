@@ -104,6 +104,7 @@ string_enum! { DomainEventTypes [
     LostPassword,
     PurchaseCompleted,
     TransferTicketStarted,
+    TransferTicketCancelled,
     TransferTicketCompleted,
     TicketInstanceAddedToHold,
     TicketInstanceNullified,

@@ -1,19 +1,21 @@
+use std::collections::HashMap;
+
 use actix_web::{http::StatusCode, FromRequest, HttpResponse, Path, Query};
+use chrono::prelude::*;
+use diesel;
+use diesel::prelude::*;
+use serde_json;
+use uuid::Uuid;
+
 use bigneon_api::controllers::orders::{self, *};
 use bigneon_api::extractors::Json;
 use bigneon_api::models::PathParameters;
 use bigneon_db::models::*;
 use bigneon_db::schema;
-use chrono::prelude::*;
-use diesel;
-use diesel::prelude::*;
 use functional::base;
-use serde_json;
-use std::collections::HashMap;
 use support;
 use support::database::TestDatabase;
 use support::test_request::TestRequest;
-use uuid::Uuid;
 
 #[test]
 pub fn show() {
@@ -49,6 +51,7 @@ pub fn show() {
 #[cfg(test)]
 mod show_other_user_order_tests {
     use super::*;
+
     #[test]
     fn show_other_user_order_org_member() {
         base::orders::show_other_user_order(Roles::OrgMember, true);
@@ -90,6 +93,7 @@ mod show_other_user_order_tests {
 #[cfg(test)]
 mod show_other_user_order_not_matching_users_organization_tests {
     use super::*;
+
     #[test]
     fn show_other_user_order_not_matching_users_organization_org_member() {
         base::orders::show_other_user_order_not_matching_users_organization(
@@ -216,6 +220,7 @@ pub fn index() {
 #[cfg(test)]
 mod details_tests {
     use super::*;
+
     #[test]
     fn details_org_member() {
         base::orders::details(Roles::OrgMember, true);
@@ -257,6 +262,7 @@ mod details_tests {
 #[cfg(test)]
 mod refund_tests {
     use super::*;
+
     #[test]
     fn refund_org_member() {
         base::orders::refund(Roles::OrgMember, true);
@@ -501,9 +507,15 @@ pub fn refund_for_non_refundable_tickets() {
     // Transfer the first ticket away
     let sender_wallet = Wallet::find_default_for_user(user.id, connection).unwrap();
     let receiver_wallet = Wallet::find_default_for_user(user2.id, connection).unwrap();
-    let transfer_auth =
-        TicketInstance::authorize_ticket_transfer(user.id, &vec![ticket.id], 3600, connection)
-            .unwrap();
+    let transfer_auth = TicketInstance::authorize_ticket_transfer(
+        user.id,
+        &vec![ticket.id],
+        3600,
+        None,
+        None,
+        connection,
+    )
+    .unwrap();
     TicketInstance::receive_ticket_transfer(
         transfer_auth,
         &sender_wallet,

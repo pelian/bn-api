@@ -1,4 +1,8 @@
 use actix_web::{http::StatusCode, FromRequest, Path, Query};
+use chrono::prelude::*;
+use serde_json;
+use uuid::Uuid;
+
 use bigneon_api::controllers::tickets::SendTicketsRequest;
 use bigneon_api::controllers::tickets::{
     self, SearchParameters, ShowTicketResponse, TransferTicketRequest,
@@ -6,13 +10,10 @@ use bigneon_api::controllers::tickets::{
 use bigneon_api::extractors::*;
 use bigneon_api::models::{OptionalPathParameters, PathParameters};
 use bigneon_db::prelude::*;
-use chrono::prelude::*;
 use functional::base;
-use serde_json;
 use support;
 use support::database::TestDatabase;
 use support::test_request::TestRequest;
-use uuid::Uuid;
 
 #[test]
 pub fn index() {
@@ -261,6 +262,7 @@ pub fn show() {
 #[cfg(test)]
 mod show_other_user_ticket_tests {
     use super::*;
+
     #[test]
     fn show_other_user_ticket_org_member() {
         base::tickets::show_other_user_ticket(Roles::OrgMember, true);
@@ -302,6 +304,7 @@ mod show_other_user_ticket_tests {
 #[cfg(test)]
 mod redeem_ticket {
     use super::*;
+
     #[test]
     fn redeem_ticket_org_member() {
         base::tickets::redeem_ticket(Roles::OrgMember, true);
@@ -343,6 +346,7 @@ mod redeem_ticket {
 #[cfg(test)]
 mod show_redeem_key {
     use super::*;
+
     #[test]
     fn show_redeemable_ticket_org_member() {
         base::tickets::show_redeemable_ticket(Roles::OrgMember, true);
@@ -560,6 +564,8 @@ fn receive_ticket_transfer() {
         auth_user.id(),
         &vec![tickets[0].id, tickets[1].id],
         3600,
+        None,
+        None,
         conn,
     )
     .unwrap();

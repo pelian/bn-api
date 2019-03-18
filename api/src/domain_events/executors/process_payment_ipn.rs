@@ -1,3 +1,7 @@
+use futures::future;
+use log::Level::{Debug, Error};
+use uuid::Uuid;
+
 use bigneon_db::prelude::*;
 use config::Config;
 use db::Connection;
@@ -5,11 +9,8 @@ use domain_events::executor_future::ExecutorFuture;
 use domain_events::routing::DomainActionExecutor;
 use errors::ApplicationError;
 use errors::BigNeonError;
-use futures::future;
 use globee::GlobeeClient;
 use globee::GlobeeIpnRequest;
-use log::Level::{Debug, Error};
-use uuid::Uuid;
 
 pub struct ProcessPaymentIPNExecutor {
     globee_api_key: String,
@@ -90,6 +91,14 @@ impl ProcessPaymentIPNExecutor {
             )
             .into());
         }
+        // Refetch the order in case it's been spoofed.
+
+        let order_id =
+            Uuid::parse_str(ipn.custom_payment_id.as_ref().ok_or(ApplicationError::new(
+                "Globee response did not include a custom_payment_id".to_string(),
+            ))?)?;
+
+        order = Order::find(order_id, connection)?;
 
         jlog!(Debug, "Found IPN", {"ipn_id": ipn.id, "order_id": order_id});
 
@@ -138,6 +147,11 @@ impl ProcessPaymentIPNExecutor {
                 )?
             }
         };
+
+        // Sometimes the IPN will come in before the user has been redirected back to the success page
+        if order.status == OrderStatus::Draft {
+            payment.mark_pending_ipn(None, connection)?;
+        }
 
         if status == PaymentStatus::Completed {
             jlog!(Debug, &format!("IPN: Payment completed, updating amount received from {:?} to {:?}", payment.amount, ipn.payment_details.received_amount), {"ipn_id": ipn.id, "order_id": order_id, "status": status});

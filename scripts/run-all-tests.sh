@@ -30,7 +30,8 @@ export GLOBEE_BASE_URL="https://test.globee.com/payment-api/v1/"
 export IPN_BASE_URL="TEST"
 export DATABASE_URL=postgres://postgres:password123@localhost/bigneon_ci
 printenv
-./scripts/run-api-tests-quick.sh
+cargo fmt
+./scripts/run-api-tests-ci.sh
 export EXITCODE=$?
 if [ $EXITCODE -ne 0 ]
 then

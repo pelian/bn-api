@@ -8,8 +8,7 @@ cargo run --release create -c $DATABASE_URL -f -e superuser@test.com -p password
     exit 1
 }
 cd ../api
-cargo build --release
-cargo run --release -- -t false &
+cargo run --release --bin server -- -t false &
 export SERVER_PID=$!$1
 # Run newman tests
 #apt-get install nodejs
@@ -29,5 +28,5 @@ then
     exit $NEWMAN_EXIT_CODE
 fi
 cd ../api
-cargo run --release -- -b true
+cargo run --release --bin server -- -b true
 

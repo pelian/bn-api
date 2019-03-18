@@ -21,7 +21,7 @@ pub struct Wallet {
     updated_at: NaiveDateTime,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Serialize, Copy, Clone)]
 pub struct WalletId(Uuid);
 
 impl WalletId {

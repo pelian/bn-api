@@ -1,14 +1,16 @@
+use std::collections::HashMap;
+
+use chrono::{Duration, NaiveDateTime, Utc};
+use diesel;
+use diesel::prelude::*;
+use uuid::Uuid;
+use validator::Validate;
+
 use bigneon_db::dev::TestProject;
 use bigneon_db::prelude::*;
 use bigneon_db::schema::orders;
 use bigneon_db::utils::errors;
 use bigneon_db::utils::errors::ErrorCode;
-use chrono::{Duration, NaiveDateTime, Utc};
-use diesel;
-use diesel::prelude::*;
-use std::collections::HashMap;
-use uuid::Uuid;
-use validator::Validate;
 
 #[test]
 fn commit() {
@@ -409,9 +411,15 @@ fn get_profile_for_organization() {
     // Transfer ticket to different user removing it from attendance information
     let sender_wallet = Wallet::find_default_for_user(user.id, connection).unwrap();
     let receiver_wallet = Wallet::find_default_for_user(user2.id, connection).unwrap();
-    let transfer_auth =
-        TicketInstance::authorize_ticket_transfer(user.id, &vec![ticket.id], 3600, connection)
-            .unwrap();
+    let transfer_auth = TicketInstance::authorize_ticket_transfer(
+        user.id,
+        &vec![ticket.id],
+        3600,
+        None,
+        None,
+        connection,
+    )
+    .unwrap();
     TicketInstance::receive_ticket_transfer(
         transfer_auth,
         &sender_wallet,
@@ -556,9 +564,15 @@ fn get_profile_for_organization() {
 
     let sender_wallet = Wallet::find_default_for_user(user2.id, connection).unwrap();
     let receiver_wallet = Wallet::find_default_for_user(user.id, connection).unwrap();
-    let transfer_auth =
-        TicketInstance::authorize_ticket_transfer(user2.id, &vec![ticket.id], 3600, connection)
-            .unwrap();
+    let transfer_auth = TicketInstance::authorize_ticket_transfer(
+        user2.id,
+        &vec![ticket.id],
+        3600,
+        None,
+        None,
+        connection,
+    )
+    .unwrap();
     TicketInstance::receive_ticket_transfer(
         transfer_auth,
         &sender_wallet,
