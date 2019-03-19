@@ -81,9 +81,7 @@ pub fn routes(app: &mut CorsBuilder<AppState>) -> App<AppState> {
     .resource("/events/{id}/dashboard", |r| {
         r.method(Method::GET).with(events::dashboard);
     })
-    .resource("/events/{id}/external", |r| {
-        r.method(Method::POST).with(events::external_publish);
-    })
+
     .resource("/events/{id}/guests", |r| {
         r.method(Method::GET).with(events::guest_list);
     })
@@ -136,11 +134,14 @@ pub fn routes(app: &mut CorsBuilder<AppState>) -> App<AppState> {
     .resource("/events/{id}/users/{user_id}", |r| {
         r.method(Method::DELETE).with(events::remove_user);
     })
-    .resource("/external/facebook/web_login", |r| {
-        r.method(Method::POST).with(external::facebook::web_login)
-    })
     .resource("/external/facebook/pages", |r| {
         r.method(Method::GET).with(external::facebook::pages)
+    })
+        .resource("/external/facebook/events", |r| {
+            r.method(Method::POST).with(events::external_publish);
+        })
+    .resource("/external/facebook/web_login", |r| {
+        r.method(Method::POST).with(external::facebook::web_login)
     })
     .resource("/invitations/{id}", |r| {
         r.method(Method::GET).with(organization_invites::view);

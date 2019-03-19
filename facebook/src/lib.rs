@@ -22,6 +22,7 @@ mod facebook_client;
 mod facebook_request;
 mod fbid;
 mod nodes;
+mod paging;
 
 pub mod prelude {
     pub use access_token::*;
@@ -30,4 +31,5 @@ pub mod prelude {
     pub use facebook_client::*;
     pub use fbid::*;
     pub use nodes::*;
+    pub use paging::*;
 }

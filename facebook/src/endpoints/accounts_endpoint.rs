@@ -1,6 +1,7 @@
 use edges::Account;
 use error::FacebookError;
 use facebook_client::FacebookClientInner;
+use paging::Paging;
 use std::rc::Rc;
 
 pub struct AccountsEndpoint {
@@ -8,7 +9,7 @@ pub struct AccountsEndpoint {
 }
 
 impl AccountsEndpoint {
-    pub fn list(&self) -> Result<Vec<Account>, FacebookError> {
+    pub fn list(&self) -> Result<Paging<Account>, FacebookError> {
         let client = reqwest::Client::new();
 
         // println!("{}", json!(&request));
@@ -24,9 +25,9 @@ impl AccountsEndpoint {
             .send()?;
         let status = resp.status();
         let value: serde_json::Value = resp.json()?;
-        println!("{:?}", value);
+        println!("{:?}", value.clone().to_string());
 
-        let results: Vec<Account> = serde_json::from_value(value)?;
+        let results: Paging<Account> = serde_json::from_value(value)?;
         Ok(results)
     }
 }

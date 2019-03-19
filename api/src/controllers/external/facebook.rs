@@ -1,7 +1,8 @@
+use actix_web::Query;
 use actix_web::{HttpResponse, State};
 use auth::user::User as AuthUser;
 use auth::TokenResponse;
-use bigneon_db::models::{ExternalLogin, User, FACEBOOK_SITE};
+use bigneon_db::prelude::*;
 use db::Connection;
 use errors::*;
 use extractors::*;
@@ -11,9 +12,11 @@ use models::FacebookWebLoginToken;
 use reqwest;
 use serde_json;
 use server::AppState;
+use actix_web::Path;
+use controllers::redemption_codes::PathParameters;
+use uuid::Uuid;
 
 const FACEBOOK_GRAPH_URL: &str = "https://graph.facebook.com";
-
 #[derive(Deserialize)]
 struct FacebookGraphResponse {
     id: String,
@@ -45,7 +48,7 @@ pub fn web_login(
     let facebook_graph_response: FacebookGraphResponse = serde_json::from_str(&response)?;
 
     let existing_user =
-        ExternalLogin::find_user(&facebook_graph_response.id, "facebook.com", connection)?;
+        ExternalLogin::find_user(&facebook_graph_response.id, FACEBOOK_SITE, connection)?;
     let user = match existing_user {
         Some(u) => {
             info!("Found existing user with id: {}", &u.user_id);
@@ -134,10 +137,20 @@ pub struct AuthCallbackPathParameters {
 }
 
 /// Callback for converting an FB code into an access token
-pub fn auth_callback((query, state, connection):(Query<AuthCallbackPathParameters>, State<AppState>, Connection)) -> Result<HttpResponse, BigNeonError> {
+pub fn auth_callback(
+    (query, state, connection): (
+        Query<AuthCallbackPathParameters>,
+        State<AppState>,
+        Connection,
+    ),
+) -> Result<HttpResponse, BigNeonError> {
     info!("Auth callback received");
     if query.error.is_some() {
-        return ApplicationError::new_with_type(ApplicationErrorType::, "Facebook login failed".to_string());
+        return Err(ApplicationError::new_with_type(
+            ApplicationErrorType::Internal,
+            "Facebook login failed".to_string(),
+        )
+        .into());
     }
 
     let app_id = state.config.facebook_app_id.as_ref().ok_or_else(|| {
@@ -146,7 +159,6 @@ pub fn auth_callback((query, state, connection):(Query<AuthCallbackPathParameter
             "Facebook App ID has not been configured".to_string(),
         )
     })?;
-
 
     let app_secret = state.config.facebook_app_secret.as_ref().ok_or_else(|| {
         ApplicationError::new_with_type(
@@ -157,23 +169,37 @@ pub fn auth_callback((query, state, connection):(Query<AuthCallbackPathParameter
 
     let conn = connection.get();
 
-    let user= match query.state {
+    let user = match query.state.as_ref() {
         Some(user_id) => {
             // TODO check signature of state to make sure it was sent from us
-            User::find(user_id.parse()?, conn)?}
+            User::find(user_id.parse()?, conn)?
+        }
         _ => {
-            return ApplicationError::new_with_type(ApplicationErrorType::BadRequest, "State was not provided from Facebook".to_string());
+            return Err(ApplicationError::new_with_type(
+                ApplicationErrorType::BadRequest,
+                "State was not provided from Facebook".to_string(),
+            )
+            .into());
         }
     };
 
     // Note this must be the same as the redirect url used to in the original call.
     let redirect_url = None;
 
-    FacebookClient::get_access_token(app_id, app_secret, redirect_url, query.code.ok_or_else(|| ApplicationError::new_with_type(ApplicationErrorType::Internal, "Code was not provided from Facebook".to_string()))?);
+    let _access_token = FacebookClient::get_access_token(
+        app_id,
+        app_secret,
+        redirect_url,
+        query.code.as_ref().ok_or_else(|| {
+            ApplicationError::new_with_type(
+                ApplicationErrorType::Internal,
+                "Code was not provided from Facebook".to_string(),
+            )
+        })?,
+    )?;
 
-
-    user.add_external_login()
-
+    unimplemented!()
+    //user.add_external_login()
 }
 
 /// Returns a list of pages that a user has access to manage
@@ -182,7 +208,9 @@ pub fn pages((connection, user): (Connection, AuthUser)) -> Result<HttpResponse,
     let db_user = user.user;
 
     let client = FacebookClient::from_access_token(
-        db_user.find_external_login("facebook", conn)?.access_token,
+        db_user
+            .find_external_login(FACEBOOK_SITE, conn)?
+            .access_token,
     );
     let pages = client
         .me
@@ -203,3 +231,28 @@ pub struct FacebookPage {
     pub name: String,
 }
 
+
+pub fn create_event(
+    (connection, user, data): (Connection,  AuthUser, Json<CreateFacebookEvent>),
+) -> Result<HttpResponse, BigNeonError> {
+    let conn = connection.get();
+    let event = Event::find(data.event_id, conn)?;
+    let mut organization = event.organization(conn)?;
+    user.requires_scope_for_organization_event(Scopes::EventWrite, &organization, &event, conn)?;
+
+    let client = FacebookClient::from_access_token(
+        user.user
+            .find_external_login(FACEBOOK_SITE, conn)?
+            .access_token,
+    );
+
+    client.
+    unimplemented!();
+}
+
+#[derive(Deserialize)]
+pub struct CreateFacebookEvent{
+    event_id: Uuid,
+    page_id: String,
+    category: String
+}
