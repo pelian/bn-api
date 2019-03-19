@@ -4,6 +4,7 @@ use bigneon_db::utils::errors::*;
 use branch_rs::BranchError;
 use diesel::result::Error as DieselError;
 use errors::*;
+use facebook::prelude::FacebookError;
 use globee::GlobeeError;
 use jwt::errors::{Error as JwtError, ErrorKind as JwtErrorKind};
 use lettre::smtp::error::Error as SmtpError;
@@ -50,6 +51,12 @@ fn status_code_and_message(code: StatusCode, message: &str) -> HttpResponse {
 impl ConvertToWebError for Error {
     fn to_response(&self) -> HttpResponse {
         error!("General error: {}", self);
+        internal_error("Internal error")
+    }
+}
+
+impl ConvertToWebError for FacebookError {
+    fn to_response(&self) -> HttpResponse {
         internal_error("Internal error")
     }
 }

@@ -5,13 +5,15 @@ use chrono::prelude::*;
 use facebook::prelude::*;
 
 fn main() {
-
-    let url = FacebookClient::get_login_url("<app_id>", Some("<url>"), "test", &["email", "manage_pages"]);
+    let url = FacebookClient::get_login_url(
+        "<app_id>",
+        Some("<url>"),
+        "test",
+        &["email", "manage_pages"],
+    );
     println!("{}", url);
 
-
     let accounts = fb.me.accounts.list().unwrap();
-
 
     let event = Event {
         name: "Hello world".to_string(),

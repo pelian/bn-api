@@ -139,6 +139,9 @@ pub fn routes(app: &mut CorsBuilder<AppState>) -> App<AppState> {
     .resource("/external/facebook/web_login", |r| {
         r.method(Method::POST).with(external::facebook::web_login)
     })
+    .resource("/external/facebook/pages", |r| {
+        r.method(Method::GET).with(external::facebook::pages)
+    })
     .resource("/invitations/{id}", |r| {
         r.method(Method::GET).with(organization_invites::view);
     })

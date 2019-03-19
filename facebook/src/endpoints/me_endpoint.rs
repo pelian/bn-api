@@ -3,13 +3,13 @@ use facebook_client::FacebookClientInner;
 use std::rc::Rc;
 
 pub struct MeEndpoint {
-    pub accounts: AccountsEndpoint
+    pub accounts: AccountsEndpoint,
 }
 
 impl MeEndpoint {
     pub fn new(client: Rc<FacebookClientInner>) -> MeEndpoint {
         MeEndpoint {
-            accounts: AccountsEndpoint {client},
+            accounts: AccountsEndpoint { client },
         }
     }
 }

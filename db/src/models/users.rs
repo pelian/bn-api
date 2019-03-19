@@ -10,6 +10,7 @@ use schema::{events, organization_users, organizations, users};
 use serde_json::Value;
 use std::collections::HashMap;
 use time::Duration;
+use utils::errors::Optional;
 use utils::errors::{ConvertToDatabaseError, DatabaseError, ErrorCode};
 use utils::passwords::PasswordHash;
 use utils::rand::random_alpha_string;
@@ -335,7 +336,10 @@ impl User {
             first_name: self.first_name.clone(),
             last_name: self.last_name.clone(),
             email: self.email.clone(),
-            facebook_linked: self.find_external_login(FACEBOOK_SITE, conn)?.is_some(),
+            facebook_linked: self
+                .find_external_login(FACEBOOK_SITE, conn)
+                .optional()?
+                .is_some(),
             event_count: result.event_count as u32,
             revenue_in_cents: result.revenue_in_cents as u32,
             ticket_sales: result.ticket_sales as u32,
@@ -645,7 +649,7 @@ impl User {
         &self,
         site: &str,
         conn: &PgConnection,
-    ) -> Result<Option<ExternalLogin>, DatabaseError> {
+    ) -> Result<ExternalLogin, DatabaseError> {
         ExternalLogin::find_for_site(self.id, site, conn)
     }
 

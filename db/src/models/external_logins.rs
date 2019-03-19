@@ -64,15 +64,14 @@ impl ExternalLogin {
         user_id: Uuid,
         site: &str,
         conn: &PgConnection,
-    ) -> Result<Option<ExternalLogin>, DatabaseError> {
+    ) -> Result<ExternalLogin, DatabaseError> {
         DatabaseError::wrap(
             ErrorCode::QueryError,
             "Error loading external login",
             external_logins::table
                 .filter(external_logins::user_id.eq(user_id))
                 .filter(external_logins::site.eq(site))
-                .first::<ExternalLogin>(conn)
-                .optional(),
+                .first::<ExternalLogin>(conn),
         )
     }
 

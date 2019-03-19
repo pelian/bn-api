@@ -5,7 +5,7 @@ use std::fmt;
 pub enum ApplicationErrorType {
     Unprocessable,
     Internal,
-
+    BadRequest,
     ServerConfigError,
 }
 

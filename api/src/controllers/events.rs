@@ -8,6 +8,7 @@ use db::Connection;
 use diesel::PgConnection;
 use errors::*;
 use extractors::*;
+use facebook::prelude::FacebookClient;
 use helpers::application;
 use models::{PathParameters, RedeemTicketPathParameters, UserDisplayTicketType, WebPayload};
 use serde_json::Value;
@@ -818,10 +819,15 @@ pub fn external_publish(
     let conn = connection.get();
     let event = Event::find(path.id, conn)?;
     let mut organization = event.organization(conn)?;
-    user.requires_scope_for_organization_event(Scope::EventWrite, &organization, &event, conn)?;
+    user.requires_scope_for_organization_event(Scopes::EventWrite, &organization, &event, conn)?;
 
     organization.decrypt(&state.config.api_keys_encryption_key)?;
-    let client = FacebookClient::new();
+    let client = FacebookClient::from_access_token(
+        user.user
+            .find_external_login("facebook", conn)?
+            .access_token,
+    );
+    unimplemented!();
 }
 
 pub fn guest_list(

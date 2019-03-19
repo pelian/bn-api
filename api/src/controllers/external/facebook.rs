@@ -1,9 +1,12 @@
 use actix_web::{HttpResponse, State};
+use auth::user::User as AuthUser;
 use auth::TokenResponse;
 use bigneon_db::models::{ExternalLogin, User, FACEBOOK_SITE};
 use db::Connection;
 use errors::*;
 use extractors::*;
+use facebook::prelude::FacebookClient;
+use itertools::Itertools;
 use models::FacebookWebLoginToken;
 use reqwest;
 use serde_json;
@@ -93,3 +96,110 @@ pub fn web_login(
     )?;
     Ok(HttpResponse::Ok().json(response))
 }
+
+pub fn request_manage_page_access(
+    (connection, state, user): (Connection, State<AppState>, AuthUser),
+) -> Result<HttpResponse, BigNeonError> {
+    // TODO Sign/encrypt the user id passed through so that we can verify it has not been spoofed
+    let redirect_url = FacebookClient::get_login_url(
+        state.config.facebook_app_id.as_ref().ok_or_else(|| {
+            ApplicationError::new_with_type(
+                ApplicationErrorType::Unprocessable,
+                "Facebook App ID has not been configured".to_string(),
+            )
+        })?,
+        None,
+        &user.id().to_string(),
+        &["manage-pages"],
+    );
+
+    #[derive(Serialize)]
+    struct R {
+        redirect_url: String,
+    };
+
+    let r = R { redirect_url };
+
+    Ok(HttpResponse::Ok().json(r))
+}
+
+#[derive(Deserialize)]
+#[allow(dead_code)]
+pub struct AuthCallbackPathParameters {
+    code: Option<String>,
+    state: Option<String>,
+    error_reason: Option<String>,
+    error: Option<String>,
+    error_description: Option<String>,
+}
+
+/// Callback for converting an FB code into an access token
+pub fn auth_callback((query, state, connection):(Query<AuthCallbackPathParameters>, State<AppState>, Connection)) -> Result<HttpResponse, BigNeonError> {
+    info!("Auth callback received");
+    if query.error.is_some() {
+        return ApplicationError::new_with_type(ApplicationErrorType::, "Facebook login failed".to_string());
+    }
+
+    let app_id = state.config.facebook_app_id.as_ref().ok_or_else(|| {
+        ApplicationError::new_with_type(
+            ApplicationErrorType::ServerConfigError,
+            "Facebook App ID has not been configured".to_string(),
+        )
+    })?;
+
+
+    let app_secret = state.config.facebook_app_secret.as_ref().ok_or_else(|| {
+        ApplicationError::new_with_type(
+            ApplicationErrorType::ServerConfigError,
+            "Facebook App secret has not been configured".to_string(),
+        )
+    })?;
+
+    let conn = connection.get();
+
+    let user= match query.state {
+        Some(user_id) => {
+            // TODO check signature of state to make sure it was sent from us
+            User::find(user_id.parse()?, conn)?}
+        _ => {
+            return ApplicationError::new_with_type(ApplicationErrorType::BadRequest, "State was not provided from Facebook".to_string());
+        }
+    };
+
+    // Note this must be the same as the redirect url used to in the original call.
+    let redirect_url = None;
+
+    FacebookClient::get_access_token(app_id, app_secret, redirect_url, query.code.ok_or_else(|| ApplicationError::new_with_type(ApplicationErrorType::Internal, "Code was not provided from Facebook".to_string()))?);
+
+
+    user.add_external_login()
+
+}
+
+/// Returns a list of pages that a user has access to manage
+pub fn pages((connection, user): (Connection, AuthUser)) -> Result<HttpResponse, BigNeonError> {
+    let conn = connection.get();
+    let db_user = user.user;
+
+    let client = FacebookClient::from_access_token(
+        db_user.find_external_login("facebook", conn)?.access_token,
+    );
+    let pages = client
+        .me
+        .accounts
+        .list()?
+        .into_iter()
+        .map(|p| FacebookPage {
+            id: p.id,
+            name: p.name,
+        })
+        .collect_vec();
+    Ok(HttpResponse::Ok().json(pages))
+}
+
+#[derive(Serialize)]
+pub struct FacebookPage {
+    pub id: String,
+    pub name: String,
+}
+

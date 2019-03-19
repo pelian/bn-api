@@ -17,6 +17,7 @@ extern crate chrono;
 extern crate diesel;
 extern crate dotenv;
 extern crate expo_server_sdk as expo;
+extern crate facebook;
 extern crate futures;
 extern crate globee;
 extern crate itertools;

@@ -14,21 +14,20 @@ extern crate reqwest;
 
 extern crate url;
 
-mod category;
-mod cover_photo;
+mod access_token;
+mod edges;
 mod endpoints;
-mod error;
-mod event;
+pub mod error;
 mod facebook_client;
 mod facebook_request;
 mod fbid;
-mod access_token;
+mod nodes;
 
 pub mod prelude {
-    pub use category::*;
-    pub use cover_photo::*;
-    pub use event::*;
+    pub use access_token::*;
+    pub use edges::*;
+    pub use error::*;
     pub use facebook_client::*;
     pub use fbid::*;
-    pub use access_token::*;
+    pub use nodes::*;
 }

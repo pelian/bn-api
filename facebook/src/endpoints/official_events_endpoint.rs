@@ -1,13 +1,13 @@
-use event::Event;
 use error::FacebookError;
-use facebook_request::FacebookRequest;
 use facebook_client::FacebookClientInner;
+use facebook_request::FacebookRequest;
 use fbid::FBID;
 use log::Level::{Debug, Info};
+use nodes::Event;
 use std::rc::Rc;
 
 pub struct OfficialEventsEndpoint {
-    pub client: Rc<FacebookClientInner>
+    pub client: Rc<FacebookClientInner>,
 }
 
 impl OfficialEventsEndpoint {

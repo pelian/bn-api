@@ -1,18 +1,17 @@
+use edges::Account;
 use error::FacebookError;
 use facebook_client::FacebookClientInner;
 use std::rc::Rc;
 
-pub struct AccountsEndpoint{
-    pub client: Rc<FacebookClientInner>
-
+pub struct AccountsEndpoint {
+    pub client: Rc<FacebookClientInner>,
 }
 
 impl AccountsEndpoint {
-    pub fn list(&self) -> Result<Vec<String>, FacebookError> {
-
+    pub fn list(&self) -> Result<Vec<Account>, FacebookError> {
         let client = reqwest::Client::new();
 
-       // println!("{}", json!(&request));
+        // println!("{}", json!(&request));
 
         //jlog!(Info, "Sending request to Facebook", { "request": &request });
 
@@ -27,6 +26,7 @@ impl AccountsEndpoint {
         let value: serde_json::Value = resp.json()?;
         println!("{:?}", value);
 
-        unimplemented!()
+        let results: Vec<Account> = serde_json::from_value(value)?;
+        Ok(results)
     }
 }
