@@ -557,6 +557,13 @@ impl Event {
         Ok(event)
     }
 
+    pub fn is_published(&self) -> bool {
+        match self.publish_date {
+            None => false,
+            Some(d) => d < Utc::now().naive_utc(),
+        }
+    }
+
     pub fn get_all_events_ending_between(
         organization_id: Uuid,
         start: NaiveDateTime,

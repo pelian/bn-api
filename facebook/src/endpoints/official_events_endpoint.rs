@@ -24,7 +24,7 @@ impl OfficialEventsEndpoint {
         jlog!(Info, "Sending request to Facebook", { "request": &request });
 
         let mut resp = client
-            .post(&format!("{}/v2.8/official_events", &self.client.base_url))
+            .post(&format!("{}/v3.1/official_events", &self.client.base_url))
             .json(&request)
             .send()?;
         let status = resp.status();

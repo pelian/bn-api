@@ -21,7 +21,7 @@ pub mod error;
 mod facebook_client;
 mod facebook_request;
 mod fbid;
-mod nodes;
+pub mod nodes;
 mod paging;
 
 pub mod prelude {

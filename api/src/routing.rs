@@ -81,7 +81,6 @@ pub fn routes(app: &mut CorsBuilder<AppState>) -> App<AppState> {
     .resource("/events/{id}/dashboard", |r| {
         r.method(Method::GET).with(events::dashboard);
     })
-
     .resource("/events/{id}/guests", |r| {
         r.method(Method::GET).with(events::guest_list);
     })
@@ -137,9 +136,10 @@ pub fn routes(app: &mut CorsBuilder<AppState>) -> App<AppState> {
     .resource("/external/facebook/pages", |r| {
         r.method(Method::GET).with(external::facebook::pages)
     })
-        .resource("/external/facebook/events", |r| {
-            r.method(Method::POST).with(events::external_publish);
-        })
+    .resource("/external/facebook/events", |r| {
+        r.method(Method::POST)
+            .with(external::facebook::create_event);
+    })
     .resource("/external/facebook/web_login", |r| {
         r.method(Method::POST).with(external::facebook::web_login)
     })

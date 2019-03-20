@@ -26,6 +26,9 @@ impl ApplicationError {
     pub fn new_with_type(error_type: ApplicationErrorType, reason: String) -> ApplicationError {
         ApplicationError { reason, error_type }
     }
+    pub fn unprocessable(reason: &str) -> ApplicationError {
+        ApplicationError::new_with_type(ApplicationErrorType::Unprocessable, reason.to_string())
+    }
 }
 
 impl fmt::Display for ApplicationError {

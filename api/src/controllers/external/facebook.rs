@@ -1,19 +1,20 @@
+use actix_web::Path;
 use actix_web::Query;
 use actix_web::{HttpResponse, State};
 use auth::user::User as AuthUser;
 use auth::TokenResponse;
 use bigneon_db::prelude::*;
+use controllers::redemption_codes::PathParameters;
 use db::Connection;
 use errors::*;
 use extractors::*;
-use facebook::prelude::FacebookClient;
+use facebook::nodes::Event as FBEvent;
+use facebook::prelude::{CoverPhoto, FacebookClient, FBID};
 use itertools::Itertools;
 use models::FacebookWebLoginToken;
 use reqwest;
 use serde_json;
 use server::AppState;
-use actix_web::Path;
-use controllers::redemption_codes::PathParameters;
 use uuid::Uuid;
 
 const FACEBOOK_GRAPH_URL: &str = "https://graph.facebook.com";
@@ -231,12 +232,17 @@ pub struct FacebookPage {
     pub name: String,
 }
 
-
 pub fn create_event(
-    (connection, user, data): (Connection,  AuthUser, Json<CreateFacebookEvent>),
+    (connection, user, data): (Connection, AuthUser, Json<CreateFacebookEvent>),
 ) -> Result<HttpResponse, BigNeonError> {
     let conn = connection.get();
     let event = Event::find(data.event_id, conn)?;
+    if !event.is_published() {
+        return Err(ApplicationError::unprocessable(
+            "Cannot create this event on Facebook until it is published",
+        )
+        .into());
+    }
     let mut organization = event.organization(conn)?;
     user.requires_scope_for_organization_event(Scopes::EventWrite, &organization, &event, conn)?;
 
@@ -246,13 +252,41 @@ pub fn create_event(
             .access_token,
     );
 
-    client.
+    let fb_event = FBEvent::new(
+        data.category.parse()?,
+        event.name.clone(),
+        event.additional_info.clone().unwrap_or("".to_string()),
+        FBID(data.page_id.clone()),
+        event
+            .venue(conn)?
+            .ok_or_else(|| {
+                ApplicationError::unprocessable(
+                    "Cannot publish this event on Facebook without a venue",
+                )
+            })?
+            .timezone,
+        event
+            .cover_image_url
+            .as_ref()
+            .map(|u| CoverPhoto::new(u.to_string())),
+        event
+            .event_start
+            .ok_or_else(|| {
+                ApplicationError::unprocessable(
+                    "Cannot publish this event in Facebook without a start time",
+                )
+            })?
+            .to_string(),
+    );
+    let fb_id = client.official_events.create(fb_event)?;
+
+    // Save fb_id onto event
     unimplemented!();
 }
 
 #[derive(Deserialize)]
-pub struct CreateFacebookEvent{
+pub struct CreateFacebookEvent {
     event_id: Uuid,
     page_id: String,
-    category: String
+    category: String,
 }

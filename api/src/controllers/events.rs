@@ -813,7 +813,6 @@ impl From<GuestListQueryParameters> for Paging {
     }
 }
 
-
 pub fn guest_list(
     (connection, query, path, user): (
         Connection,
