@@ -11,7 +11,7 @@ use utils::errors::DatabaseError;
 use utils::errors::ErrorCode;
 use uuid::Uuid;
 
-#[derive(Associations, Identifiable, Queryable, Serialize, Deserialize)]
+#[derive(Associations, Identifiable, Queryable, Serialize, Deserialize, Clone)]
 #[table_name = "settlements"]
 pub struct Settlement {
     pub id: Uuid,
