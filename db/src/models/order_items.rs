@@ -3,7 +3,7 @@ use diesel;
 use diesel::dsl::{self, select};
 use diesel::pg::types::sql_types::Array;
 use diesel::prelude::*;
-use diesel::sql_types::{BigInt, Bool, Nullable, Text, Uuid as dUuid};
+use diesel::sql_types::{BigInt, Nullable, Text, Uuid as dUuid};
 use models::*;
 use schema::{codes, order_items, ticket_instances, ticket_types};
 use std::borrow::Cow;

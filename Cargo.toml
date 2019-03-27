@@ -11,3 +11,7 @@ members = [
     "logging",
     "macros"
 ]
+
+[patch.crates-io]
+diesel_derives = {git="https://github.com/mikethetike/diesel", branch="r2d2-transaction-check"}
+diesel = {git="https://github.com/mikethetike/diesel", branch="r2d2-transaction-check"}

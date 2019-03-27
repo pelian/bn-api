@@ -1506,6 +1506,30 @@ impl Order {
         Ok(())
     }
 
+    pub fn add_free_payment(
+        &mut self,
+        external_payment: bool,
+        current_user_id: Uuid,
+        conn: &PgConnection,
+    ) -> Result<Payment, DatabaseError> {
+        let payment = Payment::create(
+            self.id,
+            Some(current_user_id),
+            PaymentStatus::Completed,
+            PaymentMethods::Free,
+            if external_payment {
+                PaymentProviders::External
+            } else {
+                PaymentProviders::Free
+            },
+            Some("Free Checkout".to_string()),
+            0,
+            None,
+            None,
+        );
+        self.add_payment(payment, Some(current_user_id), conn)
+    }
+
     pub fn add_external_payment(
         &mut self,
         external_reference: Option<String>,

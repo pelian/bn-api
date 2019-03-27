@@ -48,7 +48,7 @@ impl ServiceLocator {
                 )))
             }
             // External is not valid for service locator
-            PaymentProviders::External => {
+            PaymentProviders::Free | PaymentProviders::External => {
                 return Err(ApplicationError::new("Unknown payment provider".into()).into());
             }
         }
