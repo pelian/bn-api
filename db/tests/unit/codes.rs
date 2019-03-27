@@ -1,8 +1,13 @@
 use bigneon_db::dev::TestProject;
 use bigneon_db::models::*;
+use bigneon_db::schema::orders;
 use bigneon_db::utils::errors::ErrorCode::ValidationError;
 use chrono::prelude::*;
 use chrono::NaiveDateTime;
+use diesel;
+use diesel::dsl;
+use diesel::prelude::*;
+use diesel::query_dsl::RunQueryDsl;
 use time::Duration;
 use uuid::Uuid;
 
@@ -19,6 +24,7 @@ fn create() {
         "REDEMPTION".into(),
         10,
         Some(100),
+        None,
         start_date,
         end_date,
         None,
@@ -74,6 +80,7 @@ pub fn create_with_validation_errors() {
         "A".into(),
         10,
         None,
+        None,
         start_date,
         end_date,
         None,
@@ -112,15 +119,11 @@ pub fn create_with_validation_errors() {
                     "Start date must be before end date"
                 );
 
-                assert!(errors.contains_key("discount_in_cents"));
-                assert_eq!(errors["discount_in_cents"].len(), 1);
-                assert_eq!(errors["discount_in_cents"][0].code, "required");
+                assert!(errors.contains_key("discounts"));
+                assert_eq!(errors["discounts"].len(), 1);
+                assert_eq!(errors["discounts"][0].code, "required");
                 assert_eq!(
-                    &errors["discount_in_cents"][0]
-                        .message
-                        .clone()
-                        .unwrap()
-                        .into_owned(),
+                    &errors["discounts"][0].message.clone().unwrap().into_owned(),
                     "Discount required for Discount code type"
                 );
             }
@@ -139,6 +142,7 @@ pub fn create_with_validation_errors() {
         code.redemption_code,
         10,
         Some(100),
+        None,
         start_date,
         end_date,
         None,
@@ -177,6 +181,7 @@ pub fn create_with_validation_errors() {
         hold.redemption_code.unwrap(),
         10,
         Some(100),
+        None,
         start_date,
         end_date,
         None,
@@ -204,6 +209,46 @@ pub fn create_with_validation_errors() {
         },
     }
 
+    // Create with both absolute and percentage discounts
+    let start_date = NaiveDateTime::from(Utc::now().naive_utc() - Duration::days(1));
+    let end_date = NaiveDateTime::from(Utc::now().naive_utc() + Duration::days(2));
+    let result = Code::create(
+        "test2".into(),
+        event.id,
+        CodeTypes::Discount,
+        "testing two discounts".into(),
+        10,
+        Some(100),
+        Some(10),
+        start_date,
+        end_date,
+        None,
+    )
+    .commit(db.get_connection());
+
+    println!("{:?}", result);
+    match result {
+        Ok(_) => {
+            panic!("Expected validation error");
+        }
+
+        Err(error) => match &error.error_code {
+            ValidationError { errors } => {
+                assert!(errors.contains_key("discounts"));
+                assert_eq!(errors["discounts"].len(), 1);
+                assert_eq!(
+                    errors["discounts"][0].code,
+                    "only_single_discount_type_allowed"
+                );
+                assert_eq!(
+                    &errors["discounts"][0].message.clone().unwrap().into_owned(),
+                    "Cannot apply more than one type of discount"
+                );
+            }
+            _ => panic!("Expected validation error"),
+        },
+    }
+
     // Access code does not require a discount
     let start_date = NaiveDateTime::from(Utc::now().naive_utc() - Duration::days(1));
     let end_date = NaiveDateTime::from(Utc::now().naive_utc() + Duration::days(2));
@@ -214,11 +259,13 @@ pub fn create_with_validation_errors() {
         "NEWUNUSEDCODE".into(),
         10,
         None,
+        None,
         start_date,
         end_date,
         None,
     )
     .commit(db.get_connection());
+
     assert!(result.is_ok());
 }
 
@@ -363,8 +410,10 @@ fn find_by_redemption_code() {
     let db = TestProject::new();
     let connection = db.get_connection();
     let code = db.create_code().finish();
-    let found_code = Code::find_by_redemption_code(&code.redemption_code, connection).unwrap();
-    assert_eq!(code, found_code);
+    let found_code =
+        Code::find_by_redemption_code_with_availability(&code.redemption_code, None, connection)
+            .unwrap();
+    assert_eq!(code, found_code.code);
 }
 
 #[test]
@@ -521,4 +570,155 @@ pub fn find_for_event() {
         ],
         codes
     );
+}
+
+#[test]
+pub fn find_number_of_uses() {
+    let project = TestProject::new();
+    let conn = project.get_connection();
+    let user = project.create_user().finish();
+    let event = project
+        .create_event()
+        .with_ticket_pricing()
+        .with_ticket_type_count(2)
+        .finish();
+    let ticket_types = event.ticket_types(true, None, &conn).unwrap();
+    let ticket_type = &ticket_types[0];
+    let ticket_type2 = &ticket_types[1];
+    let code = project
+        .create_code()
+        .with_name("Discount 1".into())
+        .with_event(&event)
+        .with_code_type(CodeTypes::Discount)
+        .finish();
+
+    let code_availability = Code::find_by_redemption_code_with_availability(
+        code.redemption_code.clone().as_str(),
+        None,
+        conn,
+    )
+    .unwrap();
+    assert_eq!(code_availability.available, 30);
+
+    //Add some tickets to the cart
+    let mut cart = Order::find_or_create_cart(&user, conn).unwrap();
+
+    cart.update_quantities(
+        user.id,
+        &[
+            UpdateOrderItem {
+                ticket_type_id: ticket_type.id,
+                quantity: 10,
+                redemption_code: Some(code.redemption_code.clone()),
+            },
+            UpdateOrderItem {
+                ticket_type_id: ticket_type2.id,
+                quantity: 10,
+                redemption_code: None,
+            },
+        ],
+        false,
+        false,
+        conn,
+    )
+    .unwrap();
+
+    let code_availability = Code::find_by_redemption_code_with_availability(
+        code.redemption_code.clone().as_str(),
+        None,
+        conn,
+    )
+    .unwrap();
+    assert_eq!(code_availability.available, 20);
+
+    //Make cart expire
+    // 1 minute ago expires
+    let order = Order::find(cart.id, conn).unwrap();
+    let one_minute_ago = NaiveDateTime::from(Utc::now().naive_utc() - Duration::minutes(1));
+    let _order = diesel::update(orders::table.filter(orders::id.eq(order.id)))
+        .set((
+            orders::expires_at.eq(one_minute_ago),
+            orders::updated_at.eq(dsl::now),
+        ))
+        .get_result::<Order>(conn)
+        .unwrap();
+
+    let code_availability = Code::find_by_redemption_code_with_availability(
+        code.redemption_code.clone().as_str(),
+        None,
+        conn,
+    )
+    .unwrap();
+    assert_eq!(code_availability.available, 30);
+
+    //Now buy the tickets and make the order expire
+    cart.update_quantities(
+        user.id,
+        &[
+            UpdateOrderItem {
+                ticket_type_id: ticket_type.id,
+                quantity: 10,
+                redemption_code: Some(code.redemption_code.clone()),
+            },
+            UpdateOrderItem {
+                ticket_type_id: ticket_type2.id,
+                quantity: 10,
+                redemption_code: None,
+            },
+        ],
+        false,
+        false,
+        conn,
+    )
+    .unwrap();
+
+    let total = cart.calculate_total(conn).unwrap();
+    assert_eq!(total, 3000);
+    cart.add_external_payment(
+        Some("Test".to_string()),
+        ExternalPaymentType::CreditCard,
+        user.id,
+        total,
+        conn,
+    )
+    .unwrap();
+
+    // expire order
+    let order = Order::find(cart.id, conn).unwrap();
+    assert_eq!(order.status, OrderStatus::Paid);
+    let one_minute_ago = NaiveDateTime::from(Utc::now().naive_utc() - Duration::minutes(1));
+    let _order = diesel::update(orders::table.filter(orders::id.eq(order.id)))
+        .set(orders::expires_at.eq(one_minute_ago))
+        .get_result::<Order>(conn)
+        .unwrap();
+
+    let code_availability = Code::find_by_redemption_code_with_availability(
+        code.redemption_code.clone().as_str(),
+        None,
+        conn,
+    )
+    .unwrap();
+    assert_eq!(code_availability.available, 20);
+
+    //Lets refund those tickets
+    let items = cart.items(&conn).unwrap();
+    let order_item = items
+        .iter()
+        .find(|i| i.ticket_type_id == Some(ticket_type.id))
+        .unwrap();
+    let tickets = TicketInstance::find_for_order_item(order_item.id, conn).unwrap();
+    let ticket = &tickets[0];
+    let refund_items = vec![RefundItem {
+        order_item_id: order_item.id,
+        ticket_instance_id: Some(ticket.id),
+    }];
+    cart.refund(refund_items, user.id, conn).unwrap();
+
+    let code_availability = Code::find_by_redemption_code_with_availability(
+        code.redemption_code.clone().as_str(),
+        None,
+        conn,
+    )
+    .unwrap();
+    assert_eq!(code_availability.available, 30);
 }

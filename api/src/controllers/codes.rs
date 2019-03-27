@@ -17,6 +17,7 @@ pub struct CreateCodeRequest {
     pub code_type: CodeTypes,
     pub max_uses: u32,
     pub discount_in_cents: Option<u32>,
+    pub discount_as_percentage: Option<u32>,
     pub start_date: NaiveDateTime,
     pub end_date: NaiveDateTime,
     pub max_tickets_per_user: Option<u32>,
@@ -30,6 +31,8 @@ pub struct UpdateCodeRequest {
     pub max_uses: Option<i64>,
     #[serde(default, deserialize_with = "double_option::deserialize")]
     pub discount_in_cents: Option<Option<u32>>,
+    #[serde(default, deserialize_with = "double_option::deserialize")]
+    pub discount_as_percentage: Option<Option<u32>>,
     pub start_date: Option<NaiveDateTime>,
     pub end_date: Option<NaiveDateTime>,
     #[serde(default, deserialize_with = "double_option::deserialize")]
@@ -44,6 +47,9 @@ impl From<UpdateCodeRequest> for UpdateCodeAttributes {
             redemption_code: attributes.redemption_code,
             max_uses: attributes.max_uses.map(|m| m as i64),
             discount_in_cents: attributes.discount_in_cents.map(|d| d.map(|d2| d2 as i64)),
+            discount_as_percentage: attributes
+                .discount_as_percentage
+                .map(|d| d.map(|d2| d2 as i64)),
             start_date: attributes.start_date,
             end_date: attributes.end_date,
             max_tickets_per_user: attributes
@@ -92,6 +98,7 @@ pub fn create(
         req.redemption_code.clone(),
         req.max_uses,
         req.discount_in_cents,
+        req.discount_as_percentage,
         req.start_date,
         req.end_date,
         req.max_tickets_per_user,

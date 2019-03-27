@@ -44,6 +44,7 @@ fn find_for_user_for_display() {
         .for_user(&user)
         .quantity(2)
         .for_event(&event)
+        .is_paid()
         .finish();
     let mut cart2 = project
         .create_order()
@@ -55,7 +56,7 @@ fn find_for_user_for_display() {
     // Order is not paid so tickets are not accessible
     assert!(TicketInstance::find_for_user_for_display(
         user.id,
-        Some(event.id),
+        Some(event2.id),
         None,
         None,
         connection

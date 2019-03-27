@@ -36,18 +36,21 @@ impl DisplayTicketPricing {
                         discount_in_cents = hold.discount_in_cents.unwrap_or(0);
                     }
                 }
-            } else if let Some(code) =
-                Code::find_by_redemption_code(&redemption_code, conn).optional()?
+            } else if let Some(code_availability) =
+                Code::find_by_redemption_code_with_availability(&redemption_code, None, conn)
+                    .optional()?
             {
                 let now = Utc::now().naive_utc();
-                if now >= code.start_date && now <= code.end_date {
-                    if TicketType::find_for_code(code.id, conn)?
+                if now >= code_availability.code.start_date
+                    && now <= code_availability.code.end_date
+                {
+                    if TicketType::find_for_code(code_availability.code.id, conn)?
                         .iter()
                         .map(|tt| tt.id)
                         .collect::<Vec<Uuid>>()
                         .contains(&ticket_pricing.ticket_type_id)
                     {
-                        discount_in_cents = code.discount_in_cents.unwrap_or(0);
+                        discount_in_cents = code_availability.code.discount_in_cents.unwrap_or(0);
                     }
                 }
             }

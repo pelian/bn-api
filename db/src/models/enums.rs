@@ -137,7 +137,7 @@ string_enum! { HistoryType [Purchase]}
 string_enum! { HoldTypes [Discount, Comp] }
 string_enum! { HoldStatus [Published, Deleted] }
 string_enum! { OrderStatus [Cancelled, Draft, Paid, PendingPayment] }
-string_enum! { OrderItemTypes [Tickets, PerUnitFees, EventFees]}
+string_enum! { OrderItemTypes [Tickets, PerUnitFees, EventFees, Discount]}
 string_enum! { OrderTypes [Cart, BackOffice] }
 string_enum! { PaymentMethods [External, CreditCard, Provider] }
 string_enum! { PaymentProviders [External, Globee, Stripe] }

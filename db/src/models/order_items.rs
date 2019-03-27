@@ -7,6 +7,7 @@ use diesel::sql_types::{BigInt, Bool, Nullable, Text, Uuid as dUuid};
 use models::*;
 use schema::{codes, order_items, ticket_instances, ticket_types};
 use std::borrow::Cow;
+use std::cmp;
 use utils::errors::*;
 use uuid::Uuid;
 use validator::*;
@@ -49,6 +50,21 @@ impl OrderItem {
             .first(conn)
             .optional()
             .to_db_error(ErrorCode::QueryError, "Could not retrieve order item fees")
+    }
+
+    pub fn find_discount_item(
+        &self,
+        conn: &PgConnection,
+    ) -> Result<Option<OrderItem>, DatabaseError> {
+        order_items::table
+            .filter(order_items::parent_id.eq(self.id))
+            .filter(order_items::item_type.eq(OrderItemTypes::Discount))
+            .first(conn)
+            .optional()
+            .to_db_error(
+                ErrorCode::QueryError,
+                "Could not retrieve order item discount",
+            )
     }
 
     pub(crate) fn refund_one_unit(
@@ -106,6 +122,64 @@ impl OrderItem {
         Ok(())
     }
 
+    pub(crate) fn update_discount(
+        &self,
+        order: &Order,
+        conn: &PgConnection,
+    ) -> Result<(), DatabaseError> {
+        if self.item_type == OrderItemTypes::PerUnitFees
+            || self.item_type == OrderItemTypes::EventFees
+            || self.item_type == OrderItemTypes::Discount
+        {
+            return Ok(());
+        }
+
+        let discount_item = self.find_discount_item(conn)?;
+
+        if let Some(code_id) = self.code_id {
+            let code = Code::find(code_id, conn)?;
+            if code.code_type == CodeTypes::Discount {
+                let mut discount = 0;
+                if let Some(discount_percent) = code.discount_as_percentage {
+                    discount = cmp::min(
+                        ((self.unit_price_in_cents as f32) * (discount_percent as f32) / 100.0f32)
+                            as i64,
+                        self.unit_price_in_cents,
+                    );
+                } else if let Some(discount_in_cents) = code.discount_in_cents {
+                    discount = cmp::min(discount_in_cents, self.unit_price_in_cents);
+                }
+                if discount > 0 {
+                    if let Some(mut di) = discount_item {
+                        di.quantity = self.quantity;
+                        di.unit_price_in_cents = -discount;
+                        di.update(conn)?;
+                    } else {
+                        NewDiscountOrderItem {
+                            order_id: self.order_id,
+                            item_type: OrderItemTypes::Discount,
+                            event_id: self.event_id,
+                            quantity: self.quantity,
+                            unit_price_in_cents: -discount,
+                            company_fee_in_cents: 0,
+                            client_fee_in_cents: 0,
+                            parent_id: Some(self.id),
+                        }
+                        .commit(conn)?;
+                    }
+                } else {
+                    if let Some(di) = discount_item {
+                        order.destroy_item(di.id, conn)?;
+                    }
+                }
+            }
+        } else if let Some(di) = discount_item {
+            order.destroy_item(di.id, conn)?;
+        }
+
+        Ok(())
+    }
+
     pub(crate) fn update_fees(
         &self,
         order: &Order,
@@ -113,6 +187,7 @@ impl OrderItem {
     ) -> Result<(), DatabaseError> {
         if self.item_type == OrderItemTypes::PerUnitFees
             || self.item_type == OrderItemTypes::EventFees
+            || self.item_type == OrderItemTypes::Discount
         {
             return Ok(());
         }
@@ -128,12 +203,19 @@ impl OrderItem {
 
         let fee_schedule_ranges = ticket_type.fee_schedule(conn)?.ranges(conn)?;
 
+        let discount_item = self.find_discount_item(conn)?;
+
+        let unit_price_with_discount = match discount_item {
+            Some(di) => self.unit_price_in_cents + di.unit_price_in_cents,
+            None => self.unit_price_in_cents,
+        };
+
         if fee_schedule_ranges.len() > 0
-            && self.unit_price_in_cents >= fee_schedule_ranges[0].min_price_in_cents
+            && unit_price_with_discount >= fee_schedule_ranges[0].min_price_in_cents
         {
             let fee_schedule_range = ticket_type
                 .fee_schedule(conn)?
-                .get_range(self.unit_price_in_cents, conn)?;
+                .get_range(unit_price_with_discount, conn)?;
 
             // If the hold is a comp, then there are no fees.
             if let Some(hold_id) = self.hold_id {
@@ -228,6 +310,11 @@ impl OrderItem {
                 conn,
             )?,
         );
+        let validation_errors = validators::append_validation_error(
+            validation_errors,
+            "quantity",
+            OrderItem::code_id_max_uses_valid(self.order_id, self.code_id, self.quantity, conn)?,
+        );
         Ok(validation_errors?)
     }
 
@@ -311,18 +398,15 @@ impl OrderItem {
     fn code_id_max_uses_valid(
         order_id: Uuid,
         code_id: Option<Uuid>,
+        quantity: i64,
         conn: &PgConnection,
     ) -> Result<Result<(), ValidationError>, DatabaseError> {
         match code_id {
             None => return Ok(Ok(())),
             Some(code_id) => {
-                let result = select(order_items_code_id_max_uses_valid(order_id, code_id))
-                    .get_result::<bool>(conn)
-                    .to_db_error(
-                        ErrorCode::InsertError,
-                        "Could not confirm code_id valid for max uses",
-                    )?;
-                if !result {
+                let code = Code::find(code_id, conn)?;
+                let uses = Code::find_number_of_uses(code_id, Some(order_id), conn)?;
+                if code.max_uses > 0 && code.max_uses < uses + quantity {
                     let mut validation_error = create_validation_error(
                         "max_uses_reached",
                         "Redemption code maximum uses limit exceeded",
@@ -392,6 +476,7 @@ impl OrderItem {
            CASE
              WHEN item_type = 'PerUnitFees' THEN 'Ticket Fees'
              WHEN item_type = 'EventFees' THEN 'Event Fees - ' || e.name
+             WHEN item_type = 'Discount' THEN 'Discount'
              ELSE e.name || ' - ' || tt.name
            END AS description,
            COALESCE(h.redemption_code, c.redemption_code) as redemption_code,
@@ -538,8 +623,8 @@ impl NewTicketsOrderItem {
         );
         validation_errors = validators::append_validation_error(
             validation_errors,
-            "code_id",
-            OrderItem::code_id_max_uses_valid(self.order_id, self.code_id, conn)?,
+            "quantity",
+            OrderItem::code_id_max_uses_valid(self.order_id, self.code_id, self.quantity, conn)?,
         );
         validation_errors = validators::append_validation_error(
             validation_errors,
@@ -569,6 +654,28 @@ pub(crate) struct NewFeesOrderItem {
 }
 
 impl NewFeesOrderItem {
+    pub(crate) fn commit(self, conn: &PgConnection) -> Result<OrderItem, DatabaseError> {
+        diesel::insert_into(order_items::table)
+            .values(self)
+            .get_result(conn)
+            .to_db_error(ErrorCode::InsertError, "Could not create order item")
+    }
+}
+
+#[derive(Insertable, Serialize, Deserialize, PartialEq, Debug)]
+#[table_name = "order_items"]
+pub(crate) struct NewDiscountOrderItem {
+    pub order_id: Uuid,
+    pub item_type: OrderItemTypes,
+    pub event_id: Option<Uuid>,
+    pub quantity: i64,
+    pub unit_price_in_cents: i64,
+    pub company_fee_in_cents: i64,
+    pub client_fee_in_cents: i64,
+    pub parent_id: Option<Uuid>,
+}
+
+impl NewDiscountOrderItem {
     pub(crate) fn commit(self, conn: &PgConnection) -> Result<OrderItem, DatabaseError> {
         diesel::insert_into(order_items::table)
             .values(self)

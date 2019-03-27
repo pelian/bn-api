@@ -517,35 +517,53 @@ fn find_by_order_item_ids() {
         .with_ticket_pricing()
         .finish();
     let user = project.create_user().finish();
-    let mut cart = Order::find_or_create_cart(&user, connection).unwrap();
     let ticket_type = &event.ticket_types(true, None, connection).unwrap()[0];
     let ticket_type2 = &event2.ticket_types(true, None, connection).unwrap()[0];
+    let mut cart = Order::find_or_create_cart(&user, connection).unwrap();
     cart.update_quantities(
         user.id,
-        &[
-            UpdateOrderItem {
-                ticket_type_id: ticket_type.id,
-                quantity: 10,
-                redemption_code: None,
-            },
-            UpdateOrderItem {
-                ticket_type_id: ticket_type2.id,
-                quantity: 10,
-                redemption_code: None,
-            },
-        ],
+        &[UpdateOrderItem {
+            ticket_type_id: ticket_type.id,
+            quantity: 10,
+            redemption_code: None,
+        }],
         false,
         false,
         connection,
     )
     .unwrap();
+    let total = cart.calculate_total(connection).unwrap();
+    cart.add_external_payment(
+        Some("Test".to_string()),
+        ExternalPaymentType::CreditCard,
+        user.id,
+        total,
+        connection,
+    )
+    .unwrap();
+
+    let mut cart2 = Order::find_or_create_cart(&user, connection).unwrap();
+    cart2
+        .update_quantities(
+            user.id,
+            &[UpdateOrderItem {
+                ticket_type_id: ticket_type2.id,
+                quantity: 10,
+                redemption_code: None,
+            }],
+            false,
+            false,
+            connection,
+        )
+        .unwrap();
 
     let items = cart.items(&connection).unwrap();
+    let items2 = cart2.items(&connection).unwrap();
     let order_item = items
         .iter()
         .find(|i| i.ticket_type_id == Some(ticket_type.id))
         .unwrap();
-    let order_item2 = items
+    let order_item2 = items2
         .iter()
         .find(|i| i.ticket_type_id == Some(ticket_type2.id))
         .unwrap();

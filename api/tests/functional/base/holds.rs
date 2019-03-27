@@ -32,7 +32,7 @@ pub fn create(role: Roles, should_test_succeed: bool) {
         discount_in_cents,
         hold_type,
         end_at: None,
-        max_per_order: None,
+        max_per_user: None,
         quantity: 2,
         ticket_type_id: event
             .ticket_types(true, None, database.connection.get())

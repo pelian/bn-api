@@ -126,7 +126,7 @@ pub fn create(role: Roles, should_test_succeed: bool) {
         quantity,
         redemption_code: "OHHNOHEREITCOMES".to_string(),
         end_at: None,
-        max_per_order: None,
+        max_per_user: None,
     });
 
     let test_request = TestRequest::create();
