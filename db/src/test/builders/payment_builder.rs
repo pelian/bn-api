@@ -34,7 +34,7 @@ impl<'a> PaymentBuilder<'a> {
         self
     }
 
-     pub fn with_status(mut self, status: PaymentStatus) -> PaymentBuilder<'a> {
+    pub fn with_status(mut self, status: PaymentStatus) -> PaymentBuilder<'a> {
         self.status = status;
         self
     }
