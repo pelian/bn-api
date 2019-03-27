@@ -17,7 +17,7 @@ use uuid::Uuid;
 pub struct CreateTicketPricingRequest {
     pub name: String,
     pub price_in_cents: i64,
-    pub start_date: NaiveDateTime,
+    pub start_date: Option<NaiveDateTime>,
     pub end_date: NaiveDateTime,
     pub is_box_office_only: Option<bool>,
 }
@@ -28,7 +28,8 @@ pub struct CreateTicketTypeRequest {
     #[serde(default, deserialize_with = "deserialize_unless_blank")]
     pub description: Option<String>,
     pub capacity: u32,
-    pub start_date: NaiveDateTime,
+    pub start_date: Option<NaiveDateTime>,
+    pub parent_id: Option<Uuid>,
     pub end_date: NaiveDateTime,
     pub ticket_pricing: Vec<CreateTicketPricingRequest>,
     pub increment: Option<i32>,
@@ -54,7 +55,8 @@ pub struct UpdateTicketTypeRequest {
     #[serde(default, deserialize_with = "double_option_deserialize_unless_blank")]
     pub description: Option<Option<String>>,
     pub capacity: Option<u32>,
-    pub start_date: Option<NaiveDateTime>,
+    #[serde(default, deserialize_with = "double_option_deserialize_unless_blank")]
+    pub start_date: Option<Option<NaiveDateTime>>,
     pub end_date: Option<NaiveDateTime>,
     pub ticket_pricing: Option<Vec<UpdateTicketPricingRequest>>,
     pub increment: Option<i32>,
@@ -62,6 +64,8 @@ pub struct UpdateTicketTypeRequest {
     pub price_in_cents: Option<i64>,
     pub sold_out_behavior: Option<SoldOutBehavior>,
     pub is_private: Option<bool>,
+    #[serde(default, deserialize_with = "double_option_deserialize_unless_blank")]
+    pub parent_id: Option<Option<Uuid>>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -104,6 +108,7 @@ pub fn create(
         data.description.clone(),
         data.capacity,
         data.start_date,
+        data.parent_id,
         data.end_date,
         org_wallet.id,
         data.increment,
@@ -317,6 +322,7 @@ pub fn update(
         price_in_cents: data.price_in_cents,
         sold_out_behavior: data.sold_out_behavior,
         is_private: data.is_private,
+        parent_id : data.parent_id
     };
     let updated_ticket_type = ticket_type.update(update_parameters, connection)?;
 

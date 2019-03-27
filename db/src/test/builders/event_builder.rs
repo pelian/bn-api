@@ -169,7 +169,8 @@ impl<'a> EventBuilder<'a> {
                         format!("Ticket Type {}", x).into(),
                         None,
                         self.ticket_quantity,
-                        event_start,
+                        Some(event_start),
+                        None,
                         event_end,
                         wallet_id,
                         None,
@@ -185,7 +186,7 @@ impl<'a> EventBuilder<'a> {
                     ticket_type
                         .add_ticket_pricing(
                             "Early bird".into(),
-                            early_bird_start,
+                            Some(early_bird_start),
                             early_bird_end,
                             100,
                             false,
@@ -197,7 +198,7 @@ impl<'a> EventBuilder<'a> {
                     ticket_type
                         .add_ticket_pricing(
                             "Standard".into(),
-                            standard_start,
+                            Some(standard_start),
                             standard_end,
                             150,
                             false,

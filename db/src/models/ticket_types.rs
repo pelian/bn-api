@@ -12,8 +12,8 @@ use schema::{
 use std::cmp::Ordering;
 use utils::errors::*;
 use uuid::Uuid;
-use validator::*;
-use validators;
+//use validator::*;
+//use validators;
 
 #[derive(Associations, Clone, Debug, Identifiable, PartialEq, Queryable, QueryableByName)]
 #[table_name = "ticket_types"]
@@ -24,7 +24,7 @@ pub struct TicketType {
     pub name: String,
     pub description: Option<String>,
     pub status: TicketTypeStatus,
-    pub start_date: NaiveDateTime,
+    pub start_date: Option<NaiveDateTime>,
     pub end_date: NaiveDateTime,
     pub increment: i32,
     pub limit_per_person: i32,
@@ -34,6 +34,7 @@ pub struct TicketType {
     pub cancelled_at: Option<NaiveDateTime>,
     pub sold_out_behavior: SoldOutBehavior,
     pub is_private: bool,
+    pub parent_id: Option<Uuid>,
 }
 
 impl PartialOrd for TicketType {
@@ -46,14 +47,18 @@ impl PartialOrd for TicketType {
 #[table_name = "ticket_types"]
 pub struct TicketTypeEditableAttributes {
     pub name: Option<String>,
+    #[serde(default, deserialize_with = "double_option_deserialize_unless_blank")]
     pub description: Option<Option<String>>,
-    pub start_date: Option<NaiveDateTime>,
+    #[serde(default, deserialize_with = "double_option_deserialize_unless_blank")]
+    pub start_date: Option<Option<NaiveDateTime>>,
     pub end_date: Option<NaiveDateTime>,
     pub increment: Option<i32>,
     pub limit_per_person: Option<i32>,
     pub price_in_cents: Option<i64>,
     pub sold_out_behavior: Option<SoldOutBehavior>,
     pub is_private: Option<bool>,
+    #[serde(default, deserialize_with = "double_option_deserialize_unless_blank")]
+    pub parent_id: Option<Option<Uuid>>,
 }
 
 impl TicketType {
@@ -89,7 +94,8 @@ impl TicketType {
         event_id: Uuid,
         name: String,
         description: Option<String>,
-        start_date: NaiveDateTime,
+        start_date: Option<NaiveDateTime>,
+        parent_id: Option<Uuid>,
         end_date: NaiveDateTime,
         increment: Option<i32>,
         limit_per_person: i32,
@@ -103,6 +109,7 @@ impl TicketType {
             description,
             status: TicketTypeStatus::Published,
             start_date,
+            parent_id,
             end_date,
             increment,
             limit_per_person,
@@ -189,54 +196,58 @@ impl TicketType {
         &self,
         attributes: &TicketTypeEditableAttributes,
     ) -> Result<(), DatabaseError> {
-        let validation_errors = validators::append_validation_error(
-            Ok(()),
-            "start_date",
-            validators::start_date_valid(
-                attributes.start_date.unwrap_or(self.start_date),
-                attributes.end_date.unwrap_or(self.end_date),
-            ),
-        );
-
-        Ok(validation_errors?)
+        unimplemented!()
+        //        let validation_errors = validators::append_validation_error(
+        //            Ok(()),
+        //            "start_date",
+        //            validators::start_date_valid(
+        //                attributes.start_date.unwrap_or(self.start_date),
+        //                attributes.end_date.unwrap_or(self.end_date),
+        //            ),
+        //        );
+        //
+        //        Ok(validation_errors?)
     }
 
     pub fn validate_ticket_pricing(&self, conn: &PgConnection) -> Result<(), DatabaseError> {
-        let mut validation_errors: Result<(), ValidationErrors> = Ok(());
-
-        for ticket_pricing in self.ticket_pricing(conn)? {
-            validation_errors = validators::append_validation_error(
-                validation_errors,
-                "ticket_pricing",
-                TicketPricing::ticket_pricing_no_overlapping_periods(
-                    ticket_pricing.id,
-                    self.id,
-                    ticket_pricing.start_date,
-                    ticket_pricing.end_date,
-                    ticket_pricing.is_box_office_only,
-                    ticket_pricing.status,
-                    conn,
-                )?,
-            );
-            validation_errors = validators::append_validation_error(
-                validation_errors,
-                "ticket_pricing.start_date",
-                TicketPricing::ticket_pricing_does_not_overlap_ticket_type_start_date(
-                    self,
-                    ticket_pricing.start_date,
-                )?,
-            );
-            validation_errors = validators::append_validation_error(
-                validation_errors,
-                "ticket_pricing.end_date",
-                TicketPricing::ticket_pricing_does_not_overlap_ticket_type_end_date(
-                    self,
-                    ticket_pricing.end_date,
-                )?,
-            );
-        }
-
-        Ok(validation_errors?)
+        unimplemented!()
+        //        let mut validation_errors: Result<(), ValidationErrors> = Ok(());
+        //
+        //        for ticket_pricing in self.ticket_pricing(conn)? {
+        //            validation_errors = validators::append_validation_error(
+        //                validation_errors,
+        //                "ticket_pricing",
+        //                TicketPricing::ticket_pricing_no_overlapping_periods(
+        //                    ticket_pricing.id,
+        //                    self.id,
+        //                    ticket_pricing.start_date,
+        //                    ticket_pricing.end_date,
+        //                    ticket_pricing.is_box_office_only,
+        //                    ticket_pricing.status,
+        //                    conn,
+        //                )?,
+        //            );
+        //            if let Some(start_date) = ticket_pricing.start_date {
+        //                validation_errors = validators::append_validation_error(
+        //                    validation_errors,
+        //                    "ticket_pricing.start_date",
+        //                    TicketPricing::ticket_pricing_does_not_overlap_ticket_type_start_date(
+        //                        self, start_date,
+        //                    )?,
+        //                );
+        //            }
+        //
+        //            validation_errors = validators::append_validation_error(
+        //                validation_errors,
+        //                "ticket_pricing.end_date",
+        //                TicketPricing::ticket_pricing_does_not_overlap_ticket_type_end_date(
+        //                    self,
+        //                    ticket_pricing.end_date,
+        //                )?,
+        //            );
+        //        }
+        //
+        //        Ok(validation_errors?)
     }
 
     pub fn find_by_event_id(
@@ -413,7 +424,7 @@ impl TicketType {
     pub fn add_ticket_pricing(
         &self,
         name: String,
-        start_date: NaiveDateTime,
+        start_date: Option<NaiveDateTime>,
         end_date: NaiveDateTime,
         price_in_cents: i64,
         is_box_office_only: bool,
@@ -440,7 +451,8 @@ pub struct NewTicketType {
     name: String,
     description: Option<String>,
     status: TicketTypeStatus,
-    start_date: NaiveDateTime,
+    start_date: Option<NaiveDateTime>,
+    parent_id: Option<Uuid>,
     end_date: NaiveDateTime,
     increment: Option<i32>,
     limit_per_person: i32,
@@ -471,12 +483,13 @@ impl NewTicketType {
     }
 
     pub fn validate_record(&self) -> Result<(), DatabaseError> {
-        let validation_errors = validators::append_validation_error(
-            Ok(()),
-            "start_date",
-            validators::start_date_valid(self.start_date, self.end_date),
-        );
-
-        Ok(validation_errors?)
+        unimplemented!()
+        //        let validation_errors = validators::append_validation_error(
+        //            Ok(()),
+        //            "start_date",
+        //            validators::start_date_valid(self.start_date, self.end_date),
+        //        );
+        //
+        //        Ok(validation_errors?)
     }
 }
