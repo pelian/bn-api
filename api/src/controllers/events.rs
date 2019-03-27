@@ -56,6 +56,7 @@ struct EventVenueEntry {
     age_limit: Option<String>,
     cancelled_at: Option<NaiveDateTime>,
     venue: Option<Venue>,
+    artists: Option<Vec<DisplayEventArtist>>,
     min_ticket_price: Option<i64>,
     max_ticket_price: Option<i64>,
     is_external: bool,
@@ -1141,7 +1142,7 @@ fn event_venues_from_events(
     let mut results: Vec<EventVenueEntry> = Vec::new();
     for event in events.into_iter() {
         let venue = event.venue_id.and_then(|v| Some(venue_map[&v].clone()));
-
+        let artists = EventArtist::find_all_from_event(event.id, connection)?;
         let mut min_ticket_price = None;
         let mut max_ticket_price = None;
         if let Some((min, max)) = event_ticket_range_mapping.get(&event.id) {
@@ -1160,6 +1161,7 @@ fn event_venues_from_events(
 
         results.push(EventVenueEntry {
             venue,
+            artists: Some(artists),
             id: event.id,
             name: event.name,
             organization_id,

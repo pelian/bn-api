@@ -49,8 +49,8 @@ pub fn index() {
         .finish();
 
     let expected_results = vec![
-        event_venue_entry(&event, &venue, None, &*connection),
-        event_venue_entry(&event2, &venue, None, &*connection),
+        event_venue_entry(&event, &venue, &vec![], None, &*connection),
+        event_venue_entry(&event2, &venue, &vec![], None, &*connection),
     ];
 
     let test_request = TestRequest::create_with_uri("/events?query=New");
@@ -116,8 +116,8 @@ pub fn index_for_user() {
         .finish();
 
     let expected_results = vec![
-        event_venue_entry(&event, &venue, Some(user.clone()), &*connection),
-        event_venue_entry(&event2, &venue, Some(user), &*connection),
+        event_venue_entry(&event, &venue, &vec![], Some(user.clone()), &*connection),
+        event_venue_entry(&event2, &venue, &vec![], Some(user), &*connection),
     ];
 
     let test_request = TestRequest::create_with_uri("/events?query=New");
@@ -182,8 +182,8 @@ pub fn index_with_draft_for_organization_user() {
         .finish();
 
     let expected_results = vec![
-        event_venue_entry(&event, &venue, None, &*connection),
-        event_venue_entry(&event2, &venue, None, &*connection),
+        event_venue_entry(&event, &venue, &vec![], None, &*connection),
+        event_venue_entry(&event2, &venue, &vec![], None, &*connection),
     ];
 
     let test_request = TestRequest::create_with_uri("/events?query=New");
@@ -243,7 +243,13 @@ pub fn index_with_draft_for_user_ignores_drafts() {
         .with_event_end(NaiveDate::from_ymd(2022, 7, 9).and_hms(9, 10, 11))
         .finish();
 
-    let expected_results = vec![event_venue_entry(&event, &venue, None, &*connection)];
+    let expected_results = vec![event_venue_entry(
+        &event,
+        &venue,
+        &vec![],
+        None,
+        &*connection,
+    )];
 
     let test_request = TestRequest::create_with_uri("/events?query=New");
     let parameters = Query::<SearchParameters>::extract(&test_request.request).unwrap();
@@ -310,6 +316,7 @@ pub fn index_search_with_filter() {
         age_limit: event.age_limit,
         cancelled_at: event.cancelled_at,
         venue: None,
+        artists: Some(vec![]),
         min_ticket_price: None,
         max_ticket_price: None,
         is_external: false,
@@ -1544,6 +1551,7 @@ struct EventVenueEntry {
     age_limit: Option<String>,
     cancelled_at: Option<NaiveDateTime>,
     venue: Option<Venue>,
+    artists: Option<Vec<DisplayEventArtist>>,
     min_ticket_price: Option<i64>,
     max_ticket_price: Option<i64>,
     is_external: bool,
@@ -1557,6 +1565,7 @@ struct EventVenueEntry {
 fn event_venue_entry(
     event: &Event,
     venue: &Venue,
+    artists: &Vec<DisplayEventArtist>,
     user: Option<User>,
     connection: &PgConnection,
 ) -> EventVenueEntry {
@@ -1580,6 +1589,7 @@ fn event_venue_entry(
         age_limit: event.age_limit.clone(),
         cancelled_at: event.cancelled_at,
         venue: Some(venue.clone()),
+        artists: Some(artists.clone()),
         min_ticket_price: min_ticket_price,
         max_ticket_price: max_ticket_price,
         is_external: event.is_external.clone(),

@@ -453,7 +453,7 @@ fn purchase_metadata() {
     expected.push(("user_name".to_string(), user.full_name()));
     expected.push(("ticket_quantity".to_string(), 2.to_string()));
     expected.push((
-        "unit_price_in_cents".to_string(),
+        "face_value_in_cents".to_string(),
         (cost_per_ticket * 2).to_string(),
     ));
     expected.push((
@@ -1447,6 +1447,8 @@ fn replace_tickets_with_code_pricing() {
     )
     .unwrap();
     let items = cart.items(connection).unwrap();
+
+    println!("{:?}", items);
 
     assert_eq!(items.len(), 2);
     let order_item = items

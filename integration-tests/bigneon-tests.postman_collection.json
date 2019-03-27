@@ -1,6 +1,6 @@
 {
 	"info": {
-		"_postman_id": "89075858-5e54-411e-8441-46a0d61f092e",
+		"_postman_id": "487a8e1b-ef6f-4b31-b942-ffb368a9dfd7",
 		"name": "bigneon-tests",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
@@ -6418,6 +6418,316 @@
 						}
 					},
 					"response": []
+				},
+				{
+					"name": "OrgMember - create discount percentage clamped",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "0936a8c3-977f-412b-95de-f9ab1abd5203",
+								"exec": [
+									"pm.test(\"should be 201\", function() {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"let json = JSON.parse(responseBody);",
+									"pm.environment.set(\"last_code_id\", json.id);",
+									"pm.environment.set(\"discount_percentage_redemption_code_clamped\", json.redemption_code);",
+									"",
+									"pm.test(\"discount should have correct information\", function(){",
+									"    pm.expect(json.name).to.equal(\"Discount Tickets\");",
+									"    pm.expect(json.max_uses).to.equal(10);",
+									"    pm.expect(json.code_type).to.equal(\"Discount\");",
+									"    pm.expect(json.discount_as_percentage).to.equal(110);",
+									"    pm.expect(json.start_date).to.equal(\"2018-01-01T12:00:00\");",
+									"    pm.expect(json.end_date).to.equal(\"2059-01-01T12:00:00\");",
+									"    let ticket_type_id = pm.variables.get(\"last_ticket_type_id\");",
+									"    pm.expect(json.ticket_type_ids[0]).to.equal(ticket_type_id);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{org_member_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n\t\"name\":\"Discount Tickets\",\n\t\"code_type\" : \"Discount\",\n\t\"redemption_code\" : \"RedeemDiscountCode{{$timestamp}}_percentage_clamped\",\n\t\"max_uses\" : 10,\n\t\"discount_as_percentage\" : 110,\n\t\"start_date\": \"2018-01-01T12:00:00\",\n\t\"end_date\": \"2059-01-01T12:00:00\",\n\t\"ticket_type_ids\": [\"{{last_ticket_type_id}}\"]\n}"
+						},
+						"url": {
+							"raw": "http://{{server}}/events/{{last_event_id}}/codes",
+							"protocol": "http",
+							"host": [
+								"{{server}}"
+							],
+							"path": [
+								"events",
+								"{{last_event_id}}",
+								"codes"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "OrgMember - create discount absolute clamped",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "0936a8c3-977f-412b-95de-f9ab1abd5203",
+								"exec": [
+									"pm.test(\"should be 201\", function() {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"let json = JSON.parse(responseBody);",
+									"pm.environment.set(\"last_code_id\", json.id);",
+									"pm.environment.set(\"discount_redemption_code_clamped\", json.redemption_code);",
+									"",
+									"pm.test(\"discount should have correct information\", function(){",
+									"    pm.expect(json.name).to.equal(\"Discount Tickets\");",
+									"    pm.expect(json.max_uses).to.equal(10);",
+									"    pm.expect(json.code_type).to.equal(\"Discount\");",
+									"    pm.expect(json.discount_in_cents).to.equal(9999);",
+									"    pm.expect(json.start_date).to.equal(\"2018-01-01T12:00:00\");",
+									"    pm.expect(json.end_date).to.equal(\"2059-01-01T12:00:00\");",
+									"    pm.expect(json.max_tickets_per_user).to.equal(2);",
+									"    let ticket_type_id = pm.variables.get(\"last_ticket_type_id\");",
+									"    pm.expect(json.ticket_type_ids[0]).to.equal(ticket_type_id);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{org_member_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n\t\"name\":\"Discount Tickets\",\n\t\"code_type\" : \"Discount\",\n\t\"redemption_code\" : \"RedeemDiscountCode{{$timestamp}}_absolute_clamped\",\n\t\"max_uses\" : 10,\n\t\"discount_in_cents\" : 9999,\n\t\"start_date\": \"2018-01-01T12:00:00\",\n\t\"end_date\": \"2059-01-01T12:00:00\",\n\t\"max_tickets_per_user\" : 2,\n\t\"ticket_type_ids\": [\"{{last_ticket_type_id}}\"]\n}"
+						},
+						"url": {
+							"raw": "http://{{server}}/events/{{last_event_id}}/codes",
+							"protocol": "http",
+							"host": [
+								"{{server}}"
+							],
+							"path": [
+								"events",
+								"{{last_event_id}}",
+								"codes"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Guest - register",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "3e16f515-b7c5-4312-b241-2d72c62323f0",
+								"exec": [
+									"pm.test(\"should be 201\", function() {",
+									"    pm.response.to.have.status(201);",
+									"})",
+									"",
+									"",
+									""
+								],
+								"type": "text/javascript"
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"id": "9c70409f-473d-4a08-94e7-b32f606b85a7",
+								"exec": [
+									"pm.environment.set(\"discount_email\", \"discount\" + Math.floor(Math.random() * 10000) + \"@test.com\");"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n\t\"first_name\":\"Mike\",\n\t\"last_name\":\"Discount\",\n\t\"email\":\"{{discount_email}}\",\n\t\"phone\":\"555\",\n\t\"password\": \"itsasecret\"\n}"
+						},
+						"url": {
+							"raw": "http://{{server}}/users/register",
+							"protocol": "http",
+							"host": [
+								"{{server}}"
+							],
+							"path": [
+								"users",
+								"register"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Guest - login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "d3677e01-0ed8-4cd2-9673-0e6dacae9a53",
+								"exec": [
+									"pm.test(\"should be 200\", function() {",
+									"    pm.response.to.have.status(200);",
+									"})",
+									"",
+									"let json = JSON.parse(responseBody);",
+									"",
+									"pm.environment.set(\"discount_user_token\", json.access_token);",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n\t\"email\":\"{{last_email}}\", \"password\":\"itsasecret\"\n}"
+						},
+						"url": {
+							"raw": "http://{{server}}/auth/token",
+							"protocol": "http",
+							"host": [
+								"{{server}}"
+							],
+							"path": [
+								"auth",
+								"token"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "User - Test discount ticket price clamp to zero",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "aadca825-5dbc-4d09-8fb8-6b9d7cbe9350",
+								"exec": [
+									"pm.test(\"should be 200\", function() {",
+									"    pm.response.to.have.status(200);",
+									"})",
+									"",
+									"let json = JSON.parse(responseBody);",
+									"",
+									"pm.environment.set(\"last_cart_id\", json.cart_id);",
+									"",
+									"pm.test(\"tickets should be present\", function(){",
+									"    pm.expect(json.items.length).to.equal(6);",
+									"    ",
+									"    // these are tested properly in later calls",
+									"   ",
+									"});",
+									"",
+									"pm.test(\"Discount prices should be clamped at -3000\", function() {",
+									"    pm.expect(json.items[4].unit_price_in_cents).to.equal(-3000);",
+									"    pm.expect(json.items[5].unit_price_in_cents).to.equal(-3000);",
+									"})",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{discount_user_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n\"items\": [{\n\"ticket_type_id\": \"{{ga_ticket_type_id}}\",\n\"redemption_code\": \"{{discount_redemption_code_clamped}}\",\n\"quantity\":1\n}, {\n\"ticket_type_id\": \"{{vip_ticket_type_id}}\",\n\"quantity\":1,\n\"redemption_code\": \"{{discount_percentage_redemption_code_clamped}}\"\n}\n]}"
+						},
+						"url": {
+							"raw": "http://{{server}}/cart",
+							"protocol": "http",
+							"host": [
+								"{{server}}"
+							],
+							"path": [
+								"cart"
+							]
+						}
+					},
+					"response": []
 				}
 			]
 		},
@@ -9862,6 +10172,711 @@
 								"events",
 								"{{last_event_id}}",
 								"tickets"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Buy Tickets - Discounts",
+			"item": [
+				{
+					"name": "OrgMember - create discount absolute",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "0936a8c3-977f-412b-95de-f9ab1abd5203",
+								"exec": [
+									"pm.test(\"should be 201\", function() {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"let json = JSON.parse(responseBody);",
+									"pm.environment.set(\"last_code_id\", json.id);",
+									"pm.environment.set(\"discount_redemption_code\", json.redemption_code);",
+									"",
+									"pm.test(\"discount should have correct information\", function(){",
+									"    pm.expect(json.name).to.equal(\"Discount Tickets\");",
+									"    pm.expect(json.max_uses).to.equal(10);",
+									"    pm.expect(json.code_type).to.equal(\"Discount\");",
+									"    pm.expect(json.discount_in_cents).to.equal(100);",
+									"    pm.expect(json.start_date).to.equal(\"2018-01-01T12:00:00\");",
+									"    pm.expect(json.end_date).to.equal(\"2059-01-01T12:00:00\");",
+									"    pm.expect(json.max_tickets_per_user).to.equal(2);",
+									"    let ticket_type_id = pm.variables.get(\"last_ticket_type_id\");",
+									"    pm.expect(json.ticket_type_ids[0]).to.equal(ticket_type_id);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{org_member_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n\t\"name\":\"Discount Tickets\",\n\t\"code_type\" : \"Discount\",\n\t\"redemption_code\" : \"RedeemDiscountCode{{$timestamp}}_absolute\",\n\t\"max_uses\" : 10,\n\t\"discount_in_cents\" : 100,\n\t\"start_date\": \"2018-01-01T12:00:00\",\n\t\"end_date\": \"2059-01-01T12:00:00\",\n\t\"max_tickets_per_user\" : 2,\n\t\"ticket_type_ids\": [\"{{last_ticket_type_id}}\"]\n}"
+						},
+						"url": {
+							"raw": "http://{{server}}/events/{{last_event_id}}/codes",
+							"protocol": "http",
+							"host": [
+								"{{server}}"
+							],
+							"path": [
+								"events",
+								"{{last_event_id}}",
+								"codes"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "OrgMember - create discount percentage",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "0936a8c3-977f-412b-95de-f9ab1abd5203",
+								"exec": [
+									"pm.test(\"should be 201\", function() {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"let json = JSON.parse(responseBody);",
+									"pm.environment.set(\"last_code_id\", json.id);",
+									"pm.environment.set(\"discount_percentage_redemption_code\", json.redemption_code);",
+									"",
+									"pm.test(\"discount should have correct information\", function(){",
+									"    pm.expect(json.name).to.equal(\"Discount Tickets\");",
+									"    pm.expect(json.max_uses).to.equal(10);",
+									"    pm.expect(json.code_type).to.equal(\"Discount\");",
+									"    pm.expect(json.discount_as_percentage).to.equal(10);",
+									"    pm.expect(json.start_date).to.equal(\"2018-01-01T12:00:00\");",
+									"    pm.expect(json.end_date).to.equal(\"2059-01-01T12:00:00\");",
+									"    let ticket_type_id = pm.variables.get(\"last_ticket_type_id\");",
+									"    pm.expect(json.ticket_type_ids[0]).to.equal(ticket_type_id);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{org_member_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n\t\"name\":\"Discount Tickets\",\n\t\"code_type\" : \"Discount\",\n\t\"redemption_code\" : \"RedeemDiscountCode{{$timestamp}}_percentage\",\n\t\"max_uses\" : 10,\n\t\"discount_as_percentage\" : 10,\n\t\"start_date\": \"2018-01-01T12:00:00\",\n\t\"end_date\": \"2059-01-01T12:00:00\",\n\t\"ticket_type_ids\": [\"{{last_ticket_type_id}}\"]\n}"
+						},
+						"url": {
+							"raw": "http://{{server}}/events/{{last_event_id}}/codes",
+							"protocol": "http",
+							"host": [
+								"{{server}}"
+							],
+							"path": [
+								"events",
+								"{{last_event_id}}",
+								"codes"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Guest - login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "d3677e01-0ed8-4cd2-9673-0e6dacae9a53",
+								"exec": [
+									"pm.test(\"should be 200\", function() {",
+									"    pm.response.to.have.status(200);",
+									"})",
+									"",
+									"let json = JSON.parse(responseBody);",
+									"",
+									"pm.environment.set(\"discount_user_token\", json.access_token);",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "noauth"
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n\t\"email\":\"{{discount_email}}\", \"password\":\"itsasecret\"\n}"
+						},
+						"url": {
+							"raw": "http://{{server}}/auth/token",
+							"protocol": "http",
+							"host": [
+								"{{server}}"
+							],
+							"path": [
+								"auth",
+								"token"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "User - add to cart GA and VIP",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "aadca825-5dbc-4d09-8fb8-6b9d7cbe9350",
+								"exec": [
+									"pm.test(\"should be 200\", function() {",
+									"    pm.response.to.have.status(200);",
+									"})",
+									"",
+									"let json = JSON.parse(responseBody);",
+									"",
+									"pm.environment.set(\"last_cart_id\", json.cart_id);",
+									"",
+									"pm.test(\"tickets should be present\", function(){",
+									"    pm.expect(json.items.length).to.equal(7);",
+									"    ",
+									"    // these are tested properly in later calls",
+									"   ",
+									"});",
+									"",
+									"pm.test(\"total should be correct\", function() {",
+									"    pm.expect(json.total_in_cents).to.equal(11340);",
+									"})",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{discount_user_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n\"items\": [{\n\"ticket_type_id\": \"{{ga_ticket_type_id}}\",\n\"redemption_code\": \"{{discount_redemption_code}}\",\n\"quantity\":2\n}, {\n\"ticket_type_id\": \"{{vip_ticket_type_id}}\",\n\"quantity\":2,\n\"redemption_code\": \"{{discount_percentage_redemption_code}}\"\n}\n]}"
+						},
+						"url": {
+							"raw": "http://{{server}}/cart",
+							"protocol": "http",
+							"host": [
+								"{{server}}"
+							],
+							"path": [
+								"cart"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "User - add more than max uses per user added to cart",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "aadca825-5dbc-4d09-8fb8-6b9d7cbe9350",
+								"exec": [
+									"pm.test(\"should be 422\", function() {",
+									"    pm.response.to.have.status(422);",
+									"})",
+									"",
+									"let json = JSON.parse(responseBody);",
+									"",
+									"pm.test(\"Error code should be max_tickets_per_user_reached\", function(){",
+									"    pm.expect(json.fields.quantity[0].code).to.equal(\"max_tickets_per_user_reached\");",
+									"",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{discount_user_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n\"items\": [{\n\"ticket_type_id\": \"{{ga_ticket_type_id}}\",\n\"redemption_code\": \"{{discount_redemption_code}}\",\n\"quantity\":3\n}\n]}"
+						},
+						"url": {
+							"raw": "http://{{server}}/cart",
+							"protocol": "http",
+							"host": [
+								"{{server}}"
+							],
+							"path": [
+								"cart"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "User - add more than max discount uses to cart",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "aadca825-5dbc-4d09-8fb8-6b9d7cbe9350",
+								"exec": [
+									"pm.test(\"should be 422\", function() {",
+									"    pm.response.to.have.status(422);",
+									"})",
+									"",
+									"let json = JSON.parse(responseBody);",
+									"",
+									"pm.environment.set(\"last_cart_id\", json.cart_id);",
+									"",
+									"pm.test(\"Error code should be max_uses_reached\", function(){",
+									"    pm.expect(json.fields.quantity[0].code).to.equal(\"max_uses_reached\");",
+									"",
+									"});",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{discount_user_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n\"items\": [{\n\"ticket_type_id\": \"{{vip_ticket_type_id}}\",\n\"quantity\":11,\n\"redemption_code\": \"{{discount_percentage_redemption_code}}\"\n}\n]}"
+						},
+						"url": {
+							"raw": "http://{{server}}/cart",
+							"protocol": "http",
+							"host": [
+								"{{server}}"
+							],
+							"path": [
+								"cart"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Do STRIPE form post",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "bf1ae8f4-683d-4b15-8362-773405313887",
+								"exec": [
+									"pm.test(\"should be 200\", function() {",
+									"    pm.response.to.have.status(200);",
+									"})",
+									"",
+									"let json = JSON.parse(responseBody);",
+									"pm.environment.set(\"last_credit_card_token\", json.id);"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "origin",
+								"value": "https://checkout.stripe.com"
+							},
+							{
+								"key": "accept-encoding",
+								"value": "gzip, deflate, br"
+							},
+							{
+								"key": "accept-language",
+								"value": "en-GB"
+							},
+							{
+								"key": "user-agent",
+								"value": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.106 Safari/537.36"
+							},
+							{
+								"key": "content-type",
+								"value": "application/x-www-form-urlencoded"
+							},
+							{
+								"key": "accept",
+								"value": "application/json"
+							},
+							{
+								"key": "referer",
+								"value": "https://checkout.stripe.com/m/v3/index-f925604dd4aa6c77a2d874f2507bf975.html?distinct_id=84c5f1db-c2d7-f3f1-1c85-7eca6a669c36"
+							},
+							{
+								"key": "authority",
+								"value": "api.stripe.com"
+							}
+						],
+						"body": {
+							"mode": "urlencoded",
+							"urlencoded": [
+								{
+									"key": "email",
+									"value": "test%40test.com",
+									"type": "text"
+								},
+								{
+									"key": "validation_type",
+									"value": "card",
+									"type": "text"
+								},
+								{
+									"key": "payment_user_agent",
+									"value": "Stripe+Checkout+v3+checkout-manhattan+(stripe.js%2Fe64eb2a)",
+									"type": "text",
+									"disabled": true
+								},
+								{
+									"key": "referrer",
+									"value": "https%3A%2F%2Fstripe.com%2Fdocs%2Fquickstart",
+									"type": "text"
+								},
+								{
+									"key": "card[number]",
+									"value": "4242424242424242",
+									"type": "text"
+								},
+								{
+									"key": "card[exp_month]",
+									"value": "12",
+									"type": "text"
+								},
+								{
+									"key": "card[exp_year]",
+									"value": "19",
+									"type": "text"
+								},
+								{
+									"key": "card[cvc]",
+									"value": "001",
+									"type": "text"
+								},
+								{
+									"key": "card[name]",
+									"value": "test%40test.com",
+									"type": "text"
+								},
+								{
+									"key": "time_on_page",
+									"value": "51111",
+									"type": "text",
+									"disabled": true
+								},
+								{
+									"key": "guid",
+									"value": "3018e293-d38a-400a-a476-c10c6c52bc25",
+									"type": "text",
+									"disabled": true
+								},
+								{
+									"key": "muid",
+									"value": "f43260bf-02c5-4e56-a691-8b1083a9f910",
+									"type": "text",
+									"disabled": true
+								},
+								{
+									"key": "sid",
+									"value": "157d6b7b-b4bd-4628-a78c-df66c576f2e5",
+									"type": "text",
+									"disabled": true
+								},
+								{
+									"key": "key",
+									"value": "pk_test_nJGSQo5LQ7i8h8OkEjYeCqVc",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "https://api.stripe.com/v1/tokens",
+							"protocol": "https",
+							"host": [
+								"api",
+								"stripe",
+								"com"
+							],
+							"path": [
+								"v1",
+								"tokens"
+							]
+						},
+						"description": "Generated from a curl request: \ncurl 'https://api.stripe.com/v1/tokens' -H 'origin: https://checkout.stripe.com' -H 'accept-encoding: gzip, deflate, br' -H 'accept-language: en-GB' -H 'user-agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.106 Safari/537.36' -H 'content-type: application/x-www-form-urlencoded' -H 'accept: application/json' -H 'referer: https://checkout.stripe.com/m/v3/index-f925604dd4aa6c77a2d874f2507bf975.html?distinct_id=84c5f1db-c2d7-f3f1-1c85-7eca6a669c36' -H 'authority: api.stripe.com' --data 'email=test%40test.com&validation_type=card&payment_user_agent=Stripe+Checkout+v3+checkout-manhattan+(stripe.js%2Fe64eb2a)&referrer=https%3A%2F%2Fstripe.com%2Fdocs%2Fquickstart&card[number]=4242424242424242&card[exp_month]=12&card[exp_year]=19&card[cvc]=001&card[name]=test%40test.com&time_on_page=51111&guid=3018e293-d38a-400a-a476-c10c6c52bc25&muid=f43260bf-02c5-4e56-a691-8b1083a9f910&sid=157d6b7b-b4bd-4628-a78c-df66c576f2e5&key=pk_test_nJGSQo5LQ7i8h8OkEjYeCqVc' --compressed"
+					},
+					"response": []
+				},
+				{
+					"name": "User - checkout",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "ecf814e4-aad0-4e95-9a7c-7e0f6ff4f53b",
+								"exec": [
+									"pm.test(\"should be 200\", function() {",
+									"    pm.response.to.have.status(200);",
+									"})",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{discount_user_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n\t\"amount\": 11340,\n\t\"method\": {\n\t\t\"type\" : \"Card\",\n\t\t\"provider\": \"Stripe\",\n\t\t\"token\" : \"{{last_credit_card_token}}\",\n\t\t\"save_payment_method\": false,\n\t\t\"set_default\": true\n\t}\n}"
+						},
+						"url": {
+							"raw": "http://{{server}}/cart/checkout",
+							"protocol": "http",
+							"host": [
+								"{{server}}"
+							],
+							"path": [
+								"cart",
+								"checkout"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "User - add to too many discount codes per user to cart",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "aadca825-5dbc-4d09-8fb8-6b9d7cbe9350",
+								"exec": [
+									"pm.test(\"should be 422\", function() {",
+									"    pm.response.to.have.status(422);",
+									"})",
+									"",
+									"let json = JSON.parse(responseBody);",
+									"",
+									"pm.test(\"Error code should be max_tickets_per_user_reached\", function(){",
+									"    pm.expect(json.fields.quantity[0].code).to.equal(\"max_tickets_per_user_reached\");",
+									"",
+									"});",
+									"",
+									"",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{discount_user_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n\"items\": [{\n\"ticket_type_id\": \"{{ga_ticket_type_id}}\",\n\"redemption_code\": \"{{discount_redemption_code}}\",\n\"quantity\":1\n}\n]}"
+						},
+						"url": {
+							"raw": "http://{{server}}/cart",
+							"protocol": "http",
+							"host": [
+								"{{server}}"
+							],
+							"path": [
+								"cart"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "User - add more than max discount uses, including bought tickets",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "aadca825-5dbc-4d09-8fb8-6b9d7cbe9350",
+								"exec": [
+									"pm.test(\"should be 422\", function() {",
+									"    pm.response.to.have.status(422);",
+									"})",
+									"",
+									"let json = JSON.parse(responseBody);",
+									"",
+									"pm.test(\"Error code should be max_tickets_per_user_reached\", function(){",
+									"    pm.expect(json.fields.quantity[0].code).to.equal(\"max_uses_reached\");",
+									"",
+									"});",
+									"",
+									"",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{discount_user_token}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n\"items\": [{\n\"ticket_type_id\": \"{{vip_ticket_type_id}}\",\n\"quantity\":9,\n\"redemption_code\": \"{{discount_percentage_redemption_code}}\"\n}\n]}"
+						},
+						"url": {
+							"raw": "http://{{server}}/cart",
+							"protocol": "http",
+							"host": [
+								"{{server}}"
+							],
+							"path": [
+								"cart"
 							]
 						}
 					},

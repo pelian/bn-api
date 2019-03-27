@@ -232,7 +232,7 @@ fn update_with_validation_errors() {
         .for_ticket_type(&ticket_type)
         .with_code_type(CodeTypes::Discount)
         .with_max_tickets_per_user(Some(5))
-        .with_max_uses(1)
+        .with_max_uses(6)
         .finish();
 
     // max_tickets_per_user_reached 6 with a limit of 5
@@ -290,38 +290,6 @@ fn update_with_validation_errors() {
         connection,
     )
     .unwrap();
-
-    // Max uses is 1 so second order for user should trigger validation error
-    let mut cart = Order::find_or_create_cart(&user, connection).unwrap();
-    let result = cart.update_quantities(
-        user.id,
-        &[UpdateOrderItem {
-            ticket_type_id: ticket_type.id,
-            quantity: 1,
-            redemption_code: Some(code.redemption_code.clone()),
-        }],
-        false,
-        false,
-        connection,
-    );
-
-    match result {
-        Ok(_) => {
-            panic!("Expected validation error");
-        }
-        Err(error) => match &error.error_code {
-            ValidationError { errors } => {
-                assert!(errors.contains_key("code_id"));
-                assert_eq!(errors["code_id"].len(), 1);
-                assert_eq!(errors["code_id"][0].code, "max_uses_reached");
-                assert_eq!(
-                    &errors["code_id"][0].message.clone().unwrap().into_owned(),
-                    "Redemption code maximum uses limit exceeded"
-                );
-            }
-            _ => panic!("Expected validation error"),
-        },
-    }
 
     // Ticket type requires access code
     let code = project

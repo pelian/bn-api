@@ -63,6 +63,7 @@ table! {
         max_tickets_per_user -> Nullable<Int8>,
         created_at -> Timestamp,
         updated_at -> Timestamp,
+        discount_as_percentage -> Nullable<Int8>,
     }
 }
 

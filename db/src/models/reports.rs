@@ -66,8 +66,42 @@ pub struct TicketSalesRow {
     pub company_online_fees_in_cents: i64,
     #[sql_type = "BigInt"]
     pub client_online_fees_in_cents: i64,
+    #[sql_type = "BigInt"]
+    pub per_order_company_online_fees: i64,
+    #[sql_type = "BigInt"]
+    pub per_order_client_online_fees: i64,
+    #[sql_type = "BigInt"]
+    pub per_order_total_fees_in_cents: i64,
 }
 
+#[derive(Default, Clone, Debug, Serialize, Deserialize, PartialEq, Queryable, QueryableByName)]
+pub struct TicketSalesPerEventFees {
+    #[sql_type = "Nullable<dUuid>"]
+    pub organization_id: Option<Uuid>,
+    #[sql_type = "Nullable<dUuid>"]
+    pub event_id: Option<Uuid>,
+    #[sql_type = "BigInt"]
+    pub per_order_company_online_fees: i64,
+    #[sql_type = "BigInt"]
+    pub per_order_client_online_fees: i64,
+    #[sql_type = "BigInt"]
+    pub per_order_total_fees_in_cents: i64,
+}
+
+impl From<TicketSalesPerEventFees> for TicketSalesRow {
+    fn from(ticket_sales_per_event_fees: TicketSalesPerEventFees) -> Self {
+        TicketSalesRow {
+            organization_id: ticket_sales_per_event_fees.organization_id,
+            event_id: ticket_sales_per_event_fees.event_id,
+            per_order_company_online_fees: ticket_sales_per_event_fees
+                .per_order_company_online_fees,
+            per_order_client_online_fees: ticket_sales_per_event_fees.per_order_client_online_fees,
+            per_order_total_fees_in_cents: ticket_sales_per_event_fees
+                .per_order_total_fees_in_cents,
+            ..Default::default()
+        }
+    }
+}
 #[derive(Debug, Serialize, Deserialize, PartialEq, Queryable, QueryableByName)]
 pub struct TicketCountRow {
     #[sql_type = "Nullable<dUuid>"]
@@ -446,9 +480,43 @@ impl TicketSalesRow {
             .bind::<Nullable<dUuid>, _>(event_id)
             .bind::<Nullable<dUuid>, _>(organization_id);
 
-        let rows: Vec<TicketSalesRow> = q
+        let mut rows: Vec<TicketSalesRow> = q
             .get_results(conn)
             .to_db_error(ErrorCode::QueryError, "Could not fetch ticket sales")?;
+
+        let event_fees = TicketSalesRow::fetch_per_event_fees(
+            start,
+            end,
+            true,
+            event_id,
+            organization_id,
+            conn,
+        )?;
+        rows.extend(event_fees);
+        Ok(rows)
+    }
+
+    pub fn fetch_per_event_fees(
+        start: Option<NaiveDateTime>,
+        end: Option<NaiveDateTime>,
+        group_by_event: bool,
+        event_id: Option<Uuid>,
+        organization_id: Option<Uuid>,
+        conn: &PgConnection,
+    ) -> Result<Vec<TicketSalesRow>, DatabaseError> {
+        let group_by = group_by_string(false, false, false, group_by_event);
+        let query_ticket_sales = include_str!("../queries/reports/reports_event_fees.sql");
+        let q = diesel::sql_query(query_ticket_sales)
+            .bind::<Nullable<Timestamp>, _>(start)
+            .bind::<Nullable<Timestamp>, _>(end)
+            .bind::<Nullable<Text>, _>(group_by)
+            .bind::<Nullable<dUuid>, _>(event_id)
+            .bind::<Nullable<dUuid>, _>(organization_id);
+
+        let rows: Vec<TicketSalesPerEventFees> = q
+            .get_results(conn)
+            .to_db_error(ErrorCode::QueryError, "Could not fetch ticket sales")?;
+        let rows = rows.into_iter().map(|x| x.into()).collect();
         Ok(rows)
     }
 }

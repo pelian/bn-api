@@ -1,11 +1,12 @@
-use actix_web::HttpResponse;
 use actix_web::Path;
+use actix_web::{HttpResponse, Query};
 use bigneon_db::prelude::*;
 use chrono::NaiveDateTime;
 use db::Connection;
 use errors::BigNeonError;
 use helpers::application;
 use models::*;
+use uuid::Uuid;
 
 #[derive(Deserialize)]
 pub struct PathParameters {
@@ -26,7 +27,9 @@ pub enum RedemptionCodeResponse {
         ticket_types: Vec<UserDisplayTicketType>,
         redemption_code: String,
         max_uses: i64,
+        available: i64,
         discount_in_cents: Option<i64>,
+        discount_as_percentage: Option<i64>,
         code_type: CodeTypes,
         start_date: NaiveDateTime,
         end_date: NaiveDateTime,
@@ -34,11 +37,16 @@ pub enum RedemptionCodeResponse {
     },
 }
 
+#[derive(Deserialize)]
+pub struct EventParameter {
+    pub event_id: Option<Uuid>,
+}
+
 pub fn show(
-    (connection, path): (Connection, Path<PathParameters>),
+    (connection, query, path): (Connection, Query<EventParameter>, Path<PathParameters>),
 ) -> Result<HttpResponse, BigNeonError> {
     let conn = connection.get();
-
+    let query = query.into_inner();
     let response =
         if let Some(hold) = Hold::find_by_redemption_code(&path.code.clone(), conn).optional()? {
             let ticket_type = UserDisplayTicketType::from_ticket_type(
@@ -63,30 +71,36 @@ pub fn show(
                 discount_in_cents,
                 hold_type: hold.hold_type,
             }
-        } else if let Some(code) = Code::find_by_redemption_code(&path.code, conn).optional()? {
+        } else if let Some(code_available) =
+            Code::find_by_redemption_code_with_availability(&path.code, query.event_id, conn)
+                .optional()?
+        {
             let mut ticket_types = Vec::new();
-            for ticket_type in TicketType::find_for_code(code.id, conn)? {
+            for ticket_type in TicketType::find_for_code(code_available.code.id, conn)? {
                 ticket_types.push(UserDisplayTicketType::from_ticket_type(
                     &ticket_type,
                     &FeeSchedule::find(
-                        Organization::find_for_event(code.event_id, conn)?.fee_schedule_id,
+                        Organization::find_for_event(code_available.code.event_id, conn)?
+                            .fee_schedule_id,
                         conn,
                     )?,
                     false,
                     // Passing None for redemption_code as it makes this discount inclusive and we're breaking apart discount here
-                    Some(code.redemption_code.clone()),
+                    Some(code_available.code.redemption_code.clone()),
                     conn,
                 )?);
             }
             RedemptionCodeResponse::Code {
                 ticket_types,
-                redemption_code: code.redemption_code.clone(),
-                max_uses: code.max_uses,
-                discount_in_cents: code.discount_in_cents,
-                code_type: code.code_type,
-                start_date: code.start_date,
-                end_date: code.end_date,
-                max_tickets_per_user: code.max_tickets_per_user,
+                redemption_code: code_available.code.redemption_code.clone(),
+                max_uses: code_available.code.max_uses,
+                available: code_available.available,
+                discount_in_cents: code_available.code.discount_in_cents,
+                discount_as_percentage: code_available.code.discount_as_percentage,
+                code_type: code_available.code.code_type,
+                start_date: code_available.code.start_date,
+                end_date: code_available.code.end_date,
+                max_tickets_per_user: code_available.code.max_tickets_per_user,
             }
         } else {
             return application::not_found();
