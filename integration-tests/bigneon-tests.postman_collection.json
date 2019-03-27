@@ -6463,7 +6463,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n\t\"name\":\"Musician Tickets{{$timestamp}}\",\n\t\"hold_type\":\"Discount\",\n\t\"redemption_code\" : \"Yeaaaah{{$timestamp}}\",\n\t\"discount_in_cents\" : 100,\n\t\"end_at\": \"2019-01-01T12:00:00\",\n\t\"max_per_order\" : 10,\n\t\"ticket_type_id\": \"{{last_ticket_type_id}}\",\n\t\"quantity\" : 30\n\t\n}"
+							"raw": "{\n\t\"name\":\"Musician Tickets{{$timestamp}}\",\n\t\"hold_type\":\"Discount\",\n\t\"redemption_code\" : \"Yeaaaah{{$timestamp}}\",\n\t\"discount_in_cents\" : 100,\n\t\"end_at\": \"2019-01-01T12:00:00\",\n\t\"max_per_user\" : 10,\n\t\"ticket_type_id\": \"{{last_ticket_type_id}}\",\n\t\"quantity\" : 30\n\t\n}"
 						},
 						"url": {
 							"raw": "http://{{server}}/events/{{last_event_id}}/holds",
@@ -6520,7 +6520,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n\t\"name\":\"Musician Tickets2{{$timestamp}}\",\n\t\"hold_type\":\"Discount\",\n\t\"redemption_code\" : \"Yeaaaah2{{$timestamp}}\",\n\t\"discount_in_cents\" : 100,\n\t\"end_at\": \"2019-01-01T12:00:00\",\n\t\"max_per_order\" : 10,\n\t\"quantity\" : 30\n}"
+							"raw": "{\n\t\"name\":\"Musician Tickets2{{$timestamp}}\",\n\t\"hold_type\":\"Discount\",\n\t\"redemption_code\" : \"Yeaaaah2{{$timestamp}}\",\n\t\"discount_in_cents\" : 100,\n\t\"end_at\": \"2019-01-01T12:00:00\",\n\t\"max_per_user\" : 10,\n\t\"quantity\" : 30\n}"
 						},
 						"url": {
 							"raw": "http://{{server}}/holds/{{last_hold_id}}/split",

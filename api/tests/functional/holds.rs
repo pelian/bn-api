@@ -114,7 +114,7 @@ fn create_with_validation_errors() {
         discount_in_cents: None,
         hold_type,
         end_at: None,
-        max_per_order: None,
+        max_per_user: None,
         quantity: 2,
         ticket_type_id: event
             .ticket_types(true, None, database.connection.get())
@@ -202,7 +202,7 @@ pub fn read_hold() {
         discount_in_cents: Some(100),
         hold_type,
         end_at: None,
-        max_per_order: None,
+        max_per_user: None,
         quantity: 2,
         ticket_type_id: event
             .ticket_types(true, None, database.connection.get())

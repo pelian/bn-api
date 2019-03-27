@@ -29,7 +29,7 @@ fn show_hold() {
         RedemptionCodeResponse::Hold {
             ticket_type,
             redemption_code,
-            max_per_order,
+            max_per_user,
             discount_in_cents,
             hold_type,
         } => {
@@ -49,7 +49,7 @@ fn show_hold() {
             .unwrap();
             assert_eq!(redemption_code, hold.redemption_code);
             assert_eq!(ticket_type, user_display_ticket_type);
-            assert_eq!(max_per_order, hold.max_per_order);
+            assert_eq!(max_per_user, hold.max_per_user);
             assert_eq!(discount_in_cents, hold.discount_in_cents);
             assert_eq!(hold_type, HoldTypes::Discount);
         }
@@ -79,7 +79,7 @@ fn show_comp() {
         RedemptionCodeResponse::Hold {
             ticket_type,
             redemption_code,
-            max_per_order,
+            max_per_user,
             discount_in_cents,
             hold_type,
         } => {
@@ -103,7 +103,7 @@ fn show_comp() {
                 .map(|tp| tp.discount_in_cents);
             assert_eq!(redemption_code, hold.redemption_code);
             assert_eq!(ticket_type, user_display_ticket_type);
-            assert_eq!(max_per_order, hold.max_per_order);
+            assert_eq!(max_per_user, hold.max_per_user);
             assert_eq!(discount_in_cents, expected_discount_in_cents);
             assert_eq!(hold_type, HoldTypes::Comp);
         }

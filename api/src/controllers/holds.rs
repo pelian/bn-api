@@ -20,7 +20,7 @@ pub struct CreateHoldRequest {
     pub quantity: u32,
     pub ticket_type_id: Uuid,
     pub end_at: Option<NaiveDateTime>,
-    pub max_per_order: Option<u32>,
+    pub max_per_user: Option<u32>,
 }
 
 #[derive(Default, Deserialize, Serialize)]
@@ -39,7 +39,7 @@ pub struct UpdateHoldRequest {
     #[serde(default, deserialize_with = "double_option::deserialize")]
     pub end_at: Option<Option<NaiveDateTime>>,
     #[serde(default, deserialize_with = "double_option::deserialize")]
-    pub max_per_order: Option<Option<i64>>,
+    pub max_per_user: Option<Option<i64>>,
 }
 
 impl From<UpdateHoldRequest> for UpdateHoldAttributes {
@@ -51,7 +51,7 @@ impl From<UpdateHoldRequest> for UpdateHoldAttributes {
             email: attributes.email,
             phone: attributes.phone,
             end_at: attributes.end_at,
-            max_per_order: attributes.max_per_order,
+            max_per_user: attributes.max_per_user,
             redemption_code: attributes.redemption_code,
         }
     }
@@ -82,7 +82,7 @@ pub fn create(
         req.redemption_code.clone(),
         req.discount_in_cents,
         req.end_at,
-        req.max_per_order,
+        req.max_per_user,
         req.hold_type,
         req.ticket_type_id,
     )
@@ -98,7 +98,7 @@ pub fn create(
         pub redemption_code: Option<String>,
         pub discount_in_cents: Option<i64>,
         pub end_at: Option<NaiveDateTime>,
-        pub max_per_order: Option<i64>,
+        pub max_per_user: Option<i64>,
         pub hold_type: HoldTypes,
         pub ticket_type_id: Uuid,
         pub available: u32,
@@ -114,7 +114,7 @@ pub fn create(
         redemption_code: hold.redemption_code,
         discount_in_cents: hold.discount_in_cents,
         end_at: hold.end_at,
-        max_per_order: hold.max_per_order,
+        max_per_user: hold.max_per_user,
         hold_type: hold.hold_type,
         ticket_type_id: hold.ticket_type_id,
         available,
@@ -170,7 +170,7 @@ pub fn show(
         pub redemption_code: Option<String>,
         pub discount_in_cents: Option<i64>,
         pub end_at: Option<NaiveDateTime>,
-        pub max_per_order: Option<i64>,
+        pub max_per_user: Option<i64>,
         pub hold_type: HoldTypes,
         pub ticket_type_id: Uuid,
         pub available: u32,
@@ -186,7 +186,7 @@ pub fn show(
         redemption_code: hold.redemption_code,
         discount_in_cents: hold.discount_in_cents,
         end_at: hold.end_at,
-        max_per_order: hold.max_per_order,
+        max_per_user: hold.max_per_user,
         hold_type: hold.hold_type,
         ticket_type_id: hold.ticket_type_id,
         available,
@@ -210,7 +210,7 @@ pub struct SplitHoldRequest {
     pub hold_type: HoldTypes,
     pub quantity: u32,
     pub end_at: Option<NaiveDateTime>,
-    pub max_per_order: Option<u32>,
+    pub max_per_user: Option<u32>,
 }
 
 pub fn split(
@@ -238,7 +238,7 @@ pub fn split(
         req.discount_in_cents,
         req.hold_type,
         req.end_at,
-        req.max_per_order,
+        req.max_per_user,
         conn,
     )?;
     Ok(HttpResponse::Created().json(new_hold))

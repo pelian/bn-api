@@ -20,7 +20,7 @@ pub struct Hold {
     pub redemption_code: Option<String>,
     pub discount_in_cents: Option<i64>,
     pub end_at: Option<NaiveDateTime>,
-    pub max_per_order: Option<i64>,
+    pub max_per_user: Option<i64>,
     pub hold_type: HoldTypes,
     pub ticket_type_id: Uuid,
     pub email: Option<String>,
@@ -41,7 +41,7 @@ pub struct UpdateHoldAttributes {
     pub email: Option<Option<String>>,
     pub phone: Option<Option<String>>,
     pub end_at: Option<Option<NaiveDateTime>>,
-    pub max_per_order: Option<Option<i64>>,
+    pub max_per_user: Option<Option<i64>>,
 }
 
 impl Hold {
@@ -53,7 +53,7 @@ impl Hold {
         redemption_code: Option<String>,
         discount_in_cents: Option<u32>,
         end_at: Option<NaiveDateTime>,
-        max_per_order: Option<u32>,
+        max_per_user: Option<u32>,
         hold_type: HoldTypes,
         ticket_type_id: Uuid,
     ) -> NewHold {
@@ -66,7 +66,7 @@ impl Hold {
             redemption_code: redemption_code.map(|r| r.to_uppercase()),
             discount_in_cents: discount_in_cents.and_then(|discount| Some(discount as i64)),
             end_at,
-            max_per_order: max_per_order.map(|m| m as i64),
+            max_per_user: max_per_user.map(|m| m as i64),
             hold_type,
             ticket_type_id,
         }
@@ -83,7 +83,7 @@ impl Hold {
         phone: Option<String>,
         redemption_code: String,
         end_at: Option<NaiveDateTime>,
-        max_per_order: Option<u32>,
+        max_per_user: Option<u32>,
         quantity: u32,
         conn: &PgConnection,
     ) -> Result<Hold, DatabaseError> {
@@ -98,7 +98,7 @@ impl Hold {
             redemption_code: Some(redemption_code.to_uppercase()),
             discount_in_cents: None,
             end_at,
-            max_per_order: max_per_order.map(|m| m as i64),
+            max_per_user: max_per_user.map(|m| m as i64),
             hold_type: HoldTypes::Comp,
             ticket_type_id: hold.ticket_type_id,
         };
@@ -261,7 +261,7 @@ impl Hold {
         discount_in_cents: Option<u32>,
         hold_type: HoldTypes,
         end_at: Option<NaiveDateTime>,
-        max_per_order: Option<u32>,
+        max_per_user: Option<u32>,
         conn: &PgConnection,
     ) -> Result<Hold, DatabaseError> {
         let new_hold = NewHold {
@@ -273,7 +273,7 @@ impl Hold {
             redemption_code: Some(redemption_code.to_uppercase()),
             discount_in_cents: discount_in_cents.map(|m| m as i64),
             end_at,
-            max_per_order: max_per_order.map(|m| m as i64),
+            max_per_user: max_per_user.map(|m| m as i64),
             hold_type,
             ticket_type_id: self.ticket_type_id,
         };
@@ -487,7 +487,7 @@ impl Hold {
             event_id: self.event_id,
             redemption_code: self.redemption_code,
             discount_in_cents: self.discount_in_cents,
-            max_per_order: self.max_per_order,
+            max_per_user: self.max_per_user,
             email: self.email,
             phone: self.phone,
             available,
@@ -512,7 +512,7 @@ pub struct NewHold {
     pub redemption_code: Option<String>,
     pub discount_in_cents: Option<i64>,
     pub end_at: Option<NaiveDateTime>,
-    pub max_per_order: Option<i64>,
+    pub max_per_user: Option<i64>,
     pub hold_type: HoldTypes,
     pub ticket_type_id: Uuid,
 }
@@ -574,7 +574,7 @@ pub struct DisplayHold {
     pub event_id: Uuid,
     pub redemption_code: Option<String>,
     pub discount_in_cents: Option<i64>,
-    pub max_per_order: Option<i64>,
+    pub max_per_user: Option<i64>,
     pub email: Option<String>,
     pub phone: Option<String>,
     pub available: u32,

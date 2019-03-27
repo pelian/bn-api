@@ -63,7 +63,7 @@ pub struct NewCompRequest {
     pub quantity: u32,
     pub redemption_code: String,
     pub end_at: Option<NaiveDateTime>,
-    pub max_per_order: Option<u32>,
+    pub max_per_user: Option<u32>,
 }
 
 pub fn create(
@@ -81,7 +81,7 @@ pub fn create(
         new_comp.phone,
         new_comp.redemption_code,
         new_comp.end_at,
-        new_comp.max_per_order,
+        new_comp.max_per_user,
         new_comp.quantity,
         conn,
     )?;

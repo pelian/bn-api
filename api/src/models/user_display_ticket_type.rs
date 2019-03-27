@@ -64,7 +64,7 @@ impl UserDisplayTicketType {
             if let Some(hold) = Hold::find_by_redemption_code(redemption_code, conn).optional()? {
                 if hold.ticket_type_id == ticket_type.id {
                     result.description = Some(format!("Using promo code: {}", redemption_code));
-                    result.limit_per_person = hold.max_per_order.unwrap_or(0) as u32;
+                    result.limit_per_person = hold.max_per_user.unwrap_or(0) as u32;
                     result.available = hold.quantity(conn)?.1;
                     result.redemption_code = Some(redemption_code.clone());
                 }

@@ -13,6 +13,7 @@ pub struct HoldBuilder<'a> {
     ticket_type_id: Option<Uuid>,
     hold_type: HoldTypes,
     quantity: u32,
+    max_per_user: Option<u32>,
     connection: &'a PgConnection,
 }
 
@@ -28,6 +29,7 @@ impl<'a> HoldBuilder<'a> {
             ticket_type_id: None,
             quantity: 10,
             end_at: None,
+            max_per_user: None,
         }
     }
 
@@ -53,6 +55,11 @@ impl<'a> HoldBuilder<'a> {
 
     pub fn with_event(mut self, event: &Event) -> Self {
         self.event_id = Some(event.id);
+        self
+    }
+
+    pub fn with_max_per_user(mut self, max_per_user: u32) -> Self {
+        self.max_per_user = Some(max_per_user);
         self
     }
 
@@ -100,7 +107,7 @@ impl<'a> HoldBuilder<'a> {
                 None
             },
             self.end_at,
-            None,
+            self.max_per_user,
             self.hold_type,
             ticket_type_id,
         )

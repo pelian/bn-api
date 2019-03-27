@@ -1177,7 +1177,7 @@ mod guest_list_tests {
     }
     #[test]
     fn guest_list_door_person() {
-        base::events::guest_list(Roles::DoorPerson, false);
+        base::events::guest_list(Roles::DoorPerson, true);
     }
     #[test]
     fn guest_list_promoter() {

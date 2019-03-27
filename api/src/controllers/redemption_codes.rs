@@ -18,7 +18,7 @@ pub enum RedemptionCodeResponse {
     Hold {
         ticket_type: UserDisplayTicketType,
         redemption_code: Option<String>,
-        max_per_order: Option<i64>,
+        max_per_user: Option<i64>,
         discount_in_cents: Option<i64>,
         hold_type: HoldTypes,
     },
@@ -59,7 +59,7 @@ pub fn show(
             RedemptionCodeResponse::Hold {
                 ticket_type,
                 redemption_code: hold.redemption_code.clone(),
-                max_per_order: hold.max_per_order,
+                max_per_user: hold.max_per_user,
                 discount_in_cents,
                 hold_type: hold.hold_type,
             }
