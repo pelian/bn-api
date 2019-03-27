@@ -1,4 +1,4 @@
-use actix_web::{http::StatusCode, FromRequest, HttpResponse, Path};
+use actix_web::{http::StatusCode, FromRequest, HttpResponse, Path, Query};
 use bigneon_api::controllers::redemption_codes::{self, *};
 use bigneon_api::models::UserDisplayTicketType;
 use bigneon_db::prelude::*;
@@ -19,8 +19,12 @@ fn show_hold() {
     let test_request = TestRequest::create_with_uri_custom_params("/", vec!["code"]);
     let mut path = Path::<PathParameters>::extract(&test_request.request).unwrap();
     path.code = hold.redemption_code.clone().unwrap();
+
+    let test_request = TestRequest::create_with_uri("/");
+    let parameters = Query::<EventParameter>::extract(&test_request.request).unwrap();
+
     let response: HttpResponse =
-        redemption_codes::show((database.connection.clone().into(), path)).into();
+        redemption_codes::show((database.connection.clone().into(), parameters, path)).into();
     assert_eq!(response.status(), StatusCode::OK);
     let body = support::unwrap_body_to_string(&response).unwrap();
     let redemption_code_response: RedemptionCodeResponse = serde_json::from_str(&body).unwrap();
@@ -29,7 +33,7 @@ fn show_hold() {
         RedemptionCodeResponse::Hold {
             ticket_type,
             redemption_code,
-            max_per_order,
+            max_per_user,
             discount_in_cents,
             hold_type,
         } => {
@@ -49,7 +53,7 @@ fn show_hold() {
             .unwrap();
             assert_eq!(redemption_code, hold.redemption_code);
             assert_eq!(ticket_type, user_display_ticket_type);
-            assert_eq!(max_per_order, hold.max_per_order);
+            assert_eq!(max_per_user, hold.max_per_user);
             assert_eq!(discount_in_cents, hold.discount_in_cents);
             assert_eq!(hold_type, HoldTypes::Discount);
         }
@@ -68,9 +72,11 @@ fn show_comp() {
         .finish();
     let test_request = TestRequest::create_with_uri_custom_params("/", vec!["code"]);
     let mut path = Path::<PathParameters>::extract(&test_request.request).unwrap();
+    let test_request = TestRequest::create_with_uri("/");
+    let parameters = Query::<EventParameter>::extract(&test_request.request).unwrap();
     path.code = hold.redemption_code.clone().unwrap();
     let response: HttpResponse =
-        redemption_codes::show((database.connection.clone().into(), path)).into();
+        redemption_codes::show((database.connection.clone().into(), parameters, path)).into();
     assert_eq!(response.status(), StatusCode::OK);
     let body = support::unwrap_body_to_string(&response).unwrap();
     let redemption_code_response: RedemptionCodeResponse = serde_json::from_str(&body).unwrap();
@@ -79,7 +85,7 @@ fn show_comp() {
         RedemptionCodeResponse::Hold {
             ticket_type,
             redemption_code,
-            max_per_order,
+            max_per_user,
             discount_in_cents,
             hold_type,
         } => {
@@ -103,7 +109,7 @@ fn show_comp() {
                 .map(|tp| tp.discount_in_cents);
             assert_eq!(redemption_code, hold.redemption_code);
             assert_eq!(ticket_type, user_display_ticket_type);
-            assert_eq!(max_per_order, hold.max_per_order);
+            assert_eq!(max_per_user, hold.max_per_user);
             assert_eq!(discount_in_cents, expected_discount_in_cents);
             assert_eq!(hold_type, HoldTypes::Comp);
         }
@@ -141,8 +147,10 @@ fn show_code() {
     let test_request = TestRequest::create_with_uri_custom_params("/", vec!["code"]);
     let mut path = Path::<PathParameters>::extract(&test_request.request).unwrap();
     path.code = code.redemption_code.clone();
+    let test_request = TestRequest::create_with_uri("/");
+    let parameters = Query::<EventParameter>::extract(&test_request.request).unwrap();
     let response: HttpResponse =
-        redemption_codes::show((database.connection.clone().into(), path)).into();
+        redemption_codes::show((database.connection.clone().into(), parameters, path)).into();
     assert_eq!(response.status(), StatusCode::OK);
     let body = support::unwrap_body_to_string(&response).unwrap();
     let redemption_code_response: RedemptionCodeResponse = serde_json::from_str(&body).unwrap();
@@ -153,10 +161,12 @@ fn show_code() {
             redemption_code,
             max_uses,
             discount_in_cents,
+            discount_as_percentage,
             code_type,
             start_date,
             end_date,
             max_tickets_per_user,
+            available,
         } => {
             let user_display_ticket_type = UserDisplayTicketType::from_ticket_type(
                 &ticket_type,
@@ -174,6 +184,8 @@ fn show_code() {
             assert_eq!(end_date, code.end_date);
             assert_eq!(discount_in_cents, code.discount_in_cents);
             assert_eq!(code_type, CodeTypes::Discount);
+            assert_eq!(available, 30);
+            assert_eq!(discount_as_percentage, None);
         }
         _ => panic!("Expected RedemptionCodeResponse::Code response"),
     }
@@ -185,8 +197,10 @@ fn show_invalid() {
     let test_request = TestRequest::create_with_uri_custom_params("/", vec!["code"]);
     let mut path = Path::<PathParameters>::extract(&test_request.request).unwrap();
     path.code = "invalid".to_string();
+    let test_request = TestRequest::create_with_uri("/");
+    let parameters = Query::<EventParameter>::extract(&test_request.request).unwrap();
     let response: HttpResponse =
-        redemption_codes::show((database.connection.clone().into(), path)).into();
+        redemption_codes::show((database.connection.clone().into(), parameters, path)).into();
 
     assert_eq!(response.status(), StatusCode::NOT_FOUND);
 }

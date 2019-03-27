@@ -63,6 +63,7 @@ table! {
         max_tickets_per_user -> Nullable<Int8>,
         created_at -> Timestamp,
         updated_at -> Timestamp,
+        discount_as_percentage -> Nullable<Int8>,
     }
 }
 
@@ -206,7 +207,7 @@ table! {
         redemption_code -> Nullable<Text>,
         discount_in_cents -> Nullable<Int8>,
         end_at -> Nullable<Timestamp>,
-        max_per_order -> Nullable<Int8>,
+        max_per_user -> Nullable<Int8>,
         hold_type -> Text,
         ticket_type_id -> Uuid,
         email -> Nullable<Text>,

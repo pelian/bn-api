@@ -144,14 +144,14 @@ fn update() {
 
     let update_patch = UpdateHoldAttributes {
         discount_in_cents: Some(Some(10)),
-        max_per_order: Some(None),
+        max_per_user: Some(None),
         end_at: Some(None),
         name: Some("New name".to_string()),
         ..Default::default()
     };
     let new_hold = hold.update(update_patch, db.get_connection()).unwrap();
     assert_eq!(new_hold.name, "New name".to_string());
-    assert_eq!(new_hold.max_per_order, None);
+    assert_eq!(new_hold.max_per_user, None);
     assert_eq!(new_hold.end_at, None);
     assert_eq!(new_hold.discount_in_cents, Some(10));
 }

@@ -21,7 +21,7 @@ use utils::dates::*;
 use utils::errors::*;
 use utils::iterators::intersect_set;
 use uuid::Uuid;
-use validator::ValidationErrors;
+use validator::*;
 use validators::*;
 
 const CART_EXPIRY_TIME_MINUTES: i64 = 15;
@@ -107,6 +107,41 @@ pub struct OrderDetailsLineItem {
 }
 
 impl Order {
+    pub fn validate_record(&self, conn: &PgConnection) -> Result<(), DatabaseError> {
+        let validation_errors = append_validation_error(
+            Ok(()),
+            "event_id",
+            Order::order_contains_items_from_only_one_event(self.id, conn)?,
+        );
+
+        Ok(validation_errors?)
+    }
+
+    pub fn order_contains_items_from_only_one_event(
+        id: Uuid,
+        conn: &PgConnection,
+    ) -> Result<Result<(), ValidationError>, DatabaseError> {
+        let event_count = order_items::table
+            .filter(order_items::order_id.eq(id))
+            .filter(order_items::event_id.is_not_null())
+            .select(sql::<BigInt>("count(distinct event_id) AS event_count"))
+            .get_result::<i64>(conn)
+            .to_db_error(
+                ErrorCode::QueryError,
+                "Could not get count of unique events in cart",
+            )?;
+
+        if event_count > 1 {
+            let mut validation_error = create_validation_error(
+                "cart_event_limit_reached",
+                "Cart limited to one event for purchasing",
+            );
+            validation_error.add_param(Cow::from("order_id"), &id);
+            return Ok(Err(validation_error.into()));
+        }
+        Ok(Ok(()))
+    }
+
     pub fn destroy(&self, conn: &PgConnection) -> Result<usize, DatabaseError> {
         let cart_user: Option<User> = users::table
             .filter(users::last_cart_id.eq(self.id))
@@ -634,8 +669,8 @@ impl Order {
         #[derive(Debug)]
         struct LimitCheck {
             ticket_type_id: Uuid,
-            event_id: Uuid,
-            limit_per_person: i32,
+            hold_id: Option<Uuid>,
+            limit_per_person: u32,
         }
 
         struct MatchData<'a> {
@@ -664,15 +699,17 @@ impl Order {
                             update_order_item: item,
                         }
                     }
-                    None => match Code::find_by_redemption_code(r, conn).optional()? {
-                        Some(code) => {
-                            code.confirm_code_valid()?;
+                    None => match Code::find_by_redemption_code_with_availability(r, None, conn)
+                        .optional()?
+                    {
+                        Some(code_availability) => {
+                            code_availability.code.confirm_code_valid()?;
                             MatchData {
                                 index: Some(index),
                                 hold_id: None,
                                 hold: None,
-                                code_id: Some(code.id),
-                                code: Some(code),
+                                code_id: Some(code_availability.code.id),
+                                code: Some(code_availability.code),
                                 update_order_item: item,
                             }
                         }
@@ -743,10 +780,14 @@ impl Order {
                         )?;
                         let ticket_type = TicketType::find(ticket_type_id, conn)?;
 
+                        let limit_per_person = match match_data.hold {
+                            Some(ref hold) => hold.max_per_user.unwrap_or(0) as u32,
+                            None => ticket_type.limit_per_person as u32,
+                        };
                         check_ticket_limits.push(LimitCheck {
-                            limit_per_person: ticket_type.limit_per_person.clone(),
-                            ticket_type_id: ticket_type.id.clone(),
-                            event_id: ticket_type.event_id.clone(),
+                            ticket_type_id: ticket_type.id,
+                            hold_id: match_data.hold_id,
+                            limit_per_person,
                         });
 
                         // TODO: Move this to an external processer
@@ -762,8 +803,12 @@ impl Order {
                                     HoldTypes::Comp => 0,
                                 };
                             } else if let Some(c) = match_data.code.as_ref() {
-                                price_in_cents =
-                                    cmp::max(0, price_in_cents - c.discount_in_cents.unwrap_or(0));
+                                if c.code_type == CodeTypes::Access {
+                                    price_in_cents = cmp::max(
+                                        0,
+                                        price_in_cents - c.discount_in_cents.unwrap_or(0),
+                                    );
+                                }
                             }
 
                             let order_item = NewTicketsOrderItem {
@@ -837,10 +882,14 @@ impl Order {
             )?;
             let ticket_type = TicketType::find(match_data.update_order_item.ticket_type_id, conn)?;
 
+            let limit_per_person = match match_data.hold {
+                Some(ref hold) => hold.max_per_user.unwrap_or(0) as u32,
+                None => ticket_type.limit_per_person as u32,
+            };
             check_ticket_limits.push(LimitCheck {
-                limit_per_person: ticket_type.limit_per_person.clone(),
-                ticket_type_id: ticket_type.id.clone(),
-                event_id: ticket_type.event_id.clone(),
+                ticket_type_id: ticket_type.id,
+                hold_id: match_data.hold_id,
+                limit_per_person,
             });
 
             let mut price_in_cents = ticket_pricing.price_in_cents;
@@ -852,7 +901,9 @@ impl Order {
                     HoldTypes::Comp => 0,
                 }
             } else if let Some(c) = match_data.code.as_ref() {
-                price_in_cents = cmp::max(0, price_in_cents - c.discount_in_cents.unwrap_or(0));
+                if c.code_type == CodeTypes::Access {
+                    price_in_cents = cmp::max(0, price_in_cents - c.discount_in_cents.unwrap_or(0));
+                }
             }
 
             // TODO: Move this to an external processer
@@ -883,40 +934,38 @@ impl Order {
         if self.items(conn)?.len() == 0 {
             self.remove_expiry(current_user_id, conn)?;
         }
-
         for limit_check in check_ticket_limits {
-            let quantities_ordered =
-                Order::quantity_for_user_for_event(&self.user_id, &limit_check.event_id, &conn)?;
-            if &limit_check.limit_per_person > &0
-                && quantities_ordered.contains_key(&limit_check.ticket_type_id)
+            let ordered_quantity = Order::quantity_for_user_for_ticket_type_by_hold(
+                self.user_id,
+                limit_check.ticket_type_id,
+                limit_check.hold_id,
+                &conn,
+            )?;
+
+            if limit_check.limit_per_person > 0
+                && ordered_quantity > limit_check.limit_per_person.into()
             {
-                match quantities_ordered.get(&limit_check.ticket_type_id) {
-                    Some(ordered_quantity) => {
-                        if ordered_quantity > &limit_check.limit_per_person {
-                            let mut error = create_validation_error(
-                                "limit_per_person_exceeded",
-                                "Exceeded limit per person per event",
-                            );
-                            error.add_param(
-                                Cow::from("limit_per_person"),
-                                &limit_check.limit_per_person,
-                            );
-                            error.add_param(
-                                Cow::from("ticket_type_id"),
-                                &limit_check.ticket_type_id,
-                            );
-                            error.add_param(Cow::from("attempted_quantity"), ordered_quantity);
-                            let mut errors = ValidationErrors::new();
-                            errors.add("quantity", error);
-                            return Err(errors.into());
-                        }
-                    }
-                    None => {}
-                };
+                let mut error = create_validation_error(
+                    "limit_per_person_exceeded",
+                    if limit_check.hold_id.is_some() {
+                        "Exceeded limit per person per hold"
+                    } else {
+                        "Exceeded limit per person per event"
+                    },
+                );
+                error.add_param(Cow::from("limit_per_person"), &limit_check.limit_per_person);
+                error.add_param(Cow::from("ticket_type_id"), &limit_check.ticket_type_id);
+                if let Some(hold_id) = limit_check.hold_id {
+                    error.add_param(Cow::from("hold_id"), &hold_id);
+                }
+                error.add_param(Cow::from("attempted_quantity"), &ordered_quantity);
+                let mut errors = ValidationErrors::new();
+                errors.add("quantity", error);
+                return Err(errors.into());
             }
         }
-
         self.update_fees(conn)?;
+        self.validate_record(conn)?;
 
         Ok(())
     }
@@ -936,6 +985,7 @@ impl Order {
         let items = self.items(conn)?;
 
         for o in items {
+            o.update_discount(&self, conn)?;
             match o.item_type {
                 OrderItemTypes::EventFees => self.destroy_item(o.id, conn)?,
                 _ => {}
@@ -971,8 +1021,15 @@ impl Order {
             for o in items {
                 match o.item_type {
                     OrderItemTypes::Tickets => {
+                        let discount_item = o.find_discount_item(conn)?;
+
+                        let unit_price_with_discount = match discount_item {
+                            Some(di) => o.unit_price_in_cents + di.unit_price_in_cents,
+                            None => o.unit_price_in_cents,
+                        };
+
                         o.update_fees(&self, conn)?;
-                        if o.unit_price_in_cents > 0 {
+                        if unit_price_with_discount > 0 {
                             all_zero_price = false;
                         }
                     }
@@ -1006,9 +1063,54 @@ impl Order {
         Ok(())
     }
 
+    fn quantity_for_user_for_ticket_type_by_hold(
+        user_id: Uuid,
+        ticket_type_id: Uuid,
+        hold_id: Option<Uuid>,
+        conn: &PgConnection,
+    ) -> Result<i64, DatabaseError> {
+        use schema::*;
+
+        let mut query = orders::table
+            .inner_join(order_items::table.on(order_items::order_id.eq(orders::id)))
+            .inner_join(
+                ticket_instances::table
+                    .on(ticket_instances::order_item_id.eq(order_items::id.nullable())),
+            )
+            .filter(
+                orders::user_id
+                    .eq(user_id)
+                    .and(orders::on_behalf_of_user_id.is_null())
+                    .or(orders::on_behalf_of_user_id.eq(user_id)),
+            )
+            .filter(order_items::ticket_type_id.eq(ticket_type_id))
+            .filter(
+                ticket_instances::status
+                    .eq(TicketInstanceStatus::Purchased)
+                    .or(ticket_instances::status
+                        .eq(TicketInstanceStatus::Reserved)
+                        .and(ticket_instances::reserved_until.gt(Utc::now().naive_utc()))),
+            )
+            .into_boxed();
+
+        match hold_id {
+            Some(hold_id) => {
+                query = query.filter(order_items::hold_id.nullable().eq(hold_id));
+            }
+            None => {
+                query = query.filter(order_items::hold_id.is_null());
+            }
+        }
+
+        query
+            .select(dsl::count(ticket_instances::id))
+            .get_result(conn)
+            .to_db_error(ErrorCode::QueryError, "Could not load total")
+    }
+
     pub fn quantity_for_user_for_event(
-        user_id: &Uuid,
-        event_id: &Uuid,
+        user_id: Uuid,
+        event_id: Uuid,
         conn: &PgConnection,
     ) -> Result<HashMap<Uuid, i32>, DatabaseError> {
         let mut ticket_type_totals: HashMap<Uuid, i32> = HashMap::new();
@@ -1115,7 +1217,7 @@ impl Order {
                             0
                         END
                     )
-                AS BIGINT) as unit_price_in_cents,
+                AS BIGINT) as face_value_in_cents,
                 CAST(
                     SUM(
                         CASE WHEN fi.id IS NOT NULL
@@ -1155,7 +1257,7 @@ impl Order {
             #[sql_type = "BigInt"]
             ticket_quantity: i64,
             #[sql_type = "BigInt"]
-            unit_price_in_cents: i64,
+            face_value_in_cents: i64,
             #[sql_type = "BigInt"]
             fees_in_cents: i64,
         }
@@ -1186,8 +1288,8 @@ impl Order {
                 order_metadata.ticket_quantity.to_string(),
             ),
             (
-                "unit_price_in_cents".to_string(),
-                order_metadata.unit_price_in_cents.to_string(),
+                "face_value_in_cents".to_string(),
+                order_metadata.face_value_in_cents.to_string(),
             ),
             (
                 "fees_in_cents".to_string(),
@@ -1211,7 +1313,6 @@ impl Order {
                 0
             }
         });
-
         let mut limited_tickets_remaining: Vec<TicketsRemaining> = Vec::new();
         for e in self.events(conn)? {
             if let Some(ref organization_ids) = organization_ids {
@@ -1220,7 +1321,7 @@ impl Order {
                 }
             }
 
-            let tickets_bought = Order::quantity_for_user_for_event(&self.user_id, &e.id, conn)?;
+            let tickets_bought = Order::quantity_for_user_for_event(self.user_id, e.id, conn)?;
             for (tt_id, num) in tickets_bought {
                 let limit = TicketType::find(tt_id, conn)?.limit_per_person;
                 if limit > 0 {
@@ -1231,7 +1332,6 @@ impl Order {
                 }
             }
         }
-
         // Check if this order contains any other organization items if a list of organization_ids is passed in
         let mut order_contains_other_tickets = false;
         if let Some(ref organization_ids) = organization_ids {
@@ -1273,7 +1373,6 @@ impl Order {
                 "Could not determine if order contains tickets for other organizations",
             )?;
         };
-
         let available_payment_methods: Vec<Vec<PaymentProviders>> = order_items::table
             .inner_join(events::table.inner_join(organizations::table))
             .filter(order_items::order_id.eq(self.id))
@@ -1302,7 +1401,6 @@ impl Order {
                     _ => None,
                 })
                 .collect();
-
         let items = self.items_for_display(organization_ids, user_id, conn)?;
         Ok(DisplayOrder {
             id: self.id,

@@ -4,7 +4,7 @@ use diesel::dsl;
 use diesel::prelude::*;
 use diesel::sql_types::{Array, BigInt, Nullable, Text, Timestamp, Uuid as dUuid};
 use models::*;
-use schema::codes;
+use schema::{codes, order_items, orders};
 use std::borrow::Cow;
 use utils::errors::*;
 use uuid::Uuid;
@@ -25,6 +25,14 @@ pub struct Code {
     pub max_tickets_per_user: Option<i64>,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
+    pub discount_as_percentage: Option<i64>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct CodeAvailability {
+    #[serde(flatten)]
+    pub code: Code,
+    pub available: i64,
 }
 
 #[derive(Debug, Deserialize, PartialEq, Queryable, Serialize, QueryableByName)]
@@ -43,6 +51,8 @@ pub struct DisplayCode {
     pub max_uses: i64,
     #[sql_type = "Nullable<BigInt>"]
     pub discount_in_cents: Option<i64>,
+    #[sql_type = "Nullable<BigInt>"]
+    pub discount_as_percentage: Option<i64>,
     #[sql_type = "Timestamp"]
     pub start_date: NaiveDateTime,
     #[sql_type = "Timestamp"]
@@ -68,23 +78,61 @@ pub struct UpdateCodeAttributes {
     pub redemption_code: Option<String>,
     pub max_uses: Option<i64>,
     pub discount_in_cents: Option<Option<i64>>,
+    pub discount_as_percentage: Option<Option<i64>>,
     pub start_date: Option<NaiveDateTime>,
     pub end_date: Option<NaiveDateTime>,
     pub max_tickets_per_user: Option<Option<i64>>,
 }
 
 impl Code {
-    pub fn find_by_redemption_code(
+    pub fn find_by_redemption_code_with_availability(
         redemption_code: &str,
+        event_id: Option<Uuid>,
         conn: &PgConnection,
-    ) -> Result<Code, DatabaseError> {
-        codes::table
-            .filter(codes::redemption_code.eq(redemption_code.to_uppercase()))
-            .first(conn)
-            .to_db_error(
-                ErrorCode::QueryError,
-                "Could not load code with that redeem code",
+    ) -> Result<CodeAvailability, DatabaseError> {
+        let code: Code = match event_id {
+            Some(e) => codes::table
+                .filter(codes::redemption_code.eq(redemption_code.to_uppercase()))
+                .filter(codes::event_id.eq(e))
+                .first(conn)
+                .to_db_error(
+                    ErrorCode::QueryError,
+                    "Could not load code with that redeem code",
+                )?,
+            None => codes::table
+                .filter(codes::redemption_code.eq(redemption_code.to_uppercase()))
+                .first(conn)
+                .to_db_error(
+                    ErrorCode::QueryError,
+                    "Could not load code with that redeem code",
+                )?,
+        };
+
+        let available = code.max_uses - Code::find_number_of_uses(code.id, None, conn)?;
+
+        Ok(CodeAvailability { code, available })
+    }
+
+    pub fn find_number_of_uses(
+        code_id: Uuid,
+        order_id_to_exclude: Option<Uuid>,
+        conn: &PgConnection,
+    ) -> Result<i64, DatabaseError> {
+        let used: Vec<i64> = order_items::table
+            .inner_join(orders::table.on(order_items::order_id.eq(orders::id)))
+            .filter(order_items::order_id.ne(order_id_to_exclude.unwrap_or(Uuid::nil())))
+            .filter(order_items::code_id.eq(code_id))
+            .filter(order_items::refunded_quantity.eq(0))
+            .filter(
+                orders::expires_at
+                    .gt(dsl::now.nullable())
+                    .or(orders::status.eq(OrderStatus::Paid)),
             )
+            .select(order_items::quantity)
+            .get_results(conn)
+            .to_db_error(ErrorCode::QueryError, "Error loading redemption code uses")?;
+
+        Ok(used.iter().fold(0, |acc, x| acc + x))
     }
 
     pub fn update_ticket_types(
@@ -127,6 +175,7 @@ impl Code {
             redemption_code: self.redemption_code.clone(),
             max_uses: self.max_uses,
             discount_in_cents: self.discount_in_cents,
+            discount_as_percentage: self.discount_as_percentage,
             start_date: self.start_date,
             end_date: self.end_date,
             max_tickets_per_user: self.max_tickets_per_user,
@@ -143,6 +192,7 @@ impl Code {
         redemption_code: String,
         max_uses: u32,
         discount_in_cents: Option<u32>,
+        discount_as_percentage: Option<u32>,
         start_date: NaiveDateTime,
         end_date: NaiveDateTime,
         max_tickets_per_user: Option<u32>,
@@ -154,6 +204,7 @@ impl Code {
             redemption_code: redemption_code.to_uppercase(),
             max_uses: max_uses as i64,
             discount_in_cents: discount_in_cents.map(|max| max as i64),
+            discount_as_percentage: discount_as_percentage.map(|max| max as i64),
             start_date,
             end_date,
             max_tickets_per_user: max_tickets_per_user.map(|max| max as i64),
@@ -210,6 +261,7 @@ impl Code {
                     codes.redemption_code,
                     codes.max_uses,
                     codes.discount_in_cents,
+                    codes.discount_as_percentage,
                     codes.start_date,
                     codes.end_date,
                     codes.max_tickets_per_user,
@@ -231,17 +283,40 @@ impl Code {
             .to_db_error(ErrorCode::QueryError, "Cannot find for events")
     }
 
-    pub fn discount_present_for_discount_type(
+    // Validate that for the Discount code type one, and only one, discount type is specified.
+    pub fn single_discount_present_for_discount_type(
         code_type: CodeTypes,
         discount_in_cents: Option<i64>,
+        discount_as_percentage: Option<i64>,
     ) -> Result<(), ValidationError> {
-        if code_type == CodeTypes::Discount && discount_in_cents.is_none() {
+        if code_type == CodeTypes::Discount
+            && discount_in_cents.is_none()
+            && discount_as_percentage.is_none()
+        {
             let mut validation_error =
                 create_validation_error("required", "Discount required for Discount code type");
             validation_error.add_param(Cow::from("code_type"), &code_type);
-            validation_error.add_param(Cow::from("discount"), &discount_in_cents);
+            validation_error.add_param(Cow::from("discount_in_cents"), &discount_in_cents);
+            validation_error
+                .add_param(Cow::from("discount_as_percentage"), &discount_as_percentage);
             return Err(validation_error);
         }
+
+        if code_type == CodeTypes::Discount
+            && discount_in_cents.is_some()
+            && discount_as_percentage.is_some()
+        {
+            let mut validation_error = create_validation_error(
+                "only_single_discount_type_allowed",
+                "Cannot apply more than one type of discount",
+            );
+            validation_error.add_param(Cow::from("code_type"), &code_type);
+            validation_error.add_param(Cow::from("discount_in_cents"), &discount_in_cents);
+            validation_error
+                .add_param(Cow::from("discount_as_percentage"), &discount_as_percentage);
+            return Err(validation_error);
+        }
+
         Ok(())
     }
 
@@ -263,11 +338,14 @@ impl Code {
         validation_errors = validators::append_validation_error(
             validation_errors,
             "discount_in_cents",
-            Code::discount_present_for_discount_type(
+            Code::single_discount_present_for_discount_type(
                 self.code_type.clone(),
                 update_attrs
                     .discount_in_cents
                     .unwrap_or(self.discount_in_cents),
+                update_attrs
+                    .discount_as_percentage
+                    .unwrap_or(self.discount_as_percentage),
             ),
         );
         validation_errors = validators::append_validation_error(
@@ -332,6 +410,7 @@ pub struct NewCode {
     pub redemption_code: String,
     pub max_uses: i64,
     pub discount_in_cents: Option<i64>,
+    pub discount_as_percentage: Option<i64>,
     pub start_date: NaiveDateTime,
     pub end_date: NaiveDateTime,
     pub max_tickets_per_user: Option<i64>,
@@ -352,10 +431,11 @@ impl NewCode {
 
         validation_errors = validators::append_validation_error(
             validation_errors,
-            "discount_in_cents",
-            Code::discount_present_for_discount_type(
+            "discounts",
+            Code::single_discount_present_for_discount_type(
                 self.code_type.clone(),
                 self.discount_in_cents,
+                self.discount_as_percentage,
             ),
         );
         validation_errors = validators::append_validation_error(

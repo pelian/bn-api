@@ -44,28 +44,15 @@ pub fn index() {
         .with_ticket_pricing()
         .finish();
     let conn = database.connection.get();
-    let mut cart = Order::find_or_create_cart(&user, conn).unwrap();
     let ticket_type = &event.ticket_types(true, None, conn).unwrap()[0];
     let ticket_pricing = ticket_type.current_ticket_pricing(false, conn).unwrap();
     let ticket_type2 = &event2.ticket_types(true, None, conn).unwrap()[0];
     let ticket_pricing2 = ticket_type2.current_ticket_pricing(false, conn).unwrap();
+    let mut cart = Order::find_or_create_cart(&user, conn).unwrap();
     cart.update_quantities(
         user.id,
         &[UpdateOrderItem {
             ticket_type_id: ticket_type.id,
-            quantity: 1,
-            redemption_code: None,
-        }],
-        false,
-        false,
-        conn,
-    )
-    .unwrap();
-
-    cart.update_quantities(
-        user.id,
-        &[UpdateOrderItem {
-            ticket_type_id: ticket_type2.id,
             quantity: 1,
             redemption_code: None,
         }],
@@ -84,6 +71,31 @@ pub fn index() {
         conn,
     )
     .unwrap();
+    let mut cart2 = Order::find_or_create_cart(&user, conn).unwrap();
+    cart2
+        .update_quantities(
+            user.id,
+            &[UpdateOrderItem {
+                ticket_type_id: ticket_type2.id,
+                quantity: 1,
+                redemption_code: None,
+            }],
+            false,
+            false,
+            conn,
+        )
+        .unwrap();
+
+    let total = cart2.calculate_total(conn).unwrap();
+    cart2
+        .add_external_payment(
+            Some("test".to_string()),
+            ExternalPaymentType::CreditCard,
+            user.id,
+            total,
+            conn,
+        )
+        .unwrap();
     let ticket =
         TicketInstance::find_for_user_for_display(user.id, Some(event.id), None, None, conn)
             .unwrap()
@@ -143,7 +155,7 @@ pub fn index() {
     let found_tickets = found_data.data;
     let expected_ticket2 = DisplayTicket {
         id: ticket2_id,
-        order_id: cart.id,
+        order_id: cart2.id,
         price_in_cents: (ticket_pricing2.price_in_cents + fee_schedule_range.fee_in_cents) as u32,
         ticket_type_id: ticket_type2.id,
         ticket_type_name: ticket_type2.name.clone(),
