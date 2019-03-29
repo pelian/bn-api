@@ -75,4 +75,7 @@ fn asset_find() {
     let asset = Asset::find(ticket_instance.asset_id, conn).unwrap();
 
     assert_eq!(asset.id, ticket_instance.asset_id);
+
+    // let found_wallet = Wallet.find(wallet_id, conn).unwarp();
+    //assert_eq!(found_wallet.id, wallet_id);
 }

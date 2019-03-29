@@ -1643,3 +1643,41 @@ fn get_all_localized_times() {
         "Tue,  1 Jan 2019 13:00:00 +0200"
     );
 }
+
+#[test]
+fn checked_in_users() {
+    let project = TestProject::new();
+    let admin = project.create_user().finish();
+
+    let connection = project.get_connection();
+
+    let organization = project
+        .create_organization()
+        .with_fee_schedule(&project.create_fee_schedule().finish(admin.id))
+        .finish();
+    let event = project
+        .create_event()
+        .with_organization(&organization)
+        .with_ticket_pricing()
+        .finish();
+    let user = project.create_user().finish();
+    project
+        .create_order()
+        .for_event(&event)
+        .for_user(&user)
+        .quantity(1)
+        .is_paid()
+        .finish();
+    let ticket = TicketInstance::find_for_user(user.id, connection)
+        .unwrap()
+        .remove(0);
+
+    let result2 =
+        TicketInstance::redeem_ticket(ticket.id, ticket.redeem_key.unwrap(), admin.id, connection)
+            .unwrap();
+    assert_eq!(result2, RedeemResults::TicketRedeemSuccess);
+    let users = Event::checked_in_users(event.id, connection).unwrap();
+    assert_eq!(users[0], user);
+    let fans = event.search_fans(None, Some(100), Some(0), None, None, connection).unwrap();
+    assert_eq!(user.id, fans.0[0].user_id);
+}
