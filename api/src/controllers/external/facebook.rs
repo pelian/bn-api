@@ -4,6 +4,7 @@ use bigneon_db::models::{ExternalLogin, User, FACEBOOK_SITE};
 use db::Connection;
 use errors::*;
 use extractors::*;
+use log::Level::Debug;
 use models::FacebookWebLoginToken;
 use reqwest;
 use serde_json;
@@ -23,7 +24,6 @@ struct FacebookGraphResponse {
 pub fn web_login(
     (state, connection, auth_token): (State<AppState>, Connection, Json<FacebookWebLoginToken>),
 ) -> Result<HttpResponse, BigNeonError> {
-    info!("Finding user");
     let url = format!(
         "{}/me?fields=id,email,first_name,last_name",
         FACEBOOK_GRAPH_URL
@@ -39,22 +39,27 @@ pub fn web_login(
         .send()?
         .text()?;
 
+    jlog!(Debug, "Facebook Login Response", { "response": &response });
+
     let facebook_graph_response: FacebookGraphResponse = serde_json::from_str(&response)?;
 
     let existing_user =
         ExternalLogin::find_user(&facebook_graph_response.id, "facebook.com", connection)?;
     let user = match existing_user {
         Some(u) => {
-            info!("Found existing user with id: {}", &u.user_id);
+            jlog!(Debug, "Found existing user with id", {
+                "user_id": &u.user_id,
+                "facebook_id": &facebook_graph_response.id
+            });
             User::find(u.user_id, connection)?
         }
         None => {
-            info!("User not found for external id");
+            jlog!(Debug, "User not found for external id");
 
             // Link account if email exists
             match User::find_by_email(&facebook_graph_response.email.clone(), connection) {
                 Ok(user) => {
-                    info!("User has existing account, linking external service");
+                    jlog!(Debug, "User has existing account, linking external service");
                     user.add_external_login(
                         facebook_graph_response.id.clone(),
                         FACEBOOK_SITE.to_string(),
@@ -67,7 +72,7 @@ pub fn web_login(
                     match e.code {
                         // Not found
                         2000 => {
-                            info!("Creating new user");
+                            jlog!(Debug, "Creating new user");
                             User::create_from_external_login(
                                 facebook_graph_response.id.clone(),
                                 facebook_graph_response.first_name.clone(),
@@ -84,7 +89,7 @@ pub fn web_login(
             }
         }
     };
-    info!("Saving access token");
+    jlog!(Debug, "Saving access token");
     let response = TokenResponse::create_from_user(
         &state.config.token_secret,
         &state.config.token_issuer,
