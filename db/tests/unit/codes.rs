@@ -403,7 +403,7 @@ fn for_display() {
     let mut display_code: DisplayCode = code.for_display(connection).unwrap();
     assert_eq!(code.id, display_code.id);
     assert_eq!(code.name, display_code.name);
-    assert_eq!(code.redemption_code, display_code.redemption_code);
+    assert_eq!(vec![code.redemption_code], display_code.redemption_codes);
     assert_eq!(
         display_code.ticket_type_ids.sort(),
         vec![ticket_type.id, ticket_type2.id].sort()

@@ -80,7 +80,7 @@ pub fn create(role: Roles, should_test_succeed: bool) {
     let end_date = NaiveDateTime::from(Utc::now().naive_utc() + Duration::days(2));
     let json = Json(CreateCodeRequest {
         name: name.clone(),
-        redemption_code: redemption_code.clone(),
+        redemption_codes: vec![redemption_code.clone()],
         code_type: CodeTypes::Discount,
         max_uses: 10,
         discount_in_cents: Some(100),
@@ -102,7 +102,7 @@ pub fn create(role: Roles, should_test_succeed: bool) {
         assert_eq!(response.status(), StatusCode::CREATED);
         let code: DisplayCode = serde_json::from_str(&body).unwrap();
         assert_eq!(code.name, name);
-        assert_eq!(code.redemption_code, redemption_code);
+        assert_eq!(code.redemption_codes, vec![redemption_code]);
         assert_eq!(code.max_uses, 10);
         assert_eq!(code.discount_in_cents, Some(100));
         assert_eq!(code.ticket_type_ids, vec![ticket_type_id]);

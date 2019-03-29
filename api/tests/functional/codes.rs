@@ -190,7 +190,7 @@ fn create_with_validation_errors() {
     let end_date = NaiveDateTime::from(Utc::now().naive_utc() - Duration::days(2));
     let json = Json(CreateCodeRequest {
         name: "Code Example".into(),
-        redemption_code: "a".into(),
+        redemption_codes: vec!["a".into()],
         code_type: CodeTypes::Discount,
         max_uses: 10,
         discount_in_cents: Some(100),
@@ -240,7 +240,7 @@ fn create_fails_adding_ticket_type_id_from_other_event() {
     let end_date = NaiveDateTime::from(Utc::now().naive_utc() + Duration::days(2));
     let json = Json(CreateCodeRequest {
         name: "Code Example".into(),
-        redemption_code: "REDEMPTIONCODE".into(),
+        redemption_codes: vec!["REDEMPTIONCODE".into()],
         code_type: CodeTypes::Discount,
         max_uses: 10,
         discount_in_cents: Some(100),

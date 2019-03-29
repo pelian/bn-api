@@ -6,7 +6,6 @@ use db::Connection;
 use errors::{ApplicationError, BigNeonError};
 use extractors::*;
 use helpers::application;
-use itertools::Itertools;
 use models::PathParameters;
 use serde_with::rust::double_option;
 use uuid::Uuid;
