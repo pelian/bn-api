@@ -37,8 +37,8 @@ pub struct DisplayCode {
     pub event_id: Uuid,
     #[sql_type = "Text"]
     pub code_type: CodeTypes,
-    #[sql_type = "Text"]
-    pub redemption_code: String,
+    #[sql_type = "Array<Text>"]
+    pub redemption_codes: Vec<String>,
     #[sql_type = "BigInt"]
     pub max_uses: i64,
     #[sql_type = "Nullable<BigInt>"]
@@ -124,7 +124,7 @@ impl Code {
             name: self.name.clone(),
             event_id: self.event_id,
             code_type: self.code_type.clone(),
-            redemption_code: self.redemption_code.clone(),
+            redemption_codes: vec![self.redemption_code.clone()],
             max_uses: self.max_uses,
             discount_in_cents: self.discount_in_cents,
             start_date: self.start_date,
@@ -132,7 +132,7 @@ impl Code {
             max_tickets_per_user: self.max_tickets_per_user,
             created_at: self.created_at,
             updated_at: self.updated_at,
-            ticket_type_ids: ticket_type_ids,
+            ticket_type_ids,
         })
     }
 
@@ -151,7 +151,7 @@ impl Code {
             name,
             event_id,
             code_type,
-            redemption_code: redemption_code.to_uppercase(),
+            redemption_code,
             max_uses: max_uses as i64,
             discount_in_cents: discount_in_cents.map(|max| max as i64),
             start_date,
@@ -207,7 +207,7 @@ impl Code {
                     codes.name,
                     codes.event_id,
                     codes.code_type,
-                    codes.redemption_code,
+                    array[codes.redemption_code] as redemption_codes,
                     codes.max_uses,
                     codes.discount_in_cents,
                     codes.start_date,
@@ -228,7 +228,7 @@ impl Code {
                 code_type.map(|s| s.to_string()),
             )
             .get_results(conn)
-            .to_db_error(ErrorCode::QueryError, "Cannot find for events")
+            .to_db_error(ErrorCode::QueryError, "Cannot find codes for event")
     }
 
     pub fn discount_present_for_discount_type(

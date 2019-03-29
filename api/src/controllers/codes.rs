@@ -3,9 +3,10 @@ use auth::user::User;
 use bigneon_db::models::*;
 use chrono::prelude::*;
 use db::Connection;
-use errors::BigNeonError;
+use errors::{ApplicationError, BigNeonError};
 use extractors::*;
 use helpers::application;
+use itertools::Itertools;
 use models::PathParameters;
 use serde_with::rust::double_option;
 use uuid::Uuid;
@@ -13,7 +14,7 @@ use uuid::Uuid;
 #[derive(Deserialize, Serialize)]
 pub struct CreateCodeRequest {
     pub name: String,
-    pub redemption_code: String,
+    pub redemption_codes: Vec<String>,
     pub code_type: CodeTypes,
     pub max_uses: u32,
     pub discount_in_cents: Option<u32>,
@@ -85,11 +86,20 @@ pub fn create(
         conn,
     )?;
 
+    if req.redemption_codes.len() != 1 {
+        return application::unprocessable("Only one code allowed at this time");
+    }
+
     let code = Code::create(
         req.name.clone(),
         path.id,
         req.code_type,
-        req.redemption_code.clone(),
+        req.redemption_codes
+            .iter()
+            .map(|s| s.to_uppercase())
+            .next()
+            .ok_or_else(|| ApplicationError::new("Code is required".to_string()))?
+            .to_string(),
         req.max_uses,
         req.discount_in_cents,
         req.start_date,
