@@ -5,7 +5,7 @@ use actix_web::{server, App};
 use config::Config;
 use db::*;
 use domain_events::DomainActionMonitor;
-use middleware::{AppVersionHeader, BigNeonLogger, DatabaseTransaction};
+use middleware::{AppVersionHeader, BigNeonLogger, DatabaseTransaction, Metatags};
 use routing;
 use std::io;
 use utils::spotify;
@@ -69,6 +69,12 @@ impl Server {
                         .middleware(BigNeonLogger::new(LOGGER_FORMAT))
                         .middleware(DatabaseTransaction::new())
                         .middleware(AppVersionHeader::new())
+                        .middleware(Metatags::new(
+                            config.ssr_trigger_header.clone(),
+                            config.ssr_trigger_value.clone(),
+                            config.front_end_url.clone(),
+                            config.app_name.clone(),
+                        ))
                         .configure(|a| {
                             let mut cors_config = Cors::for_app(a);
                             match config.allowed_origins.as_ref() {

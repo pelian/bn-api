@@ -52,6 +52,8 @@ pub struct Config {
     pub branch_io_branch_key: String,
     pub max_instances_per_ticket_type: i64,
     pub connection_pool: ConnectionPoolConfig,
+    pub ssr_trigger_header: String,
+    pub ssr_trigger_value: String,
 }
 
 #[derive(Clone)]
@@ -113,6 +115,9 @@ const BRANCH_IO_BRANCH_KEY: &str = "BRANCH_IO_BRANCH_KEY";
 const MAX_INSTANCES_PER_TICKET_TYPE: &str = "MAX_INSTANCES_PER_TICKET_TYPE";
 const CONNECTION_POOL_MIN: &str = "CONNECTION_POOL_MIN";
 const CONNECTION_POOL_MAX: &str = "CONNECTION_POOL_MAX";
+
+const SSR_TRIGGER_HEADER: &str = "SSR_TRIGGER_HEADER";
+const SSR_TRIGGER_VALUE: &str = "SSR_TRIGGER_VALUE";
 
 impl Config {
     pub fn new(environment: Environment) -> Self {
@@ -269,6 +274,9 @@ impl Config {
                 .unwrap_or(20),
         };
 
+        let ssr_trigger_header = env::var(&SSR_TRIGGER_HEADER).unwrap_or("x-ssr".to_string());
+        let ssr_trigger_value = env::var(&SSR_TRIGGER_VALUE).unwrap_or("facebook".to_string());
+
         Config {
             allowed_origins,
             app_name,
@@ -311,6 +319,8 @@ impl Config {
             branch_io_branch_key,
             max_instances_per_ticket_type,
             connection_pool,
+            ssr_trigger_header,
+            ssr_trigger_value,
         }
     }
 }

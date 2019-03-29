@@ -4,9 +4,6 @@ use actix_web::{FromRequest, HttpRequest, HttpResponse, ResponseError, Result};
 use db::Connection;
 use diesel::connection::TransactionManager;
 use diesel::Connection as DieselConnection;
-use errors::BigNeonError;
-use server::AppState;
-use std::error::Error;
 
 pub trait RequestConnection {
     fn connection(&self) -> Result<Connection, ActixWebError>;
@@ -19,6 +16,9 @@ impl RequestConnection for HttpRequest<AppState> {
 }
 
 pub struct DatabaseTransaction {}
+use errors::BigNeonError;
+use server::AppState;
+use std::error::Error;
 
 impl DatabaseTransaction {
     pub fn new() -> DatabaseTransaction {
