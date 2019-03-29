@@ -139,8 +139,8 @@ string_enum! { HoldStatus [Published, Deleted] }
 string_enum! { OrderStatus [Cancelled, Draft, Paid, PendingPayment] }
 string_enum! { OrderItemTypes [Tickets, PerUnitFees, EventFees, Discount]}
 string_enum! { OrderTypes [Cart, BackOffice] }
-string_enum! { PaymentMethods [External, CreditCard, Provider] }
-string_enum! { PaymentProviders [External, Globee, Stripe] }
+string_enum! { PaymentMethods [CreditCard, External, Free, Provider] }
+string_enum! { PaymentProviders [External, Globee, Free, Stripe] }
 string_enum! { PaymentStatus [Authorized, Completed, Requested, Refunded, Unpaid, PendingConfirmation, Cancelled, Draft, Unknown, PendingIpn] }
 string_enum! { PastOrUpcoming [Past,Upcoming]}
 string_enum! { Roles [Admin, DoorPerson, OrgMember, OrgOwner, OrgAdmin, OrgBoxOffice, Promoter, PromoterReadOnly, User] }

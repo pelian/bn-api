@@ -19,7 +19,8 @@ impl Database {
     }
 
     pub fn get_connection(&self) -> Result<Connection, R2D2Error> {
-        Ok(ConnectionType::R2D2(self.connection_pool.get()?).into())
+        let conn = self.connection_pool.get()?;
+        Ok(ConnectionType::R2D2(conn).into())
     }
 }
 
@@ -33,8 +34,8 @@ impl Clone for Database {
 
 fn create_connection_pool(config: &Config) -> R2D2Pool {
     let r2d2_config = r2d2::Pool::builder()
-        .max_size(config.database_pool_size)
-        .min_idle(Some(1));
+        .min_idle(Some(config.connection_pool.min))
+        .max_size(config.connection_pool.max);
 
     let connection_manager = ConnectionManager::new(config.database_url.clone());
 

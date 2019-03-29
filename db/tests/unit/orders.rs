@@ -2041,6 +2041,60 @@ fn add_external_payment_for_expired_code() {
 }
 
 #[test]
+fn add_free_payment() {
+    let project = TestProject::new();
+    let connection = project.get_connection();
+    let user = project.create_user().finish();
+    let event = project
+        .create_event()
+        .with_tickets()
+        .with_ticket_pricing()
+        .finish();
+
+    // Free order
+    let mut order = project
+        .create_order()
+        .with_free_items()
+        .for_user(&user)
+        .for_event(&event)
+        .finish();
+    assert_eq!(0, order.calculate_total(connection).unwrap());
+    assert_eq!(order.status, OrderStatus::Draft);
+    assert!(order.payments(connection).unwrap().is_empty());
+    order
+        .add_free_payment(false, user.id, project.get_connection())
+        .unwrap();
+    assert_eq!(order.status, OrderStatus::Paid);
+
+    let payments = order.payments(connection).unwrap();
+    assert_eq!(1, payments.len());
+    let payment = &payments[0];
+    assert_eq!(payment.payment_method, PaymentMethods::Free);
+    assert_eq!(payment.provider, PaymentProviders::Free);
+
+    // External free order
+    let mut order = project
+        .create_order()
+        .with_free_items()
+        .for_user(&user)
+        .for_event(&event)
+        .finish();
+    assert_eq!(0, order.calculate_total(connection).unwrap());
+    assert_eq!(order.status, OrderStatus::Draft);
+    assert!(order.payments(connection).unwrap().is_empty());
+    order
+        .add_free_payment(true, user.id, project.get_connection())
+        .unwrap();
+    assert_eq!(order.status, OrderStatus::Paid);
+
+    let payments = order.payments(connection).unwrap();
+    assert_eq!(1, payments.len());
+    let payment = &payments[0];
+    assert_eq!(payment.payment_method, PaymentMethods::Free);
+    assert_eq!(payment.provider, PaymentProviders::External);
+}
+
+#[test]
 fn find_for_user_for_display() {
     let project = TestProject::new();
     let user = project.create_user().finish();

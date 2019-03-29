@@ -17,7 +17,6 @@ pub struct Config {
     pub api_port: String,
     pub app_name: String,
     pub database_url: String,
-    pub database_pool_size: u32,
     pub domain: String,
     pub environment: Environment,
     pub facebook_app_id: Option<String>,
@@ -52,6 +51,13 @@ pub struct Config {
     pub branch_io_base_url: String,
     pub branch_io_branch_key: String,
     pub max_instances_per_ticket_type: i64,
+    pub connection_pool: ConnectionPoolConfig,
+}
+
+#[derive(Clone)]
+pub struct ConnectionPoolConfig {
+    pub min: u32,
+    pub max: u32,
 }
 
 const ALLOWED_ORIGINS: &str = "ALLOWED_ORIGINS";
@@ -59,7 +65,6 @@ const APP_NAME: &str = "APP_NAME";
 const API_HOST: &str = "API_HOST";
 const API_PORT: &str = "API_PORT";
 const DATABASE_URL: &str = "DATABASE_URL";
-const DATABASE_POOL_SIZE: &str = "DATABASE_POOL_SIZE";
 const DOMAIN: &str = "DOMAIN";
 const FACEBOOK_APP_ID: &str = "FACEBOOK_APP_ID";
 const FACEBOOK_APP_SECRET: &str = "FACEBOOK_APP_SECRET";
@@ -106,6 +111,8 @@ const BRANCH_IO_BASE_URL: &str = "BRANCH_IO_BASE_URL";
 const BRANCH_IO_BRANCH_KEY: &str = "BRANCH_IO_BRANCH_KEY";
 
 const MAX_INSTANCES_PER_TICKET_TYPE: &str = "MAX_INSTANCES_PER_TICKET_TYPE";
+const CONNECTION_POOL_MIN: &str = "CONNECTION_POOL_MIN";
+const CONNECTION_POOL_MAX: &str = "CONNECTION_POOL_MAX";
 
 impl Config {
     pub fn new(environment: Environment) -> Self {
@@ -120,12 +127,6 @@ impl Config {
                 .unwrap_or_else(|_| panic!("{} must be defined.", DATABASE_URL)),
         };
 
-        let database_pool_size = env::var(&DATABASE_POOL_SIZE)
-            .map(|s| {
-                s.parse()
-                    .expect("Not a valid integer for database pool size")
-            })
-            .unwrap_or(20);
         let domain = env::var(&DOMAIN).unwrap_or_else(|_| "api.bigneon.com".to_string());
 
         let allowed_origins = env::var(&ALLOWED_ORIGINS).unwrap_or_else(|_| "*".to_string());
@@ -253,6 +254,20 @@ impl Config {
                     .expect("Not a valid integer for max instances per ticket type")
             })
             .unwrap_or(10000);
+        let mut connection_pool = ConnectionPoolConfig {
+            min: env::var(CONNECTION_POOL_MIN)
+                .map(|s| {
+                    s.parse()
+                        .expect("Not a valid integer for CONNECTION_POOL_MIN")
+                })
+                .unwrap_or(1),
+            max: env::var(CONNECTION_POOL_MAX)
+                .map(|s| {
+                    s.parse()
+                        .expect("Not a valid integer for CONNECTION_POOL_MAX")
+                })
+                .unwrap_or(20),
+        };
 
         Config {
             allowed_origins,
@@ -260,7 +275,6 @@ impl Config {
             api_host,
             api_port,
             database_url,
-            database_pool_size,
             domain,
             environment,
             facebook_app_id,
@@ -296,6 +310,7 @@ impl Config {
             jwt_expiry_time,
             branch_io_branch_key,
             max_instances_per_ticket_type,
+            connection_pool,
         }
     }
 }
