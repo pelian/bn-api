@@ -25,6 +25,29 @@ fn create() {
 }
 
 #[test]
+fn find_pending_by_org() {
+    let project = TestProject::new();
+    let user = project.create_user().finish();
+    let connection = project.get_connection();
+    let organization = project
+        .create_organization()
+        .with_member(&user, Roles::OrgOwner)
+        .finish();
+    let _org_invite = project
+        .create_organization_invite()
+        .with_org(&organization)
+        .with_invitee(&user)
+        .finish();
+    let pending =
+        OrganizationInvite::find_pending_by_organization(organization.id, None, connection)
+            .unwrap();
+    assert_eq!(pending.len(), 1);
+    let email = "test@test.com".to_string();
+    let active_find = OrganizationInvite::find_active_invite_by_email(&email, connection).unwrap();
+    assert_eq!(active_find.is_some(), true);
+}
+
+#[test]
 fn create_event_limited_access_user() {
     let project = TestProject::new();
     let user = project.create_user().finish();
