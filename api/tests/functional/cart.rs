@@ -910,6 +910,117 @@ fn checkout_external() {
 }
 
 #[test]
+fn checkout_external_with_free_cart() {
+    let database = TestDatabase::new();
+    let connection = database.connection.get();
+    let event = database
+        .create_event()
+        .with_tickets()
+        .with_ticket_pricing()
+        .finish();
+
+    let user = database.create_user().finish();
+    let order = database
+        .create_cart()
+        .with_free_items()
+        .for_user(&user)
+        .for_event(&event)
+        .finish();
+    let request = TestRequest::create();
+
+    let input = Json(cart::CheckoutCartRequest {
+        method: PaymentRequest::External {
+            reference: Some("TestRef".to_string()),
+            external_payment_type: ExternalPaymentType::Cash,
+            first_name: "First".to_string(),
+            last_name: "Last".to_string(),
+            email: Some("easdf@test.com".to_string()),
+            phone: None,
+            note: None,
+        },
+    });
+
+    // Must be admin to check out external
+    let user = support::create_auth_user_from_user(&user, Roles::Admin, None, &database);
+
+    let response = cart::checkout((
+        database.connection.clone().into(),
+        input,
+        user,
+        request.extract_state(),
+        RequestInfo { user_agent: None },
+    ))
+    .unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+
+    // Reload order
+    let order = Order::find(order.id, connection).unwrap();
+    assert_eq!(order.status, OrderStatus::Paid);
+
+    // Free payment
+    let payments = order.payments(connection).unwrap();
+    assert_eq!(1, payments.len());
+    let payment = &payments[0];
+    assert_eq!(payment.payment_method, PaymentMethods::Free);
+    assert_eq!(payment.provider, PaymentProviders::External);
+}
+
+#[test]
+fn checkout_paid_fails_with_free_cart() {
+    let database = TestDatabase::new();
+    let connection = database.connection.get();
+    let event = database
+        .create_event()
+        .with_tickets()
+        .with_ticket_pricing()
+        .finish();
+
+    let user = database.create_user().finish();
+    let order = database
+        .create_cart()
+        .with_free_items()
+        .for_user(&user)
+        .for_event(&event)
+        .finish();
+    let request = TestRequest::create();
+
+    let input = Json(cart::CheckoutCartRequest {
+        method: PaymentRequest::Card {
+            token: "abc".into(),
+            provider: PaymentProviders::Stripe,
+            save_payment_method: false,
+            set_default: false,
+        },
+    });
+
+    // Must be admin to check out external
+    let user = support::create_auth_user_from_user(&user, Roles::Admin, None, &database);
+
+    let response: HttpResponse = cart::checkout((
+        database.connection.clone().into(),
+        input,
+        user,
+        request.extract_state(),
+        RequestInfo { user_agent: None },
+    ))
+    .into();
+    assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
+
+    let expected_json = HttpResponse::new(StatusCode::UNPROCESSABLE_ENTITY)
+        .into_builder()
+        .json(json!({
+            "error": "Could not complete this cart; only paid orders require payment processing"
+        }));
+    let expected_text = unwrap_body_to_string(&expected_json).unwrap();
+    let body = unwrap_body_to_string(&response).unwrap();
+    assert_eq!(body, expected_text);
+
+    // Reload order
+    let order = Order::find(order.id, connection).unwrap();
+    assert_eq!(order.status, OrderStatus::Draft);
+}
+
+#[test]
 fn checkout_free() {
     let database = TestDatabase::new();
     let connection = database.connection.get();
@@ -948,6 +1059,13 @@ fn checkout_free() {
     // Reload order
     let order = Order::find(order.id, connection).unwrap();
     assert_eq!(order.status, OrderStatus::Paid);
+
+    // Free payment
+    let payments = order.payments(connection).unwrap();
+    assert_eq!(1, payments.len());
+    let payment = &payments[0];
+    assert_eq!(payment.payment_method, PaymentMethods::Free);
+    assert_eq!(payment.provider, PaymentProviders::Free);
 }
 
 #[test]

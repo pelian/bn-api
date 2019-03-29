@@ -4,6 +4,7 @@ use diesel::prelude::*;
 use models::domain_events::DomainEvent;
 use models::*;
 use schema::{artists, event_artists};
+use std::cmp::Ordering;
 use utils::errors::DatabaseError;
 use utils::errors::ErrorCode;
 use utils::errors::*;
@@ -135,4 +136,10 @@ pub struct DisplayEventArtist {
     pub set_time: Option<NaiveDateTime>,
     pub importance: i32,
     pub stage_id: Option<Uuid>,
+}
+
+impl PartialOrd for DisplayEventArtist {
+    fn partial_cmp(&self, other: &DisplayEventArtist) -> Option<Ordering> {
+        Some(self.artist.id.cmp(&other.artist.id))
+    }
 }

@@ -33,7 +33,6 @@ pub struct NewSettlementTransaction {
     pub value_in_cents: i64,
     pub comment: Option<String>,
 }
-
 impl NewSettlementTransaction {
     pub fn commit(&self, conn: &PgConnection) -> Result<SettlementTransaction, DatabaseError> {
         DatabaseError::wrap(

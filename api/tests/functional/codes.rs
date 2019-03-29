@@ -194,6 +194,79 @@ fn create_with_validation_errors() {
         code_type: CodeTypes::Discount,
         max_uses: 10,
         discount_in_cents: Some(100),
+        discount_as_percentage: None,
+        start_date,
+        end_date,
+        max_tickets_per_user: None,
+        ticket_type_ids: vec![ticket_type_id],
+    });
+
+    let test_request = TestRequest::create();
+    let mut path = Path::<PathParameters>::extract(&test_request.request).unwrap();
+    path.id = event.id;
+
+    let response: HttpResponse = codes::create((
+        database.connection.clone().into(),
+        json,
+        path,
+        auth_user.clone(),
+    ))
+    .into();
+    assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    assert!(response.error().is_some());
+
+    let validation_response = support::validation_response_from_response(&response).unwrap();
+    let redemption_code = validation_response.fields.get("redemption_code").unwrap();
+    assert_eq!(redemption_code[0].code, "length");
+    assert_eq!(
+        &redemption_code[0].message.clone().unwrap().into_owned(),
+        "Redemption code must be at least 6 characters long"
+    );
+    let start_date_err = validation_response.fields.get("start_date").unwrap();
+    assert_eq!(start_date_err[0].code, "start_date_must_be_before_end_date");
+    assert_eq!(
+        &start_date_err[0].message.clone().unwrap().into_owned(),
+        "Start date must be before end date"
+    );
+
+    let json = Json(CreateCodeRequest {
+        name: "Code Example".into(),
+        redemption_code: "a".into(),
+        code_type: CodeTypes::Discount,
+        max_uses: 10,
+        discount_in_cents: None,
+        discount_as_percentage: None,
+        start_date,
+        end_date,
+        max_tickets_per_user: None,
+        ticket_type_ids: vec![ticket_type_id],
+    });
+
+    let test_request = TestRequest::create();
+    let mut path = Path::<PathParameters>::extract(&test_request.request).unwrap();
+    path.id = event.id;
+
+    let response: HttpResponse = codes::create((
+        database.connection.clone().into(),
+        json,
+        path,
+        auth_user.clone(),
+    ))
+    .into();
+    assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    assert!(response.error().is_some());
+
+    let validation_response = support::validation_response_from_response(&response).unwrap();
+    let discount_err = validation_response.fields.get("discounts").unwrap();
+    assert_eq!(discount_err[0].code, "required");
+
+    let json = Json(CreateCodeRequest {
+        name: "Code Example".into(),
+        redemption_code: "a".into(),
+        code_type: CodeTypes::Discount,
+        max_uses: 10,
+        discount_in_cents: Some(100),
+        discount_as_percentage: Some(15),
         start_date,
         end_date,
         max_tickets_per_user: None,
@@ -210,18 +283,8 @@ fn create_with_validation_errors() {
     assert!(response.error().is_some());
 
     let validation_response = support::validation_response_from_response(&response).unwrap();
-    let redemption_code = validation_response.fields.get("redemption_code").unwrap();
-    assert_eq!(redemption_code[0].code, "length");
-    assert_eq!(
-        &redemption_code[0].message.clone().unwrap().into_owned(),
-        "Redemption code must be at least 6 characters long"
-    );
-    let start_date = validation_response.fields.get("start_date").unwrap();
-    assert_eq!(start_date[0].code, "start_date_must_be_before_end_date");
-    assert_eq!(
-        &start_date[0].message.clone().unwrap().into_owned(),
-        "Start date must be before end date"
-    );
+    let discount_err = validation_response.fields.get("discounts").unwrap();
+    assert_eq!(discount_err[0].code, "only_single_discount_type_allowed");
 }
 
 #[test]
@@ -244,6 +307,7 @@ fn create_fails_adding_ticket_type_id_from_other_event() {
         code_type: CodeTypes::Discount,
         max_uses: 10,
         discount_in_cents: Some(100),
+        discount_as_percentage: None,
         start_date,
         end_date,
         max_tickets_per_user: None,

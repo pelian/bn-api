@@ -1,6 +1,6 @@
 [package]
 name = "bigneon_api"
-version = "1.0.40"
+version = "1.0.48"
 authors = ["CjS77"]
 license = "BSD-3"
 repository = "https://github.com/big-neon/bn-api/"
@@ -9,14 +9,14 @@ documentation = "https://github.com/big-neon/docs"
 
 [dependencies]
 actix = "0.7"
-actix-web = "0.7"
+actix-web = "=0.7.16"
 bigneon_db = { path = "../db" }
 bigneon_http = { path = "../http" }
 bigneon_caching_derive = { path = "../http/caching_derive" }
 branch_rs = {path="../branch_rs"}
 chrono = {version = "0.4", features = ["serde"]}
 clap = "2.32"
-diesel = {version = "1.3", features = ["r2d2"]}
+diesel="1.4.2"
 dotenv = "0.13"
 expo-server-sdk = "0.1.0"
 failure ="0.1"

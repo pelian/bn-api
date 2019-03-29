@@ -84,6 +84,7 @@ pub fn create(role: Roles, should_test_succeed: bool) {
         code_type: CodeTypes::Discount,
         max_uses: 10,
         discount_in_cents: Some(100),
+        discount_as_percentage: None,
         start_date,
         end_date,
         max_tickets_per_user: None,

@@ -2,9 +2,9 @@ use std::error::Error;
 use std::sync::mpsc;
 use std::sync::mpsc::Receiver;
 use std::sync::mpsc::Sender;
-use std::thread;
 use std::thread::JoinHandle;
 use std::time::Duration;
+use std::{cmp, thread};
 
 use log::Level::*;
 
@@ -58,7 +58,7 @@ impl DomainActionMonitor {
             let futures = DomainActionMonitor::find_actions(
                 &self.database,
                 &router,
-                (self.config.database_pool_size / 2) as usize,
+                cmp::max(1, self.config.connection_pool.max / 2) as usize,
             )?;
 
             let mut runtime = current_thread::Runtime::new().unwrap();
@@ -248,7 +248,7 @@ impl DomainActionMonitor {
             let futures = DomainActionMonitor::find_actions(
                 &database,
                 &router,
-                (conf.database_pool_size / 2) as usize,
+                cmp::max(1, conf.connection_pool.max / 2) as usize,
             )?;
 
             if futures.len() == 0 {

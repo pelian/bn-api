@@ -699,15 +699,17 @@ impl Order {
                             update_order_item: item,
                         }
                     }
-                    None => match Code::find_by_redemption_code(r, conn).optional()? {
-                        Some(code) => {
-                            code.confirm_code_valid()?;
+                    None => match Code::find_by_redemption_code_with_availability(r, None, conn)
+                        .optional()?
+                    {
+                        Some(code_availability) => {
+                            code_availability.code.confirm_code_valid()?;
                             MatchData {
                                 index: Some(index),
                                 hold_id: None,
                                 hold: None,
-                                code_id: Some(code.id),
-                                code: Some(code),
+                                code_id: Some(code_availability.code.id),
+                                code: Some(code_availability.code),
                                 update_order_item: item,
                             }
                         }
@@ -801,8 +803,12 @@ impl Order {
                                     HoldTypes::Comp => 0,
                                 };
                             } else if let Some(c) = match_data.code.as_ref() {
-                                price_in_cents =
-                                    cmp::max(0, price_in_cents - c.discount_in_cents.unwrap_or(0));
+                                if c.code_type == CodeTypes::Access {
+                                    price_in_cents = cmp::max(
+                                        0,
+                                        price_in_cents - c.discount_in_cents.unwrap_or(0),
+                                    );
+                                }
                             }
 
                             let order_item = NewTicketsOrderItem {
@@ -895,7 +901,9 @@ impl Order {
                     HoldTypes::Comp => 0,
                 }
             } else if let Some(c) = match_data.code.as_ref() {
-                price_in_cents = cmp::max(0, price_in_cents - c.discount_in_cents.unwrap_or(0));
+                if c.code_type == CodeTypes::Access {
+                    price_in_cents = cmp::max(0, price_in_cents - c.discount_in_cents.unwrap_or(0));
+                }
             }
 
             // TODO: Move this to an external processer
@@ -977,6 +985,7 @@ impl Order {
         let items = self.items(conn)?;
 
         for o in items {
+            o.update_discount(&self, conn)?;
             match o.item_type {
                 OrderItemTypes::EventFees => self.destroy_item(o.id, conn)?,
                 _ => {}
@@ -987,6 +996,8 @@ impl Order {
         if self.box_office_pricing {
             return Ok(());
         }
+
+        let mut per_event_fees_included: HashMap<Uuid, bool> = HashMap::new();
 
         for ((event_id, hold_id), items) in self
             .items(conn)?
@@ -1005,15 +1016,23 @@ impl Order {
                 }
             }
 
-            let event = Event::find(event_id.unwrap(), conn)?;
+            let event_id = event_id.unwrap();
+            let event = Event::find(event_id, conn)?;
 
             let mut all_zero_price = true;
 
             for o in items {
                 match o.item_type {
                     OrderItemTypes::Tickets => {
+                        let discount_item = o.find_discount_item(conn)?;
+
+                        let unit_price_with_discount = match discount_item {
+                            Some(di) => o.unit_price_in_cents + di.unit_price_in_cents,
+                            None => o.unit_price_in_cents,
+                        };
+
                         o.update_fees(&self, conn)?;
-                        if o.unit_price_in_cents > 0 {
+                        if unit_price_with_discount > 0 {
                             all_zero_price = false;
                         }
                     }
@@ -1021,7 +1040,10 @@ impl Order {
                 }
             }
 
-            if !all_zero_price {
+            //This must only be run once for an entire order
+            //The issue was that if there was a hold that was not a comp as well as normal tickets
+            //in the cart the EventFees would get duplicated
+            if !all_zero_price && !per_event_fees_included.contains_key(&event_id) {
                 let mut new_event_fee = NewFeesOrderItem {
                     order_id: self.id,
                     item_type: OrderItemTypes::EventFees,
@@ -1040,6 +1062,7 @@ impl Order {
                     new_event_fee.unit_price_in_cents =
                         event.client_fee_in_cents + event.company_fee_in_cents;
                     new_event_fee.commit(conn)?;
+                    per_event_fees_included.insert(event_id, true);
                 }
             }
         }
@@ -1201,7 +1224,7 @@ impl Order {
                             0
                         END
                     )
-                AS BIGINT) as unit_price_in_cents,
+                AS BIGINT) as face_value_in_cents,
                 CAST(
                     SUM(
                         CASE WHEN fi.id IS NOT NULL
@@ -1241,7 +1264,7 @@ impl Order {
             #[sql_type = "BigInt"]
             ticket_quantity: i64,
             #[sql_type = "BigInt"]
-            unit_price_in_cents: i64,
+            face_value_in_cents: i64,
             #[sql_type = "BigInt"]
             fees_in_cents: i64,
         }
@@ -1272,8 +1295,8 @@ impl Order {
                 order_metadata.ticket_quantity.to_string(),
             ),
             (
-                "unit_price_in_cents".to_string(),
-                order_metadata.unit_price_in_cents.to_string(),
+                "face_value_in_cents".to_string(),
+                order_metadata.face_value_in_cents.to_string(),
             ),
             (
                 "fees_in_cents".to_string(),
@@ -1297,7 +1320,6 @@ impl Order {
                 0
             }
         });
-
         let mut limited_tickets_remaining: Vec<TicketsRemaining> = Vec::new();
         for e in self.events(conn)? {
             if let Some(ref organization_ids) = organization_ids {
@@ -1317,7 +1339,6 @@ impl Order {
                 }
             }
         }
-
         // Check if this order contains any other organization items if a list of organization_ids is passed in
         let mut order_contains_other_tickets = false;
         if let Some(ref organization_ids) = organization_ids {
@@ -1359,7 +1380,6 @@ impl Order {
                 "Could not determine if order contains tickets for other organizations",
             )?;
         };
-
         let available_payment_methods: Vec<Vec<PaymentProviders>> = order_items::table
             .inner_join(events::table.inner_join(organizations::table))
             .filter(order_items::order_id.eq(self.id))
@@ -1388,7 +1408,6 @@ impl Order {
                     _ => None,
                 })
                 .collect();
-
         let items = self.items_for_display(organization_ids, user_id, conn)?;
         Ok(DisplayOrder {
             id: self.id,
@@ -1492,6 +1511,30 @@ impl Order {
         )
         .commit(conn)?;
         Ok(())
+    }
+
+    pub fn add_free_payment(
+        &mut self,
+        external_payment: bool,
+        current_user_id: Uuid,
+        conn: &PgConnection,
+    ) -> Result<Payment, DatabaseError> {
+        let payment = Payment::create(
+            self.id,
+            Some(current_user_id),
+            PaymentStatus::Completed,
+            PaymentMethods::Free,
+            if external_payment {
+                PaymentProviders::External
+            } else {
+                PaymentProviders::Free
+            },
+            Some("Free Checkout".to_string()),
+            0,
+            None,
+            None,
+        );
+        self.add_payment(payment, Some(current_user_id), conn)
     }
 
     pub fn add_external_payment(

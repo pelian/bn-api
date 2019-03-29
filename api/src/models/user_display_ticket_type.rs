@@ -68,14 +68,20 @@ impl UserDisplayTicketType {
                     result.available = hold.quantity(conn)?.1;
                     result.redemption_code = Some(redemption_code.clone());
                 }
-            } else if let Some(code) =
-                Code::find_by_redemption_code(redemption_code, conn).optional()?
+            } else if let Some(code_availability) =
+                Code::find_by_redemption_code_with_availability(redemption_code, None, conn)
+                    .optional()?
             {
                 let now = Utc::now().naive_utc();
-                if now >= code.start_date && now <= code.end_date {
-                    if TicketType::find_for_code(code.id, conn)?.contains(&ticket_type) {
+                if now >= code_availability.code.start_date
+                    && now <= code_availability.code.end_date
+                {
+                    if TicketType::find_for_code(code_availability.code.id, conn)?
+                        .contains(&ticket_type)
+                    {
                         result.description = Some(format!("Using promo code: {}", redemption_code));
-                        result.limit_per_person = code.max_tickets_per_user.unwrap_or(0) as u32;
+                        result.limit_per_person =
+                            code_availability.code.max_tickets_per_user.unwrap_or(0) as u32;
                         result.redemption_code = Some(redemption_code.clone());
                     }
                 }

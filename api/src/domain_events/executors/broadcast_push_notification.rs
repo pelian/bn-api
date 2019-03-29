@@ -40,9 +40,10 @@ impl BroadcastPushNotificationExecutor {
 
         let broadcast = broadcast.set_in_progress(conn.get())?;
         let (audience_type, message) = match broadcast.notification_type {
-            BroadcastType::LastCall => {
-                (BroadcastAudience::PeopleAtTheEvent, "🗣LAST CALL! 🍻The bar is closing soon, grab something now before it's too late!")
-            }
+            BroadcastType::LastCall => (
+                BroadcastAudience::PeopleAtTheEvent,
+                "🗣LAST CALL! 🍻The bar is closing soon, grab something now before it's too late!",
+            ),
         };
 
         let audience = match audience_type {

@@ -453,7 +453,7 @@ fn purchase_metadata() {
     expected.push(("user_name".to_string(), user.full_name()));
     expected.push(("ticket_quantity".to_string(), 2.to_string()));
     expected.push((
-        "unit_price_in_cents".to_string(),
+        "face_value_in_cents".to_string(),
         (cost_per_ticket * 2).to_string(),
     ));
     expected.push((
@@ -1448,6 +1448,8 @@ fn replace_tickets_with_code_pricing() {
     .unwrap();
     let items = cart.items(connection).unwrap();
 
+    println!("{:?}", items);
+
     assert_eq!(items.len(), 2);
     let order_item = items
         .iter()
@@ -2036,6 +2038,60 @@ fn add_external_payment_for_expired_code() {
             _ => panic!("Expected validation error"),
         },
     }
+}
+
+#[test]
+fn add_free_payment() {
+    let project = TestProject::new();
+    let connection = project.get_connection();
+    let user = project.create_user().finish();
+    let event = project
+        .create_event()
+        .with_tickets()
+        .with_ticket_pricing()
+        .finish();
+
+    // Free order
+    let mut order = project
+        .create_order()
+        .with_free_items()
+        .for_user(&user)
+        .for_event(&event)
+        .finish();
+    assert_eq!(0, order.calculate_total(connection).unwrap());
+    assert_eq!(order.status, OrderStatus::Draft);
+    assert!(order.payments(connection).unwrap().is_empty());
+    order
+        .add_free_payment(false, user.id, project.get_connection())
+        .unwrap();
+    assert_eq!(order.status, OrderStatus::Paid);
+
+    let payments = order.payments(connection).unwrap();
+    assert_eq!(1, payments.len());
+    let payment = &payments[0];
+    assert_eq!(payment.payment_method, PaymentMethods::Free);
+    assert_eq!(payment.provider, PaymentProviders::Free);
+
+    // External free order
+    let mut order = project
+        .create_order()
+        .with_free_items()
+        .for_user(&user)
+        .for_event(&event)
+        .finish();
+    assert_eq!(0, order.calculate_total(connection).unwrap());
+    assert_eq!(order.status, OrderStatus::Draft);
+    assert!(order.payments(connection).unwrap().is_empty());
+    order
+        .add_free_payment(true, user.id, project.get_connection())
+        .unwrap();
+    assert_eq!(order.status, OrderStatus::Paid);
+
+    let payments = order.payments(connection).unwrap();
+    assert_eq!(1, payments.len());
+    let payment = &payments[0];
+    assert_eq!(payment.payment_method, PaymentMethods::Free);
+    assert_eq!(payment.provider, PaymentProviders::External);
 }
 
 #[test]

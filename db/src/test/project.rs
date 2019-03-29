@@ -105,6 +105,10 @@ impl TestProject {
         PaymentMethodBuilder::new(&self.connection)
     }
 
+    pub fn create_payment(&self) -> PaymentBuilder {
+        PaymentBuilder::new(&self.connection)
+    }
+
     pub fn create_region(&self) -> RegionBuilder {
         RegionBuilder::new(&self.connection)
     }
@@ -123,6 +127,10 @@ impl TestProject {
 
     pub fn create_fee_schedule(&self) -> FeeScheduleBuilder {
         FeeScheduleBuilder::new(&self.connection)
+    }
+
+    pub fn create_new_settlement_transaction(&self) -> SettlementtransactionBuilder {
+        SettlementtransactionBuilder::new(&self.connection)
     }
 
     pub fn get_connection(&self) -> &PgConnection {

@@ -45,7 +45,7 @@ fn find_all_by_event() {
 
     let result = EventArtist::find_all_from_event(event.id, project.get_connection()).unwrap();
 
-    assert_eq!(
+    assert_equiv!(
         vec![
             DisplayEventArtist {
                 artist: artist1,
