@@ -317,12 +317,6 @@ pub fn checkout(
     let payment_response = match &req.method {
         PaymentRequest::Free => {
             info!("CART: Received checkout for free cart");
-            if order.calculate_total(connection.get())? > 0 {
-                // TODO: make this line cleaner
-                return  application::unprocessable(
-                    "Could not use free payment method this cart because it has a total greater than zero",
-                );
-            }
             checkout_free(&connection, order, &user, &request_info)?
         }
         PaymentRequest::External {
@@ -430,15 +424,14 @@ fn checkout_free(
         return application::unprocessable(
             "Could not complete this cart because it is not in the correct status",
         );
+    } else if order.calculate_total(conn)? > 0 {
+        // TODO: make this line cleaner
+        return application::unprocessable(
+            "Could not use free payment method this cart because it has a total greater than zero",
+        );
     }
     let mut order = order;
-    order.add_external_payment(
-        Some("Free Checkout".to_string()),
-        ExternalPaymentType::Voucher,
-        user.id(),
-        0,
-        conn,
-    )?;
+    order.add_free_payment(false, user.id(), conn)?;
 
     let mut order = Order::find(order.id, conn)?;
     order.set_user_agent(request_info.user_agent.clone(), true, conn)?;
@@ -500,7 +493,11 @@ fn checkout_external(
     order.set_behalf_of_user(guest.unwrap(), user.id(), conn)?;
     let total = order.calculate_total(conn)?;
 
-    order.add_external_payment(reference, external_payment_type, user.id(), total, conn)?;
+    if total == 0 {
+        order.add_free_payment(true, user.id(), conn)?;
+    } else {
+        order.add_external_payment(reference, external_payment_type, user.id(), total, conn)?;
+    }
     order.set_user_agent(request_info.user_agent.clone(), true, conn)?;
 
     let order = Order::find(order.id, conn)?;
@@ -530,7 +527,12 @@ fn checkout_payment_processor(
         return application::unprocessable(
             "Could not complete this cart because it is not in the correct status",
         );
+    } else if order.calculate_total(connection)? == 0 {
+        return application::unprocessable(
+            "Could not complete this cart; only paid orders require payment processing",
+        );
     }
+
     // Can only have one event at a time because there are potentially different
     // payment gateway settings
     let mut events = order.events(connection)?;

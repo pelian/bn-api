@@ -997,6 +997,8 @@ impl Order {
             return Ok(());
         }
 
+        let mut per_event_fees_included: HashMap<Uuid, bool> = HashMap::new();
+
         for ((event_id, hold_id), items) in self
             .items(conn)?
             .iter()
@@ -1014,7 +1016,8 @@ impl Order {
                 }
             }
 
-            let event = Event::find(event_id.unwrap(), conn)?;
+            let event_id = event_id.unwrap();
+            let event = Event::find(event_id, conn)?;
 
             let mut all_zero_price = true;
 
@@ -1037,7 +1040,10 @@ impl Order {
                 }
             }
 
-            if !all_zero_price {
+            //This must only be run once for an entire order
+            //The issue was that if there was a hold that was not a comp as well as normal tickets
+            //in the cart the EventFees would get duplicated
+            if !all_zero_price && !per_event_fees_included.contains_key(&event_id) {
                 let mut new_event_fee = NewFeesOrderItem {
                     order_id: self.id,
                     item_type: OrderItemTypes::EventFees,
@@ -1056,6 +1062,7 @@ impl Order {
                     new_event_fee.unit_price_in_cents =
                         event.client_fee_in_cents + event.company_fee_in_cents;
                     new_event_fee.commit(conn)?;
+                    per_event_fees_included.insert(event_id, true);
                 }
             }
         }
@@ -1504,6 +1511,30 @@ impl Order {
         )
         .commit(conn)?;
         Ok(())
+    }
+
+    pub fn add_free_payment(
+        &mut self,
+        external_payment: bool,
+        current_user_id: Uuid,
+        conn: &PgConnection,
+    ) -> Result<Payment, DatabaseError> {
+        let payment = Payment::create(
+            self.id,
+            Some(current_user_id),
+            PaymentStatus::Completed,
+            PaymentMethods::Free,
+            if external_payment {
+                PaymentProviders::External
+            } else {
+                PaymentProviders::Free
+            },
+            Some("Free Checkout".to_string()),
+            0,
+            None,
+            None,
+        );
+        self.add_payment(payment, Some(current_user_id), conn)
     }
 
     pub fn add_external_payment(
