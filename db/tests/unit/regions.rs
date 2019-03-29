@@ -37,7 +37,9 @@ fn find() {
     let found_region = Region::find(region.id, project.get_connection()).unwrap();
     assert_eq!(region, found_region);
 
-    let found_by = Region::find_by_name(&region.name, project.get_connection()).unwrap().unwrap();
+    let found_by = Region::find_by_name(&region.name, project.get_connection())
+        .unwrap()
+        .unwrap();
     assert_eq!(region, found_by);
 }
 

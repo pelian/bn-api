@@ -1678,6 +1678,8 @@ fn checked_in_users() {
     assert_eq!(result2, RedeemResults::TicketRedeemSuccess);
     let users = Event::checked_in_users(event.id, connection).unwrap();
     assert_eq!(users[0], user);
-    let fans = event.search_fans(None, Some(100), Some(0), None, None, connection).unwrap();
+    let fans = event
+        .search_fans(None, Some(100), Some(0), None, None, connection)
+        .unwrap();
     assert_eq!(user.id, fans.0[0].user_id);
 }
