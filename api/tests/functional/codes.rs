@@ -231,7 +231,7 @@ fn create_with_validation_errors() {
 
     let json = Json(CreateCodeRequest {
         name: "Code Example".into(),
-        redemption_code: "a".into(),
+        redemption_codes: vec!["a".into()],
         code_type: CodeTypes::Discount,
         max_uses: 10,
         discount_in_cents: None,
@@ -262,7 +262,7 @@ fn create_with_validation_errors() {
 
     let json = Json(CreateCodeRequest {
         name: "Code Example".into(),
-        redemption_code: "a".into(),
+        redemption_codes: vec!["a".into()],
         code_type: CodeTypes::Discount,
         max_uses: 10,
         discount_in_cents: Some(100),

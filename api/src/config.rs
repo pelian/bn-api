@@ -254,7 +254,7 @@ impl Config {
                     .expect("Not a valid integer for max instances per ticket type")
             })
             .unwrap_or(10000);
-        let mut connection_pool = ConnectionPoolConfig {
+        let connection_pool = ConnectionPoolConfig {
             min: env::var(CONNECTION_POOL_MIN)
                 .map(|s| {
                     s.parse()
