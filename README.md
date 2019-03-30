@@ -1,6 +1,7 @@
 # Big Neon API
 
 [![Build Status](https://drone.metalworks.tarilabs.com/api/badges/big-neon/bn-api/status.svg)](https://drone.metalworks.tarilabs.com/big-neon/bn-api)
+[![Docker Repository on Quay](https://quay.io/repository/tarilabs/bn-api/status "Docker Repository on Quay")](https://quay.io/repository/tarilabs/bn-api)
 
 This is the Big Neon API repository, part of the Big Neon ticketing system.
 
