@@ -20,7 +20,6 @@ ADD Cargo.docker.toml ./Cargo.toml
 
 # this build step will cache our dependencies
 RUN cargo build --release
-#RUN cargo build --release
 RUN rm src/*.rs
 
 # Add the actual source code
